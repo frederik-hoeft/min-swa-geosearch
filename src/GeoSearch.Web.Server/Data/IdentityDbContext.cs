@@ -1,0 +1,22 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+using Wkg.EntityFrameworkCore.Configuration;
+using Wkg.EntityFrameworkCore.Extensions;
+
+namespace GeoSearch.Web.Server.Data;
+
+/// <summary>
+/// Identity-only EF model. Uses a separate, application-owned PostgreSQL database.
+/// The default schema prevents collisions if additional application entities are introduced.
+/// </summary>
+public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> options, IModelLoader modelLoader)
+    : IdentityDbContext<IdentityUser>(options)
+{
+    protected override void OnModelCreating(ModelBuilder builder)
+    {
+        base.OnModelCreating(builder);
+        builder.HasDefaultSchema("app_auth");
+        builder.LoadModels(modelLoader);
+    }
+}
