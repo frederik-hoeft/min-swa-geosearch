@@ -1,6 +1,6 @@
 # Development setup and readiness
 
-The initial bootstrap was generated without a .NET SDK or NuGet package feed. Package restore, compilation, EF migration generation, runtime authentication, browser rendering and integration testing are **not yet verified**. Treat source packages and runtime behavior as provisional until the first offline build and audit.
+The solution supports deterministic offline restore with a supplied .NET SDK and NuGet package cache. See the validation report for the currently verified build and test results.
 
 ## Prerequisites
 

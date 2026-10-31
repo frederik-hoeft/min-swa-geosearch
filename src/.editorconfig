@@ -1,60 +1,477 @@
+# Remove the line below if you want to inherit .editorconfig settings from higher directories
 root = true
 
+# All files
 [*]
 charset = utf-8
+indent_style = space
+trim_trailing_whitespace = true
 end_of_line = lf
 insert_final_newline = true
-trim_trailing_whitespace = true
-indent_style = space
-indent_size = 4
 max_line_length = 200
 
+#### Core EditorConfig Options ####
+
+# Indentation and spacing
+indent_size = 4
+
+# C# files
 [*.cs]
+# Visual Studio sometimes guesses UTF-8 files with no BOM as something else
 charset = utf-8-bom
+
+#### C# Coding Conventions ####
+
+# performance rules
+csharp_prefer_system_threading_lock = true:warning
+
+# var preferences
+csharp_style_var_elsewhere = false:warning
 csharp_style_var_for_built_in_types = false:warning
 csharp_style_var_when_type_is_apparent = false:warning
-csharp_style_var_elsewhere = false:warning
-csharp_style_namespace_declarations = file_scoped:warning
-csharp_prefer_braces = true:warning
-csharp_preferred_modifier_order = public,private,internal,protected,file,static,extern,const,required,sealed,virtual,new,async,abstract,override,readonly,unsafe,volatile:warning
-csharp_new_line_before_open_brace = all
-csharp_new_line_before_else = true
-csharp_new_line_before_catch = true
-csharp_new_line_before_finally = true
-csharp_indent_braces = false
-csharp_indent_block_contents = true
-csharp_indent_switch_labels = true
-dotnet_style_require_accessibility_modifiers = for_non_interface_members:warning
-# Familiar .NET style preferences from UFWeb's baseline.
-csharp_prefer_static_local_function = true:warning
-csharp_style_prefer_readonly_struct = true:warning
-csharp_style_prefer_not_pattern = true:warning
+
+# Expression-bodied members
+csharp_style_expression_bodied_accessors = true:suggestion
+csharp_style_expression_bodied_constructors = true:silent
+csharp_style_expression_bodied_indexers = when_on_single_line:suggestion
+csharp_style_expression_bodied_lambdas = true:suggestion
+csharp_style_expression_bodied_local_functions = true:suggestion
+csharp_style_expression_bodied_methods = when_on_single_line:suggestion
+csharp_style_expression_bodied_operators = when_on_single_line:suggestion
+csharp_style_expression_bodied_properties = when_on_single_line:suggestion
+
+# Pattern matching preferences
+csharp_style_pattern_matching_over_as_with_null_check = true:warning
+csharp_style_pattern_matching_over_is_with_cast_check = true:warning
 csharp_style_prefer_extended_property_pattern = true:warning
+csharp_style_prefer_not_pattern = true:warning
 csharp_style_prefer_pattern_matching = true:warning
 csharp_style_prefer_switch_expression = true:warning
-csharp_style_implicit_object_creation_when_type_is_apparent = true:warning
-csharp_style_expression_bodied_accessors = true:suggestion
-csharp_style_expression_bodied_methods = when_on_single_line:suggestion
-csharp_style_expression_bodied_properties = when_on_single_line:suggestion
-csharp_space_after_comma = true
-csharp_space_after_keywords_in_control_flow_statements = true
-csharp_space_around_binary_operators = before_and_after
-csharp_indent_case_contents = true
-csharp_using_directive_placement = outside_namespace:suggestion
-dotnet_sort_system_directives_first = false
-dotnet_separate_import_directive_groups = false
 
+# Null-checking preferences
+csharp_style_conditional_delegate_call = true:warning
+
+# Modifier preferences
+csharp_prefer_static_local_function = true:warning
+csharp_preferred_modifier_order = public,private,internal,protected,file,static,extern,const,required,sealed,virtual,new,async,abstract,override,readonly,unsafe,volatile:warning
+csharp_style_prefer_readonly_struct = true:warning
+csharp_style_prefer_readonly_struct_member = true:warning
+
+# Code-block preferences
+csharp_prefer_braces = true:warning
+csharp_prefer_simple_using_statement = true:warning
+csharp_style_namespace_declarations = file_scoped:warning
+csharp_style_prefer_method_group_conversion = true:warning
+csharp_style_prefer_primary_constructors = true:warning
+csharp_style_prefer_top_level_statements = true:silent
+
+# Expression-level preferences
+csharp_prefer_simple_default_expression = true:warning
+csharp_style_deconstructed_variable_declaration = true:warning
+csharp_style_implicit_object_creation_when_type_is_apparent = true:warning
+csharp_style_inlined_variable_declaration = true:warning
+csharp_style_prefer_index_operator = true:warning
+csharp_style_prefer_local_over_anonymous_function = true:warning
+csharp_style_prefer_null_check_over_type_check = true:warning
+csharp_style_prefer_range_operator = true:warning
+csharp_style_prefer_tuple_swap = true:warning
+csharp_style_prefer_utf8_string_literals = true:warning
+csharp_style_throw_expression = true:warning
+csharp_style_unused_value_assignment_preference = discard_variable:suggestion
+csharp_style_unused_value_expression_statement_preference = discard_variable:silent
+
+# 'using' directive preferences
+csharp_using_directive_placement = outside_namespace:suggestion
+
+# New line preferences
+csharp_style_allow_blank_line_after_colon_in_constructor_initializer_experimental = false:warning
+csharp_style_allow_blank_line_after_token_in_arrow_expression_clause_experimental = true:suggestion
+csharp_style_allow_blank_line_after_token_in_conditional_expression_experimental = false:warning
+csharp_style_allow_blank_lines_between_consecutive_braces_experimental = false:warning
+csharp_style_allow_embedded_statements_on_same_line_experimental = true:silent
+
+#### C# Formatting Rules ####
+
+# New line preferences
+csharp_new_line_before_catch = true
+csharp_new_line_before_else = true
+csharp_new_line_before_finally = true
+csharp_new_line_before_members_in_anonymous_types = true
+csharp_new_line_before_members_in_object_initializers = true
+csharp_new_line_before_open_brace = all
+csharp_new_line_between_query_expression_clauses = true
+
+# Indentation preferences
+csharp_indent_block_contents = true
+csharp_indent_braces = false
+csharp_indent_case_contents = true
+csharp_indent_case_contents_when_block = false
+csharp_indent_labels = one_less_than_current
+csharp_indent_switch_labels = true
+
+# Space preferences
+csharp_space_after_cast = false
+csharp_space_after_colon_in_inheritance_clause = true
+csharp_space_after_comma = true
+csharp_space_after_dot = false
+csharp_space_after_keywords_in_control_flow_statements = true
+csharp_space_after_semicolon_in_for_statement = true
+csharp_space_around_binary_operators = before_and_after
+csharp_space_around_declaration_statements = false
+csharp_space_before_colon_in_inheritance_clause = true
+csharp_space_before_comma = false
+csharp_space_before_dot = false
+csharp_space_before_open_square_brackets = false
+csharp_space_before_semicolon_in_for_statement = false
+csharp_space_between_empty_square_brackets = false
+csharp_space_between_method_call_empty_parameter_list_parentheses = false
+csharp_space_between_method_call_name_and_opening_parenthesis = false
+csharp_space_between_method_call_parameter_list_parentheses = false
+csharp_space_between_method_declaration_empty_parameter_list_parentheses = false
+csharp_space_between_method_declaration_name_and_open_parenthesis = false
+csharp_space_between_method_declaration_parameter_list_parentheses = false
+csharp_space_between_parentheses = false
+csharp_space_between_square_brackets = false
+
+# Wrapping preferences
+csharp_preserve_single_line_blocks = true
+csharp_preserve_single_line_statements = true
+
+# Other preferences
+csharp_style_prefer_unbound_generic_type_in_nameof = true:suggestion
+csharp_prefer_static_anonymous_function = true:suggestion
+csharp_style_prefer_simple_property_accessors = true:warning
+
+[*.{csproj,targets,props}]
+# match Visual Studio behavior
+charset = utf-8-bom
+
+# Xml resource files
+[*.resx]
+# match Visual Studio behavior
+insert_final_newline = false
+trim_trailing_whitespace = false
+
+# Data serialization
 [*.{json,yaml,yml}]
 indent_size = 2
 
-[*.{props,targets,csproj,slnx}]
-indent_size = 2
+# Shell scripts
+[*.sh]
+end_of_line = lf
+[*.{cmd,bat}]
+end_of_line = crlf
 
+# global preferences
 [*.{cs,vb}]
+
+#### .NET Coding Conventions ####
+
+# Organize usings
+dotnet_separate_import_directive_groups = false
+dotnet_sort_system_directives_first = false
+file_header_template = unset
+
+# Language keywords vs BCL types preferences
 dotnet_style_predefined_type_for_locals_parameters_members = true:suggestion
 dotnet_style_predefined_type_for_member_access = true:suggestion
+
+# Parentheses preferences
+dotnet_style_parentheses_in_arithmetic_binary_operators = always_for_clarity:suggestion
+dotnet_style_parentheses_in_other_binary_operators = always_for_clarity:silent
+dotnet_style_parentheses_in_relational_binary_operators = always_for_clarity:silent
+dotnet_style_parentheses_in_other_operators = never_if_unnecessary:suggestion
+
+# Modifier preferences
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:warning
+
+# Expression-level preferences
+dotnet_style_coalesce_expression = true:warning
+dotnet_style_collection_initializer = true:warning
+dotnet_style_explicit_tuple_names = true:warning
+dotnet_style_namespace_match_folder = true:warning
 dotnet_style_null_propagation = true:warning
 dotnet_style_object_initializer = true:warning
-dotnet_style_collection_initializer = true:warning
 dotnet_style_prefer_auto_properties = true:warning
-dotnet_style_require_accessibility_modifiers = for_non_interface_members:warning
+dotnet_style_prefer_collection_expression = when_types_exactly_match:warning
+dotnet_style_prefer_compound_assignment = true:warning
+dotnet_style_prefer_conditional_expression_over_assignment = true:silent
+dotnet_style_prefer_conditional_expression_over_return = true:silent
+dotnet_style_prefer_foreach_explicit_cast_in_source = when_strongly_typed
+dotnet_style_prefer_inferred_anonymous_type_member_names = true:silent
+dotnet_style_prefer_inferred_tuple_names = true:silent
+dotnet_style_prefer_is_null_check_over_reference_equality_method = true:warning
+dotnet_style_prefer_simplified_boolean_expressions = true:warning
+dotnet_style_prefer_simplified_interpolation = true:warning
+
+# Field preferences
+dotnet_style_readonly_field = true:suggestion
+
+# Parameter preferences
+dotnet_code_quality_unused_parameters = all:suggestion
+
+# Suppression preferences
+dotnet_remove_unnecessary_suppression_exclusions = CA2000
+
+# New line preferences
+dotnet_style_allow_multiple_blank_lines_experimental = false:warning
+dotnet_style_allow_statement_immediately_after_block_experimental = true:suggestion
+dotnet_style_operator_placement_when_wrapping = beginning_of_line
+
+# this. and Me. preferences
+dotnet_style_qualification_for_field = false:silent
+dotnet_style_qualification_for_property = false:suggestion
+dotnet_style_qualification_for_method = false:suggestion
+dotnet_style_qualification_for_event = false:suggestion
+
+#### Naming styles ####
+
+# Naming rules
+
+dotnet_naming_rule.interface_should_be_begins_with_i.severity = warning
+dotnet_naming_rule.interface_should_be_begins_with_i.symbols = interface
+dotnet_naming_rule.interface_should_be_begins_with_i.style = begins_with_i
+
+dotnet_naming_rule.types_should_be_pascal_case.severity = warning
+dotnet_naming_rule.types_should_be_pascal_case.symbols = types
+dotnet_naming_rule.types_should_be_pascal_case.style = pascal_case
+
+dotnet_naming_rule.async_methods_should_have_async_suffix.severity = warning
+dotnet_naming_rule.async_methods_should_have_async_suffix.symbols = async_methods
+dotnet_naming_rule.async_methods_should_have_async_suffix.style = async_suffix
+
+dotnet_naming_rule.non_field_members_should_be_pascal_case.severity = warning
+dotnet_naming_rule.non_field_members_should_be_pascal_case.symbols = non_field_members
+dotnet_naming_rule.non_field_members_should_be_pascal_case.style = pascal_case
+
+dotnet_naming_rule.constants_should_be_constant_case.severity = warning
+dotnet_naming_rule.constants_should_be_constant_case.symbols = constants
+dotnet_naming_rule.constants_should_be_constant_case.style = constant_case
+
+dotnet_naming_rule.static_field_should_be_static_fields_begin_with_s_.severity = warning
+dotnet_naming_rule.static_field_should_be_static_fields_begin_with_s_.symbols = static_field
+dotnet_naming_rule.static_field_should_be_static_fields_begin_with_s_.style = static_fields_begin_with_s_
+
+dotnet_naming_rule.non_public_field_should_be__camelcase.severity = warning
+dotnet_naming_rule.non_public_field_should_be__camelcase.symbols = non_public_field
+dotnet_naming_rule.non_public_field_should_be__camelcase.style = _camelcase
+
+dotnet_naming_rule.public_field_should_be_pascal_case.severity = warning
+dotnet_naming_rule.public_field_should_be_pascal_case.symbols = public_field
+dotnet_naming_rule.public_field_should_be_pascal_case.style = pascal_case
+
+dotnet_naming_rule.locals_should_be_camelcase.severity = warning
+dotnet_naming_rule.locals_should_be_camelcase.symbols = locals
+dotnet_naming_rule.locals_should_be_camelcase.style = camelcase
+
+dotnet_naming_rule.type_parameters_should_be_begins_with_t.severity = warning
+dotnet_naming_rule.type_parameters_should_be_begins_with_t.symbols = type_parameters
+dotnet_naming_rule.type_parameters_should_be_begins_with_t.style = begins_with_t
+
+dotnet_naming_rule.internal_field_should_be_pascal_case.severity = silent
+dotnet_naming_rule.internal_field_should_be_pascal_case.symbols = internal_field
+dotnet_naming_rule.internal_field_should_be_pascal_case.style = pascal_case
+
+# Symbol specifications
+
+dotnet_naming_symbols.interface.applicable_kinds = interface
+dotnet_naming_symbols.interface.applicable_accessibilities = public, internal, private, protected, protected_internal, private_protected
+dotnet_naming_symbols.interface.required_modifiers =
+
+dotnet_naming_symbols.static_field.applicable_kinds = field
+dotnet_naming_symbols.static_field.applicable_accessibilities = public, internal, private, protected, protected_internal, private_protected
+dotnet_naming_symbols.static_field.required_modifiers = static
+
+dotnet_naming_symbols.types.applicable_kinds = class, struct, interface, enum
+dotnet_naming_symbols.types.applicable_accessibilities = public, internal, private, protected, protected_internal, private_protected
+dotnet_naming_symbols.types.required_modifiers =
+
+dotnet_naming_symbols.non_field_members.applicable_kinds = property, event, method
+dotnet_naming_symbols.non_field_members.applicable_accessibilities = public, internal, private, protected, protected_internal, private_protected
+dotnet_naming_symbols.non_field_members.required_modifiers =
+
+dotnet_naming_symbols.async_methods.applicable_kinds = method
+dotnet_naming_symbols.async_methods.applicable_accessibilities = public, internal, private, protected, protected_internal, private_protected
+dotnet_naming_symbols.async_methods.required_modifiers = async
+
+dotnet_naming_symbols.constants.applicable_kinds = field, local
+dotnet_naming_symbols.constants.applicable_accessibilities = *
+dotnet_naming_symbols.constants.required_modifiers = const
+
+dotnet_naming_symbols.public_field.applicable_kinds = field
+dotnet_naming_symbols.public_field.applicable_accessibilities = public
+dotnet_naming_symbols.public_field.required_modifiers =
+
+dotnet_naming_symbols.non_public_field.applicable_kinds = field
+dotnet_naming_symbols.non_public_field.applicable_accessibilities = private, protected, protected_internal, private_protected, local
+dotnet_naming_symbols.non_public_field.required_modifiers =
+
+dotnet_naming_symbols.internal_field.applicable_kinds = field
+dotnet_naming_symbols.internal_field.applicable_accessibilities = internal
+dotnet_naming_symbols.internal_field.required_modifiers =
+
+dotnet_naming_symbols.locals.applicable_kinds = parameter, local
+dotnet_naming_symbols.locals.applicable_accessibilities = local
+dotnet_naming_symbols.locals.required_modifiers =
+
+dotnet_naming_symbols.type_parameters.applicable_kinds = type_parameter
+dotnet_naming_symbols.type_parameters.applicable_accessibilities = *
+dotnet_naming_symbols.type_parameters.required_modifiers =
+
+# Naming styles
+
+dotnet_naming_style.pascal_case.required_prefix =
+dotnet_naming_style.pascal_case.required_suffix =
+dotnet_naming_style.pascal_case.word_separator =
+dotnet_naming_style.pascal_case.capitalization = pascal_case
+
+dotnet_naming_style.begins_with_i.required_prefix = I
+dotnet_naming_style.begins_with_i.required_suffix =
+dotnet_naming_style.begins_with_i.word_separator =
+dotnet_naming_style.begins_with_i.capitalization = pascal_case
+
+dotnet_naming_style._camelcase.required_prefix = _
+dotnet_naming_style._camelcase.required_suffix =
+dotnet_naming_style._camelcase.word_separator =
+dotnet_naming_style._camelcase.capitalization = camel_case
+
+dotnet_naming_style.async_suffix.required_prefix =
+dotnet_naming_style.async_suffix.required_suffix = Async
+dotnet_naming_style.async_suffix.word_separator =
+dotnet_naming_style.async_suffix.capitalization = pascal_case
+
+dotnet_naming_style.constant_case.required_prefix =
+dotnet_naming_style.constant_case.required_suffix =
+dotnet_naming_style.constant_case.word_separator = _
+dotnet_naming_style.constant_case.capitalization = all_upper
+
+dotnet_naming_style.static_fields_begin_with_s_.required_prefix = s_
+dotnet_naming_style.static_fields_begin_with_s_.required_suffix =
+dotnet_naming_style.static_fields_begin_with_s_.word_separator =
+dotnet_naming_style.static_fields_begin_with_s_.capitalization = camel_case
+
+dotnet_naming_style.camelcase.required_prefix =
+dotnet_naming_style.camelcase.required_suffix =
+dotnet_naming_style.camelcase.word_separator =
+dotnet_naming_style.camelcase.capitalization = camel_case
+
+dotnet_naming_style.begins_with_t.required_prefix = T
+dotnet_naming_style.begins_with_t.required_suffix =
+dotnet_naming_style.begins_with_t.word_separator =
+dotnet_naming_style.begins_with_t.capitalization = pascal_case
+
+#### Resharper settings ####
+# see https://www.jetbrains.com/help/fleet/code-inspection-list-csharp.html
+# only specifying the rules that are different from the default settings
+
+## Common Practices and Code Improvements
+# Actual number of bytes read by 'Stream.Read()' is ignored
+resharper_stream_read_return_value_ignored_highlighting = error
+# Cast expression can be replaced with explicit type arguments
+resharper_can_replace_cast_with_type_argument_highlighting = suggestion
+# Cast expression can be replaced with explicit variable type
+resharper_can_replace_cast_with_variable_type_highlighting = suggestion
+# Cast expression can be replaced with lambda return type
+resharper_can_replace_cast_with_lambda_return_type_highlighting = suggestion
+# Change lock field type to 'System.Threading.Lock'
+resharper_change_lock_field_type_to_system_threading_lock_highlighting = warning
+# Class can be made sealed (non-inheritable) (private accessibility)
+resharper_class_can_be_sealed_local_highlighting = suggestion
+# Local function can be made static
+resharper_local_function_can_be_made_static_highlighting = warning
+# Member can be made static - managed by default .NET analyzers
+resharper_member_can_be_made_static_global_highlighting = none
+resharper_member_can_be_made_static_local_highlighting = none
+# Replace 'async' code with 'Task'-return
+# - every unnecessary async method generates a full state machine, which is a lot of overhead for no reason
+resharper_replace_async_code_with_task_return_highlighting = warning
+# String.EndsWith is culture-specific (string.EndsWith(string) is culture-specific)
+resharper_string_ends_with_is_culture_specific_highlighting = warning
+# String.StartsWith is culture-specific (string.StartsWith(string) is culture-specific)
+resharper_string_starts_with_is_culture_specific_highlighting = warning
+# Struct can be made readonly
+resharper_struct_can_be_made_read_only_highlighting = warning
+# Struct member can be made readonly
+resharper_struct_member_can_be_made_read_only_highlighting = warning
+# Type can be made file-local
+resharper_member_can_be_file_local_highlighting = suggestion
+
+## Formatting
+# Inconsistent Naming - managed by default .NET analyzers
+resharper_inconsistent_naming_highlighting = none
+
+## Language Usage Opportunities
+# Convert constructor into primary constructor - managed by default .NET analyzers
+resharper_convert_to_primary_constructor_highlighting = none
+# Convert 'if' statement into 'switch'
+# - although valid for large if-else chains, simple if-else-if cases are often more readable than switch statements
+resharper_convert_if_statement_to_switch_statement_highlighting = none
+# Convert into 'await using' statement or declaration
+resharper_use_await_using_highlighting = warning
+# [...] loop can be converted into LINQ-expression [...]::
+# - LINQ can be nice, but there are times and reasons (performance, readability, resilience, etc) where it's better to be explicit,
+#   e.g., when IEnumerators must be explicitly disposed.
+#   So don't force usage of LINQ, make it optional on a case-by-case basis, and have developers make the conscious choice to use it
+#   (and hopefully understand the implications of doing so)
+resharper_loop_can_be_converted_to_query_highlighting = none
+resharper_loop_can_be_partly_converted_to_query_highlighting = none
+resharper_foreach_can_be_converted_to_query_using_another_get_enumerator_highlighting = none
+resharper_foreach_can_be_partly_converted_to_query_using_another_get_enumerator_highlighting = none
+# 'For-loop can be converted into foreach-loop:
+# - generally, foreach is more readable, but also generally, foreach has more overhead than for, so it's not always the best choice.
+#   leave it up to the developer to decide what they want to optimize for (conciseness vs performance)
+resharper_for_can_be_converted_to_foreach_highlighting = none
+# 'if' statement can be rewritten as '?:' expression:
+# - "just because you can, doesn't mean you should" - nested ternaries may be shorter, but they also make the code more convoluted
+#   so while it's nice to have the option, don't force it
+resharper_convert_if_statement_to_conditional_ternary_expression_highlighting = none
+# Invert 'if' statement to reduce nesting:
+# - if you do a simple if (...) break inside of a loop, it wants to convert it to an if (!...) continue, making the code more convoluted
+#   so while this is a valid refactoring in some cases, it's not always the best choice. Keep it optional / up to the developer
+resharper_invert_if_highlighting = none
+# Lambda expression/anonymous method can be made 'static':
+# - reducing allocations and runtime overhead for allocating a closure is always a good thing, so bump this up to a warning
+resharper_lambda_expression_can_be_made_static_highlighting = warning
+# Lambda expression/anonymous method must be 'static' to avoid allocations
+resharper_lambda_expression_must_be_static_highlighting = warning
+# Lambda expression/anonymous method must not have captures of the containing context
+resharper_lambda_should_not_capture_context_highlighting = warning
+# Replace object pattern not performing any additional checks with 'var' pattern
+resharper_replace_object_pattern_with_var_pattern_highlighting = none
+# Auto-property accessor is never used (non-private accessibility)
+resharper_unused_auto_property_accessor_global_highlighting = hint
+# 'if-return' statement can be rewritten as 'return' statement
+resharper_convert_if_statement_to_return_statement_highlighting = none
+# Use null check pattern instead of a type check succeeding on any not-null value
+# - even if more verbose, explicit type-check declarations in pattern matching help with readability and understanding
+resharper_convert_type_check_pattern_to_null_check_highlighting = none
+# Some values of the enum are not processed inside 'switch' statement and are handled via default section
+# - don't force explicit handling of all enum values in a switch statement if there's a default case that handles them
+resharper_switch_statement_handles_some_known_enum_values_with_default_highlighting = none
+
+## Potential Code Quality Issues
+# Avoid using 'async' for methods and functions with the 'void' return type
+resharper_async_void_method_highlighting = warning
+# Missing '.ConfigureAwait(false)' for async disposable in library code
+resharper_use_configure_await_false_for_async_disposable_highlighting = warning
+# Missing '.ConfigureAwait(false)' in library code
+resharper_use_configure_await_false_highlighting = warning
+# Conditional access qualifier expression is not null according to nullable reference types' annotations
+# - don't force removal of null checks
+resharper_conditional_access_qualifier_is_non_nullable_according_to_api_contract_highlighting = hint
+# Some values of the enum are not processed inside 'switch' expression and are handled via exception in default arm
+# - already handled by the default .NET analyzers
+resharper_switch_expression_handles_some_known_enum_values_with_exception_in_default_highlighting = none
+# Redundant empty switch section
+# - conflicts with analyzers enforcing explicit handling of cases in switch statements
+resharper_redundant_empty_switch_section_highlighting = none
+
+## Redundancies in Code
+# Redundant 'else' keyword
+resharper_redundant_if_else_block_highlighting = warning
+# Member can be made private (non-private accessibility)
+resharper_member_can_be_private_global_highlighting = none
+# Underlying type of enum is 'int'
+resharper_enum_underlying_type_is_int_highlighting = hint
+# Redundant lambda expression parameter type specification
+resharper_redundant_lambda_parameter_type_highlighting = hint
