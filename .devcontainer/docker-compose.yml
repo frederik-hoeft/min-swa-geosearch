@@ -8,6 +8,7 @@ services:
       - nuget-cache:/home/vscode/.nuget/packages
     environment:
       PGHOST: postgis
+      GEOSERVER_URL: http://geoserver:8080/geoserver
       PGPORT: "5432"
       PGDATABASE: lab1
       PGUSER: lab1

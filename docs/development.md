@@ -1,6 +1,6 @@
 # Development setup and readiness
 
-The solution supports deterministic offline restore with a supplied .NET SDK and NuGet package cache. See the validation report for the currently verified build and test results.
+The solution supports a deterministic offline restore with a supplied .NET SDK and NuGet package cache. The bootstrap compilation and MSTest baseline are summarized in [validation.md](validation.md); they do not substitute for browser, database, and migration integration tests.
 
 ## Prerequisites
 
@@ -8,11 +8,52 @@ The solution supports deterministic offline restore with a supplied .NET SDK and
 
 ## Offline dependency bundle
 
-Run `./src/restore.sh` on a **network-connected** machine with a .NET 10 SDK, Bash and Python 3. The script is adapted from UFWeb's `src/restore.sh`: it restores `GeoSearch.slnx` from NuGet.org into a freshly cleared, private `src/.nuget-cache/`, collects the `.nupkg` files for direct and transitive dependencies, and produces `src/nuget-packages.zip` (plus the extracted `src/nuget-packages/` directory). The script can be launched from any current working directory. These outputs are ignored by Git.
+Run `./src/restore.sh` on a **network-connected** machine with a .NET 10 SDK, Bash and Python 3. It restores `GeoSearch.slnx` from NuGet.org into a freshly cleared, private `src/.nuget-cache/`, collects the `.nupkg` files for direct and transitive dependencies, and produces `src/nuget-packages.zip` (plus the extracted `src/nuget-packages/` directory). The script can be launched from any current working directory. These outputs are ignored by Git.
 
-Give the ZIP and the platform-matched .NET SDK archive to the offline build environment. Follow the [dotnet-offline workflow](https://github.com/frederik-hoeft/custom-skills/blob/main/dev/dotnet-offline.skill) to rebuild a clean package cache and restore with all network sources disabled. **The ZIP contains NuGet packages, not the .NET SDK or optional workload packs**. Any WASM build/publish workload required by the installed SDK must be supplied separately. A package restore here validates dependency acquisition, **not** successful compilation, unit tests, or runtime behavior.
+Give the ZIP and the platform-matched .NET SDK archive to the offline build environment.
+Extract the SDK outside the repository, point `DOTNET_ROOT` and `PATH` to that extraction,
+and extract NuGet packages into an isolated cache. Use a temporary NuGet configuration
+with `<packageSources><clear /></packageSources>`, point `NUGET_PACKAGES` to the isolated cache,
+and run restore, build, and tests in order (without implicit restore after the first step):
+
+```bash
+dotnet restore src/GeoSearch.slnx --configfile "$OFFLINE_NUGET_CONFIG" --force --no-cache
+dotnet build src/GeoSearch.slnx --no-restore /p:TreatWarningsAsErrors=true
+dotnet test src/GeoSearch.slnx --no-restore --no-build
+```
+
+The NuGet archive must include **every transitive package**, including tools such as
+`AspNetCore.SassCompiler` that participate in the build. A directory of `.nupkg` files is
+not itself the normal NuGet global-package cache: packages must be extracted and normalized
+before using a source-less configuration. Never let the build silently use machine-global
+packages or network feeds. The ZIP does not include the SDK or optional WASM workloads.
+See [the bootstrap validation record](validation.md) for the current package-archive gap.
 
 The script intentionally uses NuGet.org as its only feed. If package references require another feed in the future, review its trust and package provenance before extending the script.
+
+## Development container
+
+The included [development container](../.devcontainer/README.md) provides a Debian-based .NET 10 SDK
+with PostgreSQL client tools and GDAL, plus the standard Zsh configuration. The same Compose
+project starts the provided PostGIS service. From inside this container, use `Host=postgis`
+in `ConnectionStrings__Identity` and `ConnectionStrings__Search`; host-side programs can use
+`Host=localhost` with the host-loopback published port. The optional GeoServer service is
+reachable on `http://geoserver:8080/geoserver` from inside the container.
+
+The Docker socket exposes the host Docker daemon. The devcontainer is intended only for trusted
+local development, not application deployment or running unreviewed code.
+
+## SCSS
+
+Blazor global styles live in `UI/Styles/app.scss` and component/page-specific isolated styles
+in adjacent `*.razor.scss` files. `sasscompiler.json` explicitly declares both outputs.
+`AspNetCore.SassCompiler` performs compilation during .NET builds, producing generated CSS
+that is ignored by Git; generated CSS must not be hand-edited. The currently supplied offline
+NuGet bundle lacks `AspNetCore.SassCompiler` version 1.103.0. To validate the rest of the
+application with that archive, pass `-p:GeoSearchEnableSassCompiler=false` to restore/build
+and set `GeoSearchEnableSassCompiler=false` for the formatter. This **does not validate SCSS**
+and is not suitable for publishing the full frontend. Produce a new dependency bundle with
+`./src/restore.sh` on a connected developer machine to remove the exception.
 
 ## Configuration
 
@@ -23,7 +64,7 @@ Server configuration is read through normal ASP.NET Core providers. Copy `src/Ge
 - `Jwt__Issuer`, `Jwt__Audience`, `Jwt__SigningKey`: issuer/audience values and a secret random key of at least 32 bytes. Never check it in. For local development use `dotnet user-secrets` or environment variables.
 - `Bootstrap__Email`, `Bootstrap__Password`: optional one-time development-only account provisioner (password >= 16 chars). Never include values in logs, CI or committed configuration. The bootstrapper refuses to run outside Development.
 
-Create a **separate empty development database** by running `./scripts/setup-identity-db.sh` after `./scripts/lab.sh stack-up`. With `Bootstrap:EnsureCreated=true` and ASPNETCORE_ENVIRONMENT=Development, startup calls `EnsureCreatedAsync` against that database so login can run before EF tooling is available. **This is development-only and is not an EF migration.** It cannot be upgraded in place to a migration-managed schema. Before deployment, discard/recreate the temporary auth database, generate and review an initial migration using `dotnet ef migrations add InitialIdentity --project src/GeoSearch.Web.Server --startup-project src/GeoSearch.Web.Server --context IdentityDbContext --output-dir Data/Migrations`, disable `EnsureCreated`, and apply migrations. No generated migration is included in this bootstrap.
+Create a **separate empty development database** by running `./scripts/setup-identity-db.sh` after `./scripts/lab.sh stack-up`. With `Bootstrap:EnsureCreated=true` and ASPNETCORE_ENVIRONMENT=Development, startup calls `EnsureCreatedAsync` against that database so login can run before migrations are provisioned. **This is development-only and is not an EF migration.** It cannot be upgraded in place to a migration-managed schema. Before deployment, discard/recreate the temporary auth database, generate and review an initial migration using `dotnet ef migrations add InitialIdentity --project src/GeoSearch.Web.Server --startup-project src/GeoSearch.Web.Server --context IdentityDbContext --output-dir Data/Migrations`, disable `EnsureCreated`, and apply migrations. No generated migration is included in this bootstrap.
 
 After the database is prepared and .NET packages restored, configure the server's ignored `appsettings.json` or use User Secrets. For example:
 
