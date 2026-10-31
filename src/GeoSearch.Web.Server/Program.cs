@@ -11,6 +11,8 @@ using Wkg.AspNetCore.Transactions.Configuration;
 using Wkg.EntityFrameworkCore.Configuration;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+// Built-in request-start diagnostics can include latitude/longitude query parameters.
+builder.Logging.AddFilter("Microsoft.AspNetCore.Hosting.Diagnostics", LogLevel.Warning);
 
 string identityConnectionString = builder.Configuration.GetConnectionString("Identity")
     ?? throw new InvalidOperationException("ConnectionStrings:Identity is required. See docs/development.md.");
@@ -69,12 +71,16 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddTransactionManagement<IdentityDbContext>(options =>
     options.UseIsolationLevel(IsolationLevel.ReadCommitted));
 
-builder.Services.AddRateLimiter(options => options.AddFixedWindowLimiter("login", limiter =>
+builder.Services.AddRateLimiter(options =>
 {
-    limiter.PermitLimit = 5;
-    limiter.Window = TimeSpan.FromMinutes(1);
-    limiter.QueueLimit = 0;
-}));
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddFixedWindowLimiter("login", limiter =>
+    {
+        limiter.PermitLimit = 5;
+        limiter.Window = TimeSpan.FromMinutes(1);
+        limiter.QueueLimit = 0;
+    });
+});
 
 if (builder.Environment.IsDevelopment())
 {

@@ -22,6 +22,7 @@ public sealed class AuthController(
     [ProducesResponseType(typeof(ApiError), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<LoginResponse>> LoginAsync([FromBody] LoginRequest request)
     {
+        Response.Headers.CacheControl = "no-store";
         IdentityUser? user = await users.FindByEmailAsync(request.Email);
         if (user is null)
         {
@@ -40,6 +41,7 @@ public sealed class AuthController(
     [ProducesResponseType(typeof(AccountResponse), StatusCodes.Status200OK)]
     public ActionResult<AccountResponse> Me()
     {
+        Response.Headers.CacheControl = "no-store";
         string email = User.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
         return Ok(new AccountResponse(email));
     }

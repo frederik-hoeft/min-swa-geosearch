@@ -17,7 +17,19 @@ Server configuration is read through normal ASP.NET Core providers. Copy `src/Ge
 
 Create a **separate empty development database** by running `./scripts/setup-identity-db.sh` after `./scripts/lab.sh stack-up`. With `Bootstrap:EnsureCreated=true` and ASPNETCORE_ENVIRONMENT=Development, startup calls `EnsureCreatedAsync` against that database so login can run before EF tooling is available. **This is development-only and is not an EF migration.** It cannot be upgraded in place to a migration-managed schema. Before deployment, discard/recreate the temporary auth database, generate and review an initial migration using `dotnet ef migrations add InitialIdentity --project src/GeoSearch.Web.Server --startup-project src/GeoSearch.Web.Server --context IdentityDbContext --output-dir Data/Migrations`, disable `EnsureCreated`, and apply migrations. No generated migration is included in this bootstrap.
 
-Run the server at `http://localhost:5100` and the client at `http://localhost:5200` with its development API base set through `wwwroot/appsettings.json`. A single-origin production deployment should use `/api/` on the frontend host, not a separately exposed database or GIS service. Local development CORS is restricted to the configured client origin.
+After the database is prepared and .NET packages restored, configure the server's ignored `appsettings.json` or use User Secrets. For example:
+
+```bash
+./scripts/lab.sh stack-up
+./scripts/setup-identity-db.sh
+# Set the required credentials and a random signing key via local config or User Secrets.
+# Example: openssl rand -base64 48 (never commit the result).
+dotnet run --project src/GeoSearch.Web.Server --launch-profile GeoSearch.Web.Server
+# In another terminal:
+dotnet run --project src/GeoSearch.Web.Client --launch-profile GeoSearch.Web.Client
+```
+
+The development server runs at `http://localhost:5100`, and the client at `http://localhost:5200` with the API base set through `wwwroot/appsettings.json`. A single-origin production deployment should use `/api/` on the frontend host, not a separately exposed database or GIS service. Local development CORS is restricted to the configured client origin.
 
 ## Auth scope
 
