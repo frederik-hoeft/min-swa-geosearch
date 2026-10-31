@@ -1,0 +1,113 @@
+# Software Architectures 2026 — runnable steps for Lecture 2 / Lab 2.
+# Run `just` in this folder to list the recipes; run them in order: just s01-stack-up, just s02-db-setup, ...
+# just runs every recipe in the folder of this justfile, so all paths below are relative to it.
+# Put the Geofabrik downloads into data/ (see lab-2.md), or point gpkg/pbf elsewhere: just pbf=/path/x.osm.pbf s04-import-addresses
+# Imports are restricted to Hannover by default; import all of Lower Saxony with: just bbox="" s03-import-gpkg
+
+set shell := ["bash", "-euo", "pipefail", "-c"]
+
+compose  := "compose.yaml"
+gpkg     := "data/niedersachsen-261028-free/niedersachsen.gpkg"
+pbf      := "data/niedersachsen-261028.osm.pbf"
+snapshot := "2026-10-28"
+# Hannover (lon_min lat_min lon_max lat_max); empty = whole dataset
+bbox     := "9.60 52.30 9.92 52.45"
+spat     := if bbox == "" { "" } else { "-spat " + bbox }
+
+# Local lab credentials (defaults from compose.yaml)
+export PGHOST     := env("PGHOST", "localhost")
+export PGPORT     := env("POSTGIS_PORT", "5432")
+export PGUSER     := "lab1"
+export PGDATABASE := "lab1"
+export PGPASSWORD := env("POSTGIS_PASSWORD", "lab1-local-only")
+pg       := "PG:host=" + PGHOST + " port=" + PGPORT + " dbname=" + PGDATABASE + " user=" + PGUSER
+geoserver := "http://localhost:" + env("GEOSERVER_PORT", "8081") + "/geoserver"
+gs_auth  := "admin:" + env("GEOSERVER_ADMIN_PASSWORD", "lab1-local-only")
+# Database host as seen from the GeoServer container (Compose service name)
+gs_db_host := "postgis"
+
+# List all recipes
+default:
+    @just --list --unsorted
+
+# Start PostGIS and GeoServer and wait until the database accepts connections
+s01-stack-up:
+    docker compose -f {{compose}} up -d
+    for i in $(seq 1 90); do psql -Atc "SELECT 1" >/dev/null 2>&1 && exit 0; sleep 2; done; echo "PostGIS not ready after 3 minutes" >&2; exit 1
+
+# Create the PostGIS, pg_trgm and unaccent extensions and the schemas osm and search
+s02-db-setup:
+    psql -v ON_ERROR_STOP=1 -f sql/02-db-setup.sql
+
+# Import the search-relevant GeoPackage layers into schema osm (ogr2ogr; truncate + append keeps dependent views)
+s03-import-gpkg:
+    ogr2ogr -f PostgreSQL "{{pg}}" {{gpkg}} \
+      -a_srs EPSG:4326 \
+      -doo ACTIVE_SCHEMA=osm -lco GEOMETRY_NAME=geom \
+      -append --config OGR_TRUNCATE YES -progress {{spat}} \
+      gis_osm_places_free gis_osm_pois_free gis_osm_pois_a_free \
+      gis_osm_roads_free gis_osm_adminareas_a_free
+
+# Import address points and areas with addr:housenumber from the PBF (ogr2ogr)
+s04-import-addresses:
+    export OSM_CONFIG_FILE=osmconf-addresses.ini; \
+    for layer in points multipolygons; do \
+      ogr2ogr -f PostgreSQL "{{pg}}" {{pbf}} "$layer" \
+        -where "addr_housenumber IS NOT NULL" \
+        -nln "osm.address_$layer" -lco GEOMETRY_NAME=geom -append --config OGR_TRUNCATE YES -progress {{spat}}; \
+    done
+
+# Create the materialized view search.search_index and the search/reverse functions
+s05-search-index:
+    psql -v ON_ERROR_STOP=1 -v snapshot={{snapshot}} -f sql/05-search-index.sql
+    psql -v ON_ERROR_STOP=1 -f sql/06-search-functions.sql
+
+# Free-text search, e.g. just s06-search "Apotheke Linden"
+[positional-arguments]
+s06-search q limit="10":
+    psql -v q="$1" -v lim="$2" <<< "SELECT name, label, type, category, round(score::numeric, 3) AS score, round(lon::numeric, 5) AS lon, round(lat::numeric, 5) AS lat FROM search.search(:'q', :lim);"
+
+# Reverse geocoding, e.g. just s07-reverse 9.7320 52.3759
+[positional-arguments]
+s07-reverse lon lat radius="250":
+    psql -v lon="$1" -v lat="$2" -v r="$3" <<< "SELECT label, type, round(distance_m::numeric, 1) AS distance_m FROM search.reverse(:lon, :lat, :r);"
+
+# Publish the raw layers (workspace osm) and the search index (workspace search) in GeoServer
+s08-geoserver-publish:
+    for ws in osm search; do \
+      store="{\"dataStore\":{\"name\":\"lab1\",\"type\":\"PostGIS\",\"connectionParameters\":{\"entry\":[{\"@key\":\"dbtype\",\"\$\":\"postgis\"},{\"@key\":\"host\",\"\$\":\"{{gs_db_host}}\"},{\"@key\":\"port\",\"\$\":\"5432\"},{\"@key\":\"database\",\"\$\":\"$PGDATABASE\"},{\"@key\":\"user\",\"\$\":\"$PGUSER\"},{\"@key\":\"passwd\",\"\$\":\"$PGPASSWORD\"},{\"@key\":\"schema\",\"\$\":\"$ws\"},{\"@key\":\"Expose primary keys\",\"\$\":\"true\"}]}}}"; \
+      code=$(curl -s -o /dev/null -w '%{http_code}' -u "{{gs_auth}}" "{{geoserver}}/rest/workspaces/$ws.json"); \
+      if [ "$code" = 404 ]; then \
+        curl -sf -u "{{gs_auth}}" -H 'Content-Type: application/json' -X POST "{{geoserver}}/rest/workspaces" \
+          -d "{\"workspace\":{\"name\":\"$ws\"}}"; \
+      fi; \
+      code=$(curl -s -o /dev/null -w '%{http_code}' -u "{{gs_auth}}" "{{geoserver}}/rest/workspaces/$ws/datastores/lab1.json"); \
+      if [ "$code" = 404 ]; then \
+        curl -sf -u "{{gs_auth}}" -H 'Content-Type: application/json' -X POST "{{geoserver}}/rest/workspaces/$ws/datastores" -d "$store"; \
+      else \
+        curl -sf -u "{{gs_auth}}" -H 'Content-Type: application/json' -X PUT "{{geoserver}}/rest/workspaces/$ws/datastores/lab1" -d "$store"; \
+      fi; \
+    done
+    for ft in osm:gis_osm_places_free osm:gis_osm_pois_free osm:gis_osm_roads_free osm:gis_osm_adminareas_a_free search:search_index; do \
+      ws=${ft%%:*}; name=${ft#*:}; \
+      code=$(curl -s -o /dev/null -w '%{http_code}' -u "{{gs_auth}}" "{{geoserver}}/rest/workspaces/$ws/datastores/lab1/featuretypes/$name.json"); \
+      if [ "$code" = 404 ]; then \
+        curl -sf -u "{{gs_auth}}" -H 'Content-Type: application/json' -X POST "{{geoserver}}/rest/workspaces/$ws/datastores/lab1/featuretypes" \
+          -d "{\"featureType\":{\"name\":\"$name\",\"srs\":\"EPSG:4326\",\"projectionPolicy\":\"FORCE_DECLARED\"}}"; \
+      fi; \
+      echo "published $ft"; \
+    done
+    curl -sf "{{geoserver}}/ows?service=WFS&version=2.0.0&request=GetFeature&typeNames=search:search_index&count=1&outputFormat=application/json" | head -c 400; echo
+
+# Recompute the materialized view search.search_index after a new import; readers keep the old version until it finishes
+s09-refresh-index:
+    psql -v ON_ERROR_STOP=1 -c "\timing on" -c "REFRESH MATERIALIZED VIEW CONCURRENTLY search.search_index;" \
+      -c "SELECT snapshot_id, refreshed_at, count(*) AS documents FROM search.search_index GROUP BY 1, 2;"
+
+# Open an interactive psql session on the lab database
+db:
+    psql
+
+# Stop the lab stack (named volumes keep the data)
+stack-down:
+    docker compose -f {{compose}} down

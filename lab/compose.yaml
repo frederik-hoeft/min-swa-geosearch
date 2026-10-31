@@ -1,0 +1,43 @@
+# Lab 2: local PostGIS + GeoServer stack for Docker Compose or Podman Compose.
+name: geospatial-search
+services:
+  postgis:
+    image: postgis/postgis:17-3.5
+    # The upstream postgis/postgis image is currently published for amd64 only.
+    platform: linux/amd64
+    environment:
+      POSTGRES_DB: lab1
+      POSTGRES_USER: lab1
+      POSTGRES_PASSWORD: ${POSTGIS_PASSWORD:-lab1-local-only}
+    ports:
+      - "127.0.0.1:${POSTGIS_PORT:-5432}:5432"
+    volumes:
+      # :Z relabels the volume for SELinux hosts (Podman), so a recreated container can still write to it.
+      - postgis_data:/var/lib/postgresql/data:Z
+    healthcheck:
+      # Check over TCP: during first-time initialisation the temporary server only listens on a
+      # Unix socket, so a socket check would report "healthy" too early.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U lab1 -d lab1"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  geoserver:
+    image: docker.osgeo.org/geoserver:3.0.2
+    # GeoServer 3 is multi-arch (native arm64 + amd64); no platform override needed.
+    depends_on:
+      postgis:
+        condition: service_healthy
+    environment:
+      GEOSERVER_ADMIN_USER: admin
+      GEOSERVER_ADMIN_PASSWORD: ${GEOSERVER_ADMIN_PASSWORD:-lab1-local-only}
+      # GeoServer stores connect to the database as host "postgis" (the Compose service name).
+    ports:
+      # 8080 is reserved for the local k3d cluster; default GeoServer to 8081.
+      - "127.0.0.1:${GEOSERVER_PORT:-8081}:8080"
+    volumes:
+      - geoserver_data:/opt/geoserver_data:Z
+
+volumes:
+  postgis_data:
+  geoserver_data:
