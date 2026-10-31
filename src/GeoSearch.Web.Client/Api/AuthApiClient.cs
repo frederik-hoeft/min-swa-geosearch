@@ -1,7 +1,7 @@
+﻿using GeoSearch.Web.Shared.Auth;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using GeoSearch.Web.Shared.Auth;
 
 namespace GeoSearch.Web.Client.Api;
 

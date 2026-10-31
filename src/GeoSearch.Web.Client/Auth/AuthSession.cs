@@ -1,4 +1,4 @@
-using GeoSearch.Web.Shared.Auth;
+﻿using GeoSearch.Web.Shared.Auth;
 
 namespace GeoSearch.Web.Client.Auth;
 

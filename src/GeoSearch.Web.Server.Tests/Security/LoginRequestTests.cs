@@ -1,5 +1,5 @@
+﻿using GeoSearch.Web.Shared.Auth;
 using System.ComponentModel.DataAnnotations;
-using GeoSearch.Web.Shared.Auth;
 
 namespace GeoSearch.Web.Server.Tests.Security;
 

@@ -1,4 +1,4 @@
-using GeoSearch.Web.Server.Security;
+﻿using GeoSearch.Web.Server.Security;
 using Microsoft.Extensions.Configuration;
 
 namespace GeoSearch.Web.Server.Tests.Security;

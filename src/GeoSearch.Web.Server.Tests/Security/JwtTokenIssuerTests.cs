@@ -1,8 +1,8 @@
+﻿using GeoSearch.Web.Server.Data;
+using GeoSearch.Web.Server.Security;
+using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
-using GeoSearch.Web.Server.Security;
-using GeoSearch.Web.Server.Data;
-using Microsoft.IdentityModel.Tokens;
 
 namespace GeoSearch.Web.Server.Tests.Security;
 

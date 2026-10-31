@@ -1,4 +1,4 @@
-using GeoSearch.Web.Client;
+﻿using GeoSearch.Web.Client;
 using GeoSearch.Web.Client.Api;
 using GeoSearch.Web.Client.Auth;
 using Microsoft.AspNetCore.Components.Authorization;

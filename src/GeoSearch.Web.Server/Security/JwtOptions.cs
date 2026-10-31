@@ -1,5 +1,5 @@
+﻿using Microsoft.Extensions.Configuration;
 using System.Text;
-using Microsoft.Extensions.Configuration;
 
 namespace GeoSearch.Web.Server.Security;
 

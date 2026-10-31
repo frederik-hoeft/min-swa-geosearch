@@ -1,4 +1,4 @@
-using GeoSearch.Web.Server.Data;
+﻿using GeoSearch.Web.Server.Data;
 using GeoSearch.Web.Shared.Auth;
 using Microsoft.AspNetCore.Identity;
 using Wkg.AspNetCore.Abstractions.Services;
@@ -20,13 +20,13 @@ internal sealed class AuthenticationFlowService(
     public Task<LoginResponse?> LoginAsync(string email, string password, CancellationToken cancellationToken = default) =>
         Transaction.Scoped.RunAsync<LoginResponse?>(async (context, transaction, ct) =>
         {
-            GeoSearchUser? user = await users.FindByEmailAsync(email);
+            GeoSearchUser? user = await users.FindByEmailAsync(email).ConfigureAwait(false);
             if (user is null)
             {
                 return transaction.Rollback<LoginResponse?>(null);
             }
 
-            SignInResult result = await signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true);
+            SignInResult result = await signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true).ConfigureAwait(false);
             if (!result.Succeeded)
             {
                 // Failed password attempts and lockout can persist through the Identity store.

@@ -1,12 +1,12 @@
-using System.Data;
-using System.Text;
-using GeoSearch.Web.Server.Data;
+﻿using GeoSearch.Web.Server.Data;
 using GeoSearch.Web.Server.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.Data;
+using System.Text;
 using Wkg.AspNetCore.Transactions.Configuration;
 using Wkg.EntityFrameworkCore.Configuration;
 
@@ -109,8 +109,8 @@ app.MapControllers();
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 
 // Only Identity data is app-owned. The instructor's osm/search schemas are never migrated by EF.
-await IdentityBootstrap.InitializeAsync(app);
-await app.RunAsync();
+await IdentityBootstrap.InitializeAsync(app).ConfigureAwait(false);
+await app.RunAsync().ConfigureAwait(false);
 
 // Expose the conventional entry point to integration test hosts in a later iteration.
 public partial class Program

@@ -1,9 +1,9 @@
-using System.Security.Claims;
-using GeoSearch.Web.Server.Security;
+﻿using GeoSearch.Web.Server.Security;
 using GeoSearch.Web.Shared.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using System.Security.Claims;
 
 namespace GeoSearch.Web.Server.Api.Auth;
 
@@ -19,7 +19,7 @@ public sealed class AuthController(IAuthenticationFlowService authentication) : 
     public async Task<ActionResult<LoginResponse>> LoginAsync([FromBody] LoginRequest request, CancellationToken cancellationToken)
     {
         Response.Headers.CacheControl = "no-store";
-        LoginResponse? result = await authentication.LoginAsync(request.Email, request.Password, cancellationToken);
+        LoginResponse? result = await authentication.LoginAsync(request.Email, request.Password, cancellationToken).ConfigureAwait(false);
         if (result is null)
         {
             return Unauthorized(new ApiError("Invalid email or password."));
