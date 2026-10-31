@@ -88,9 +88,13 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-    app.UseCors("DevClient");
 }
 
+app.UseRouting();
+if (app.Environment.IsDevelopment())
+{
+    app.UseCors("DevClient");
+}
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();

@@ -28,7 +28,8 @@ GEOSERVER_AUTH="${GEOSERVER_ADMIN_USER:-admin}:${GEOSERVER_ADMIN_PASSWORD:-lab1-
 usage() {
     cat <<'USAGE'
 Usage: scripts/lab.sh <command> [arguments]
-  stack-up                 Start PostGIS and GeoServer, wait for database
+  stack-up                 Start PostGIS, wait for database
+  geoserver-up             Start the optional GeoServer service
   db-setup                 Create extensions and base schemas
   import-gpkg              Import Hannover GeoPackage (GPKG / BBOX overrides)
   import-addresses         Import addresses from PBF (PBF / BBOX overrides)
@@ -45,12 +46,13 @@ require_file() { [[ -f "$1" ]] || { printf 'Missing required input: %s\n' "$1" >
 command="${1:-help}"; shift || true
 case "$command" in
     stack-up)
-        docker compose -f "$LAB/compose.yaml" up -d
+        docker compose -f "$LAB/compose.yaml" up -d postgis
         for ((attempt=0;attempt<90;attempt++)); do
             if psql -Atc 'SELECT 1' >/dev/null 2>&1; then exit 0; fi
             sleep 2
         done
         echo 'PostGIS did not become ready after 3 minutes' >&2; exit 1 ;;
+    geoserver-up) docker compose -f "$LAB/compose.yaml" up -d geoserver ;;
     db-setup) psql -v ON_ERROR_STOP=1 -f "$LAB/sql/02-db-setup.sql" ;;
     import-gpkg)
         require_file "$GPKG"

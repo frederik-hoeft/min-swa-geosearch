@@ -14,7 +14,7 @@ GeoSearch is a .NET 10 / Blazor WebAssembly project for the Software Architectur
 
 ## Lab database
 
-Requires Docker Compose, `psql`, `ogr2ogr` (GDAL), and `bash`. The optional GeoServer publishing command also uses `curl` and `python3`. Copy the two external datasets referenced in `lab/data/README.md` to their expected paths. The lab Compose includes a PostGIS instance and optional GeoServer; database credentials in `lab/compose.yaml` are local-only defaults and must not be deployed unchanged.
+Requires Docker Compose, `psql`, `ogr2ogr` (GDAL), and `bash`. The optional GeoServer publishing command also uses `curl` and `python3`. Copy the two external datasets referenced in `lab/data/README.md` to their expected paths. The lab Compose includes a PostGIS instance and optional GeoServer (`./scripts/lab.sh geoserver-up`); database credentials in `lab/compose.yaml` are local-only defaults and must not be deployed unchanged.
 
 ```bash
 ./scripts/lab.sh stack-up
