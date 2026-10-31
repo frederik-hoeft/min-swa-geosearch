@@ -1,0 +1,39 @@
+# .NET / IDE
+[Bb]in/
+[Oo]bj/
+[Aa]rtifacts/
+[Tt]est[Rr]esult*/
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+*.binlog
+*.nupkg
+coverage/
+*.coverage*
+# Local secrets and deployment state
+.env
+.env.*
+!.env.example
+**/appsettings.Development.local.json
+**/appsettings.Local.json
+**/appsettings.json
+!**/appsettings.example.json
+*.pem
+*.pfx
+*.key
+# Lab datasets, temporary imports, generated artifacts and cached tiles
+lab/data/*
+!lab/data/README.md
+*.gpkg
+*.pbf
+*.mbtiles
+*.pmtiles
+*.osm
+lab/build/
+lab/.DS_Store
+__MACOSX/
+.DS_Store
+# runtime/static compiled output
+src/GeoSearch.Web.Client/wwwroot/css/app.css
