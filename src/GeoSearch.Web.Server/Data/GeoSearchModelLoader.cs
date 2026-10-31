@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Wkg.EntityFrameworkCore.Discovery.SourceGeneration;
 
 namespace GeoSearch.Web.Server.Data;

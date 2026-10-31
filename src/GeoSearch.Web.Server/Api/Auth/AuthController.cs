@@ -27,7 +27,7 @@ public sealed class AuthController(
         {
             return Unauthorized(new ApiError("Invalid email or password."));
         }
-        SignInResult result = await signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
+        Microsoft.AspNetCore.Identity.SignInResult result = await signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
         if (!result.Succeeded)
         {
             return Unauthorized(new ApiError("Invalid email or password."));

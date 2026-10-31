@@ -3,6 +3,7 @@ using System.Text;
 using GeoSearch.Web.Server.Data;
 using GeoSearch.Web.Server.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -11,7 +12,7 @@ using Wkg.EntityFrameworkCore.Configuration;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-string connectionString = builder.Configuration.GetConnectionString("Identity")
+string identityConnectionString = builder.Configuration.GetConnectionString("Identity")
     ?? throw new InvalidOperationException("ConnectionStrings:Identity is required. See docs/development.md.");
 
 JwtOptions jwt = JwtOptions.FromConfiguration(builder.Configuration.GetSection(JwtOptions.SECTION));
@@ -20,7 +21,12 @@ builder.Services.AddSingleton(jwt);
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<JwtTokenIssuer>();
 builder.Services.AddSingleton<IModelLoader, GeoSearchModelLoader>();
-builder.Services.AddDbContext<IdentityDbContext>(options => options.UseNpgsql(connectionString));
+builder.Services.AddDbContext<IdentityDbContext>(options => options.UseNpgsql(identityConnectionString));
+
+// The imported database is queried read-only. It is never migrated by EF.
+string searchConnectionString = builder.Configuration.GetConnectionString("Search")
+    ?? throw new InvalidOperationException("ConnectionStrings:Search is required. See docs/development.md.");
+builder.Services.AddDbContext<SearchReadDbContext>(options => options.UseNpgsql(searchConnectionString));
 
 builder.Services.AddIdentityCore<IdentityUser>(options =>
     {
