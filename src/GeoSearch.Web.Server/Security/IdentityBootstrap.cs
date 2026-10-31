@@ -9,13 +9,13 @@ internal static class IdentityBootstrap
 {
     internal static async Task InitializeAsync(WebApplication app)
     {
-        await using AsyncServiceScope scope = app.Services.CreateAsyncScope().ConfigureAwait(false);
+        await using AsyncServiceScope scope = app.Services.CreateAsyncScope();
         IdentityDbContext dbContext = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
         CancellationToken cancellationToken = app.Lifetime.ApplicationStopping;
         if (app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("Bootstrap:EnsureCreated"))
         {
             // Only safe for a separate *empty* development database. Switch to migrations after the SDK audit.
-            await dbContext.Database.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+            await dbContext.Database.EnsureCreatedAsync(cancellationToken);
         }
         else
         {
@@ -25,7 +25,7 @@ internal static class IdentityBootstrap
             {
                 throw new InvalidOperationException("No Identity migrations exist. See docs/development.md.");
             }
-            await dbContext.Database.MigrateAsync(cancellationToken).ConfigureAwait(false);
+            await dbContext.Database.MigrateAsync(cancellationToken);
         }
 
         if (!app.Environment.IsDevelopment())
@@ -44,13 +44,13 @@ internal static class IdentityBootstrap
         }
 
         UserManager<GeoSearchUser> users = scope.ServiceProvider.GetRequiredService<UserManager<GeoSearchUser>>();
-        GeoSearchUser? existingUser = await users.FindByEmailAsync(email).ConfigureAwait(false);
+        GeoSearchUser? existingUser = await users.FindByEmailAsync(email);
         if (existingUser is not null)
         {
             return;
         }
         GeoSearchUser newUser = new() { UserName = email, Email = email, EmailConfirmed = true };
-        IdentityResult created = await users.CreateAsync(newUser, password).ConfigureAwait(false);
+        IdentityResult created = await users.CreateAsync(newUser, password);
         if (!created.Succeeded)
         {
             // Do not log credentials or details capable of containing supplied secrets.

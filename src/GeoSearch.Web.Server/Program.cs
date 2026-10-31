@@ -109,8 +109,8 @@ app.MapControllers();
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 
 // Only Identity data is app-owned. The instructor's osm/search schemas are never migrated by EF.
-await IdentityBootstrap.InitializeAsync(app).ConfigureAwait(false);
-await app.RunAsync().ConfigureAwait(false);
+await IdentityBootstrap.InitializeAsync(app);
+await app.RunAsync();
 
 // Expose the conventional entry point to integration test hosts in a later iteration.
 public partial class Program

@@ -19,7 +19,7 @@ public sealed class AuthController(IAuthenticationFlowService authentication) : 
     public async Task<ActionResult<LoginResponse>> LoginAsync([FromBody] LoginRequest request, CancellationToken cancellationToken)
     {
         Response.Headers.CacheControl = "no-store";
-        LoginResponse? result = await authentication.LoginAsync(request.Email, request.Password, cancellationToken).ConfigureAwait(false);
+        LoginResponse? result = await authentication.LoginAsync(request.Email, request.Password, cancellationToken);
         if (result is null)
         {
             return Unauthorized(new ApiError("Invalid email or password."));
