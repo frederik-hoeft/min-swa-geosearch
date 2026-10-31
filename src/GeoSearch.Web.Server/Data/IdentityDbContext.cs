@@ -2,6 +2,8 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Wkg.EntityFrameworkCore.Configuration;
+using Wkg.EntityFrameworkCore.Configuration.Policies.Defaults.EntityNamingPolicies;
+using Wkg.EntityFrameworkCore.Configuration.Policies.Defaults.PropertyMappingPolicies;
 using Wkg.EntityFrameworkCore.Extensions;
 
 namespace GeoSearch.Web.Server.Data;
@@ -18,6 +20,9 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
         ArgumentNullException.ThrowIfNull(builder);
         base.OnModelCreating(builder);
         builder.HasDefaultSchema("app_auth");
-        builder.LoadModels(modelLoader);
+        builder.LoadModels(modelLoader, options => options
+            .ConfigurePolicies(policies => policies
+                .AddPolicy<EntityNaming>(policy => policy.RequireExplicit())
+                .AddPolicy<PropertyMapping>(policy => policy.RequireExplicit())));
     }
 }

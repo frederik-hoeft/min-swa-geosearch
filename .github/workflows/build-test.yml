@@ -19,6 +19,6 @@ jobs:
       - name: Verify formatting
         run: dotnet format src/GeoSearch.slnx --verify-no-changes --no-restore
       - name: Build
-        run: dotnet build src/GeoSearch.slnx --no-restore --configuration Release
+        run: dotnet build src/GeoSearch.slnx --no-restore --configuration Release /p:TreatWarningsAsErrors=true
       - name: Test
         run: dotnet test src/GeoSearch.slnx --no-restore --no-build --configuration Release
