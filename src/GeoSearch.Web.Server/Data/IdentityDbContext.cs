@@ -11,10 +11,11 @@ namespace GeoSearch.Web.Server.Data;
 /// The default schema prevents collisions if additional application entities are introduced.
 /// </summary>
 public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> options, IModelLoader modelLoader)
-    : IdentityDbContext<IdentityUser>(options)
+    : IdentityDbContext<GeoSearchUser>(options)
 {
     protected override void OnModelCreating(ModelBuilder builder)
     {
+        ArgumentNullException.ThrowIfNull(builder);
         base.OnModelCreating(builder);
         builder.HasDefaultSchema("app_auth");
         builder.LoadModels(modelLoader);

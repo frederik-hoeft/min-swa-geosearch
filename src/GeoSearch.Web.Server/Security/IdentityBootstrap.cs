@@ -19,7 +19,8 @@ internal static class IdentityBootstrap
         }
         else
         {
-            bool hasMigrations = (await dbContext.Database.GetMigrationsAsync(cancellationToken)).Any();
+            IEnumerable<string> migrations = dbContext.Database.GetMigrations();
+            bool hasMigrations = migrations.Any();
             if (!hasMigrations)
             {
                 throw new InvalidOperationException("No Identity migrations exist. See docs/development.md.");
@@ -42,12 +43,13 @@ internal static class IdentityBootstrap
             throw new InvalidOperationException("Both Bootstrap:Email and Bootstrap:Password must be supplied.");
         }
 
-        UserManager<IdentityUser> users = scope.ServiceProvider.GetRequiredService<UserManager<IdentityUser>>();
-        if (await users.FindByEmailAsync(email) is not null)
+        UserManager<GeoSearchUser> users = scope.ServiceProvider.GetRequiredService<UserManager<GeoSearchUser>>();
+        GeoSearchUser? existingUser = await users.FindByEmailAsync(email);
+        if (existingUser is not null)
         {
             return;
         }
-        IdentityUser newUser = new() { UserName = email, Email = email, EmailConfirmed = true };
+        GeoSearchUser newUser = new() { UserName = email, Email = email, EmailConfirmed = true };
         IdentityResult created = await users.CreateAsync(newUser, password);
         if (!created.Succeeded)
         {

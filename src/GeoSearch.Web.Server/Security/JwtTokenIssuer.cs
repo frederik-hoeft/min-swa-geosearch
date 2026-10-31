@@ -1,3 +1,4 @@
+using GeoSearch.Web.Server.Data;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -11,7 +12,7 @@ public sealed class JwtTokenIssuer(JwtOptions options, TimeProvider timeProvider
 {
     private static readonly TimeSpan s_tokenLifetime = TimeSpan.FromMinutes(20);
 
-    public LoginResponse Issue(IdentityUser user)
+    public LoginResponse Issue(GeoSearchUser user)
     {
         ArgumentNullException.ThrowIfNull(user);
         string email = user.Email ?? throw new InvalidOperationException("Identity email is missing.");

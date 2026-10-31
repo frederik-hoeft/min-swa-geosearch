@@ -22,6 +22,7 @@ JwtOptions jwt = JwtOptions.FromConfiguration(builder.Configuration.GetSection(J
 builder.Services.AddSingleton(jwt);
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<JwtTokenIssuer>();
+builder.Services.AddScoped<IAuthenticationFlowService, AuthenticationFlowService>();
 builder.Services.AddSingleton<IModelLoader, GeoSearchModelLoader>();
 builder.Services.AddDbContext<IdentityDbContext>(options => options.UseNpgsql(identityConnectionString));
 
@@ -30,7 +31,7 @@ string searchConnectionString = builder.Configuration.GetConnectionString("Searc
     ?? throw new InvalidOperationException("ConnectionStrings:Search is required. See docs/development.md.");
 builder.Services.AddDbContext<SearchReadDbContext>(options => options.UseNpgsql(searchConnectionString));
 
-builder.Services.AddIdentityCore<IdentityUser>(options =>
+builder.Services.AddIdentityCore<GeoSearchUser>(options =>
     {
         options.Password.RequiredLength = 16;
         options.Password.RequireDigit = true;

@@ -1,7 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using GeoSearch.Web.Server.Security;
-using Microsoft.AspNetCore.Identity;
+using GeoSearch.Web.Server.Data;
 using Microsoft.IdentityModel.Tokens;
 
 namespace GeoSearch.Web.Server.Tests.Security;
@@ -19,7 +19,7 @@ public sealed class JwtTokenIssuerTests
             SigningKey = "completely-random-test-fixture-value-not-production"
         };
         JwtTokenIssuer issuer = new(options, TimeProvider.System);
-        IdentityUser user = new() { Id = "user-123", Email = "student@example.test" };
+        GeoSearchUser user = new() { Id = "user-123", Email = "student@example.test" };
 
         GeoSearch.Web.Shared.Auth.LoginResponse result = issuer.Issue(user);
         TokenValidationParameters validation = new()

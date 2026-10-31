@@ -1,39 +1,31 @@
+using System.Security.Claims;
 using GeoSearch.Web.Server.Security;
 using GeoSearch.Web.Shared.Auth;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using System.Security.Claims;
 
 namespace GeoSearch.Web.Server.Api.Auth;
 
 [ApiController]
 [Route("api/auth")]
-public sealed class AuthController(
-    UserManager<IdentityUser> users,
-    SignInManager<IdentityUser> signInManager,
-    JwtTokenIssuer jwtTokenIssuer) : ControllerBase
+public sealed class AuthController(IAuthenticationFlowService authentication) : ControllerBase
 {
     [HttpPost("login")]
     [AllowAnonymous]
     [EnableRateLimiting("login")]
     [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiError), StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<LoginResponse>> LoginAsync([FromBody] LoginRequest request)
+    public async Task<ActionResult<LoginResponse>> LoginAsync([FromBody] LoginRequest request, CancellationToken cancellationToken)
     {
         Response.Headers.CacheControl = "no-store";
-        IdentityUser? user = await users.FindByEmailAsync(request.Email);
-        if (user is null)
+        LoginResponse? result = await authentication.LoginAsync(request.Email, request.Password, cancellationToken);
+        if (result is null)
         {
             return Unauthorized(new ApiError("Invalid email or password."));
         }
-        Microsoft.AspNetCore.Identity.SignInResult result = await signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
-        if (!result.Succeeded)
-        {
-            return Unauthorized(new ApiError("Invalid email or password."));
-        }
-        return Ok(jwtTokenIssuer.Issue(user));
+
+        return Ok(result);
     }
 
     [HttpGet("me")]
