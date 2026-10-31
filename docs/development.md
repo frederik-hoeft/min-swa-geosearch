@@ -6,6 +6,14 @@ The initial bootstrap was generated without a .NET SDK or NuGet package feed. Pa
 
 .NET SDK 10, PostgreSQL 17/PostGIS 3.5, Docker Compose, GDAL/ogr2ogr, psql, and the externally supplied Geofabrik extracts. An optional local tile/style source is required for a fully offline basemap; the current map page is a placeholder.
 
+## Offline dependency bundle
+
+Run `./src/restore.sh` on a **network-connected** machine with a .NET 10 SDK, Bash and Python 3. The script is adapted from UFWeb's `src/restore.sh`: it restores `GeoSearch.slnx` from NuGet.org into a freshly cleared, private `src/.nuget-cache/`, collects the `.nupkg` files for direct and transitive dependencies, and produces `src/nuget-packages.zip` (plus the extracted `src/nuget-packages/` directory). The script can be launched from any current working directory. These outputs are ignored by Git.
+
+Give the ZIP and the platform-matched .NET SDK archive to the offline build environment. Follow the [dotnet-offline workflow](https://github.com/frederik-hoeft/custom-skills/blob/main/dev/dotnet-offline.skill) to rebuild a clean package cache and restore with all network sources disabled. **The ZIP contains NuGet packages, not the .NET SDK or optional workload packs**. Any WASM build/publish workload required by the installed SDK must be supplied separately. A package restore here validates dependency acquisition, **not** successful compilation, unit tests, or runtime behavior.
+
+The script intentionally uses NuGet.org as its only feed. If package references require another feed in the future, review its trust and package provenance before extending the script.
+
 ## Configuration
 
 Server configuration is read through normal ASP.NET Core providers. Copy `src/GeoSearch.Web.Server/appsettings.example.json` to the ignored `appsettings.json` and provide:
