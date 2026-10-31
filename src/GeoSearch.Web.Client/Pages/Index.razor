@@ -1,0 +1,43 @@
+@page "/"
+@attribute [Authorize]
+@inject AuthSession Session
+@inject AuthApiClient AuthApi
+@inject SessionAuthenticationStateProvider Authentication
+@inject NavigationManager Navigation
+
+<PageTitle>Map and search | GeoSearch</PageTitle>
+<MudText Typo="Typo.h4" Class="mb-2">Map and search</MudText>
+<MudText Typo="Typo.body1">GeoSearch is ready for the geospatial search implementation.</MudText>
+<MudPaper Outlined="true" Class="pa-6 mt-5 map-placeholder">
+    <MudText Typo="Typo.h6">Map will appear here</MudText>
+    <MudText Typo="Typo.body2">
+        MapLibre layers, local GeoJSON results, nearby queries, and browser geolocation will be implemented in the next phase.
+    </MudText>
+</MudPaper>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        if (Session.AccessToken is null)
+        {
+            Authentication.Logout();
+            Navigation.NavigateTo("/login");
+            return;
+        }
+        try
+        {
+            AccountResponse? account = await AuthApi.GetAccountAsync(Session.AccessToken);
+            if (account is null)
+            {
+                Authentication.Logout();
+                Navigation.NavigateTo("/login");
+            }
+        }
+        catch (HttpRequestException)
+        {
+            // Do not turn a temporary network error into a successful authentication check.
+            Authentication.Logout();
+            Navigation.NavigateTo("/login");
+        }
+    }
+}

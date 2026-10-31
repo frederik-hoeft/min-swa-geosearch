@@ -20,6 +20,7 @@ coverage/
 **/appsettings.Local.json
 **/appsettings.json
 !**/appsettings.example.json
+!src/GeoSearch.Web.Client/wwwroot/appsettings.json
 *.pem
 *.pfx
 *.key
@@ -36,4 +37,3 @@ lab/.DS_Store
 __MACOSX/
 .DS_Store
 # runtime/static compiled output
-src/GeoSearch.Web.Client/wwwroot/css/app.css

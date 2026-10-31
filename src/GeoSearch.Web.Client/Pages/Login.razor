@@ -1,0 +1,67 @@
+@page "/login"
+@attribute [AllowAnonymous]
+@inject AuthApiClient AuthApi
+@inject AuthSession Session
+@inject SessionAuthenticationStateProvider Authentication
+@inject NavigationManager Navigation
+
+<PageTitle>Sign in | GeoSearch</PageTitle>
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-12">
+    <MudPaper Class="pa-6" Elevation="2">
+        <MudText Typo="Typo.h5" GutterBottom="true">Sign in</MudText>
+        <MudText Typo="Typo.body2" Class="mb-4">Use the development account configured on the API server.</MudText>
+        @if (_error is not null)
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-3">@_error</MudAlert>
+        }
+        <MudTextField T="string" Label="Email" InputType="InputType.Email"
+                      @bind-Value="_email" Disabled="_busy" Class="mb-3" />
+        <MudTextField T="string" Label="Password" InputType="InputType.Password"
+                      @bind-Value="_password" Disabled="_busy" Class="mb-3" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy"
+                   OnClick="SignInAsync" FullWidth="true">Sign in</MudButton>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private string _email = string.Empty;
+    private string _password = string.Empty;
+    private string? _error;
+    private bool _busy;
+
+    private async Task SignInAsync()
+    {
+        if (_busy)
+        {
+            return;
+        }
+        _error = null;
+        if (string.IsNullOrWhiteSpace(_email) || string.IsNullOrEmpty(_password))
+        {
+            _error = "Enter your email and password.";
+            return;
+        }
+        _busy = true;
+        try
+        {
+            LoginResponse? response = await AuthApi.LoginAsync(new LoginRequest(_email.Trim(), _password));
+            if (response is null)
+            {
+                _error = "Sign-in failed. Check your credentials and try again.";
+                return;
+            }
+            Session.Set(response);
+            Authentication.NotifySessionChanged();
+            Navigation.NavigateTo("/");
+        }
+        catch (HttpRequestException)
+        {
+            _error = "The authentication service is unavailable.";
+        }
+        finally
+        {
+            _password = string.Empty;
+            _busy = false;
+        }
+    }
+}
