@@ -16,7 +16,9 @@ The following checks passed with the supplied package set:
 - Warnings-as-errors compilation using the complete analyzer policies in `src/.editorconfig`
   and `src/.globalconfig`, including the narrow project-local exceptions.
 - `dotnet format src/GeoSearch.slnx --verify-no-changes --no-restore`.
-- MSTest baseline: one client and three server tests, no failures.
+- MSTest baseline: one client and four server tests, no failures. The fourth server test
+  constructs the WKG-configured Identity model without a database connection and checks
+  the application schema and user table mapping.
 - Git whitespace and patch-application checks; XML/JSON and Bash syntax validation.
 
 The supplied package set does **not** contain `AspNetCore.SassCompiler` 1.103.0.
@@ -31,8 +33,8 @@ The Identity and WKG transaction integration have been compiled, but no end-to-e
 lockout persistence, EF migration, or web host startup test has been run against PostgreSQL.
 The current development-only `EnsureCreatedAsync` bootstrap is intentionally restricted to
 an empty Identity database. No EF migration has yet been scaffolded; generate one, review it,
-and disable the temporary bootstrap before deployment. Source-generated WKG model discovery
-compiles, but runtime schema/policy compatibility must still be tested.
+and disable the temporary bootstrap before deployment. Source-generated WKG model discovery and WKG entity mapping policies pass a model-construction
+unit test. Actual database schema creation and transactional persistence still require Postgres.
 
 The devcontainer definition is structurally checked but has not been built or launched.
 The normal online build, Sass output, WASM application startup, MapLibre resources, GeoJSON
