@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path=".globalconfig" />
+    <File Path="Directory.Build.props" />
+  </Folder>
+  <Project Path="GeoSearch.Web.Shared/GeoSearch.Web.Shared.csproj" />
+  <Project Path="GeoSearch.Web.Server/GeoSearch.Web.Server.csproj" />
+  <Project Path="GeoSearch.Web.Client/GeoSearch.Web.Client.csproj" />
+  <Project Path="GeoSearch.Web.Server.Tests/GeoSearch.Web.Server.Tests.csproj" />
+  <Project Path="GeoSearch.Web.Client.Tests/GeoSearch.Web.Client.Tests.csproj" />
+</Solution>
