@@ -1,0 +1,11 @@
+html,
+body,
+#app {
+    min-height: 100%;
+}
+
+body {
+    margin: 0;
+    background: var(--mud-palette-background);
+    color: var(--mud-palette-text-primary);
+}
