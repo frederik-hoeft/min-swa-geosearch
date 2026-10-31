@@ -74,11 +74,11 @@ case "$command" in
     search)
         [[ $# -ge 1 ]] || { usage >&2; exit 2; }
         psql -v ON_ERROR_STOP=1 -v q="$1" -v lim="${2:-10}" \
-            -c "SELECT name, label, type, category, round(score::numeric, 3) AS score, round(lon::numeric, 5) AS lon, round(lat::numeric, 5) AS lat FROM search.search(:'q', :lim);" ;;
+            -f - <<< "SELECT name, label, type, category, round(score::numeric, 3) AS score, round(lon::numeric, 5) AS lon, round(lat::numeric, 5) AS lat FROM search.search(:'q', :lim);" ;;
     reverse)
         [[ $# -ge 2 ]] || { usage >&2; exit 2; }
         psql -v ON_ERROR_STOP=1 -v lon="$1" -v lat="$2" -v r="${3:-250}" \
-            -c 'SELECT label, type, round(distance_m::numeric, 1) AS distance_m FROM search.reverse(:lon, :lat, :r);' ;;
+            -f - <<< 'SELECT label, type, round(distance_m::numeric, 1) AS distance_m FROM search.reverse(:lon, :lat, :r);' ;;
     geoserver-publish)
         for ws in osm search; do
             if [[ "$(curl -s -o /dev/null -w '%{http_code}' -u "$GEOSERVER_AUTH" "$GEOSERVER/rest/workspaces/$ws.json")" == 404 ]]; then

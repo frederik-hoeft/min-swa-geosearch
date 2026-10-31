@@ -35,7 +35,7 @@ dotnet test src/GeoSearch.slnx --no-restore --no-build
 
 The ASP.NET server requires an application-owned PostgreSQL connection string and JWT signing key via User Secrets or environment variables. Copy `src/GeoSearch.Web.Server/appsettings.example.json` to a local, git-ignored `appsettings.json` and supply the private settings described in `docs/development.md`. JWT authentication is only provisioned for development using a locally configured bootstrap account. No hard-coded production credentials or signing key are included.
 
-Run the server and the separate WASM client in two terminals for development. For same-origin deployment, the frontend is served as static assets and `/api/*` is reverse proxied to the server; a production container recipe has not been created. The application requires an initial Identity database migration (see development documentation). The first .NET restore/build/test is intentionally deferred until an SDK and NuGet packages are available.
+Run the server and the separate WASM client in two terminals for development. For same-origin deployment, the frontend is served as static assets and `/api/*` is reverse proxied to the server; a production container recipe has not been created. For development only, run `./scripts/setup-identity-db.sh` and configure `Bootstrap:EnsureCreated=true` on the separate auth database; production requires an EF migration after the SDK audit (see development documentation). The first .NET restore/build/test is intentionally deferred until an SDK and NuGet packages are available.
 
 ## References
 

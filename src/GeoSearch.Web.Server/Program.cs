@@ -17,6 +17,7 @@ string connectionString = builder.Configuration.GetConnectionString("Identity")
 JwtOptions jwt = JwtOptions.FromConfiguration(builder.Configuration.GetSection(JwtOptions.SECTION));
 
 builder.Services.AddSingleton(jwt);
+builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<JwtTokenIssuer>();
 builder.Services.AddSingleton<IModelLoader, GeoSearchModelLoader>();
 builder.Services.AddDbContext<IdentityDbContext>(options => options.UseNpgsql(connectionString));
@@ -95,4 +96,6 @@ await IdentityBootstrap.InitializeAsync(app);
 await app.RunAsync();
 
 // Expose the conventional entry point to integration test hosts in a later iteration.
-public partial class Program;
+public partial class Program
+{
+}
