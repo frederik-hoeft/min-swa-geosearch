@@ -8,6 +8,24 @@ namespace GeoSearch.Web.Server.Tests.Security;
 public sealed class IdentityModelTests
 {
     [TestMethod]
+    public void IdentityMigrationMatchesConfiguredModel()
+    {
+        Type modelLoaderType = typeof(IdentityDbContext).Assembly.GetType(
+            "GeoSearch.Web.Server.Data.GeoSearchModelLoader", throwOnError: true)!;
+        IModelLoader modelLoader = (IModelLoader)Activator.CreateInstance(modelLoaderType, nonPublic: true)!;
+        DbContextOptions<IdentityDbContext> options = new DbContextOptionsBuilder<IdentityDbContext>()
+            .UseNpgsql("Host=localhost;Database=not_connected;Username=test;Password=test")
+            .Options;
+
+        using IdentityDbContext dbContext = new(options, modelLoader);
+        string[] migrations = [.. dbContext.Database.GetMigrations()];
+
+        Assert.HasCount(1, migrations);
+        StringAssert.Contains(migrations[0], "InitialIdentity", StringComparison.Ordinal);
+        Assert.IsFalse(dbContext.Database.HasPendingModelChanges());
+    }
+
+    [TestMethod]
     public void IdentityModelHasSeparateSchemaAndRegisteredUser()
     {
         Type modelLoaderType = typeof(IdentityDbContext).Assembly.GetType(

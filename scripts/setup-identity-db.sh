@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Creates an independent, initially empty database for Identity's dev-only EnsureCreated.
+# Creates an independent Identity database. The API applies EF migrations at startup.
 set -euo pipefail
 export PGHOST="${PGHOST:-localhost}"
 export PGPORT="${POSTGIS_PORT:-5432}"

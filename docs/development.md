@@ -27,7 +27,7 @@ The NuGet archive must include **every transitive package**, including tools suc
 not itself the normal NuGet global-package cache: packages must be extracted and normalized
 before using a source-less configuration. Never let the build silently use machine-global
 packages or network feeds. The ZIP does not include the SDK or optional WASM workloads.
-See [the bootstrap validation record](validation.md) for the current package-archive gap.
+See [the bootstrap validation record](validation.md) for the verified offline build.
 
 The script intentionally uses NuGet.org as its only feed. If package references require another feed in the future, review its trust and package provenance before extending the script.
 
@@ -48,12 +48,10 @@ local development, not application deployment or running unreviewed code.
 Blazor global styles live in `UI/Styles/app.scss` and component/page-specific isolated styles
 in adjacent `*.razor.scss` files. `sasscompiler.json` explicitly declares both outputs.
 `AspNetCore.SassCompiler` performs compilation during .NET builds, producing generated CSS
-that is ignored by Git; generated CSS must not be hand-edited. The currently supplied offline
-NuGet bundle lacks `AspNetCore.SassCompiler` version 1.103.0. To validate the rest of the
-application with that archive, pass `-p:GeoSearchEnableSassCompiler=false` to restore/build
-and set `GeoSearchEnableSassCompiler=false` for the formatter. This **does not validate SCSS**
-and is not suitable for publishing the full frontend. Produce a new dependency bundle with
-`./src/restore.sh` on a connected developer machine to remove the exception.
+that is ignored by Git; generated CSS must not be hand-edited. The latest supplied offline NuGet bundle includes `AspNetCore.SassCompiler` version 1.103.0.
+A normal offline build compiles the SCSS. If manually unpacking `.nupkg` files into the NuGet
+global cache, restore the bundled Dart compiler's executable bit on Linux as described in the
+[offline development skill](https://github.com/frederik-hoeft/custom-skills/blob/main/dev/dotnet-offline.skill).
 
 ## Configuration
 
@@ -64,7 +62,11 @@ Server configuration is read through normal ASP.NET Core providers. Copy `src/Ge
 - `Jwt__Issuer`, `Jwt__Audience`, `Jwt__SigningKey`: issuer/audience values and a secret random key of at least 32 bytes. Never check it in. For local development use `dotnet user-secrets` or environment variables.
 - `Bootstrap__Email`, `Bootstrap__Password`: optional one-time development-only account provisioner (password >= 16 chars). Never include values in logs, CI or committed configuration. The bootstrapper refuses to run outside Development.
 
-Create a **separate empty development database** by running `./scripts/setup-identity-db.sh` after `./scripts/lab.sh stack-up`. With `Bootstrap:EnsureCreated=true` and ASPNETCORE_ENVIRONMENT=Development, startup calls `EnsureCreatedAsync` against that database so login can run before migrations are provisioned. **This is development-only and is not an EF migration.** It cannot be upgraded in place to a migration-managed schema. Before deployment, discard/recreate the temporary auth database, generate and review an initial migration using `dotnet ef migrations add InitialIdentity --project src/GeoSearch.Web.Server --startup-project src/GeoSearch.Web.Server --context IdentityDbContext --output-dir Data/Migrations`, disable `EnsureCreated`, and apply migrations. No generated migration is included in this bootstrap.
+Create the independent Identity database by running `./scripts/setup-identity-db.sh` after `./scripts/lab.sh stack-up`. On startup the API applies the committed initial migration and any later migrations to this database. The migration creates the Identity tables under `app_auth` and leaves the instructor-owned `lab1` database unchanged. Do not use `EnsureCreated` on a database intended for migrations.
+
+**If you previously started with `Bootstrap:EnsureCreated=true`:** those Identity tables were not registered in EF's migration history. For a disposable local database, stop the server and recreate **only `geosearch_auth`** (never delete `lab1`). Then start the server again to apply the committed migration. Back up any real Identity data before migrating an existing nonempty database; dropping is strictly a development reset.
+
+For future model changes, install a `dotnet-ef` tool version matching your EF Core packages and scaffold a new migration using `dotnet ef migrations add <Name> --project src/GeoSearch.Web.Server --startup-project src/GeoSearch.Web.Server --context IdentityDbContext --output-dir Data/Migrations`. Review the generated SQL/operations, then commit both migration and snapshot.
 
 After the database is prepared and .NET packages restored, configure the server's ignored `appsettings.json` or use User Secrets. For example:
 
@@ -79,6 +81,69 @@ dotnet run --project src/GeoSearch.Web.Client --launch-profile GeoSearch.Web.Cli
 ```
 
 The development server runs at `http://localhost:5100`, and the client at `http://localhost:5200` with the API base set through `wwwroot/appsettings.json`. A single-origin production deployment should use `/api/` on the frontend host, not a separately exposed database or GIS service. Local development CORS is restricted to the configured client origin.
+
+## First-run smoke test (login and API only)
+
+The GIS API and map renderer are not yet implemented. You can verify the full login path,
+WKG-backed Identity persistence, JWT authorization, CORS, and the Blazor shell without
+importing the OSM extracts or starting GeoServer.
+
+1. **Start PostGIS**: on the host, `./scripts/lab.sh stack-up`. In the devcontainer,
+   PostGIS already starts as a Compose dependency. The database must be reachable over
+   the expected port; the lab defaults to port 5432 on the host.
+2. **Create the independent auth database**: `./scripts/setup-identity-db.sh`. This is
+   idempotent and creates `geosearch_auth` without modifying `lab1`.
+3. **Configure server User Secrets** (from the repo root), using `Host=localhost` when
+   running the API on the host and `Host=postgis` from inside the devcontainer:
+
+   ```bash
+   SERVER=src/GeoSearch.Web.Server
+   DB_HOST=localhost  # inside the devcontainer: DB_HOST=postgis
+   dotnet user-secrets set --project "$SERVER" ConnectionStrings:Identity \
+       "Host=$DB_HOST;Port=5432;Database=geosearch_auth;Username=lab1;Password=lab1-local-only"
+   dotnet user-secrets set --project "$SERVER" ConnectionStrings:Search \
+       "Host=$DB_HOST;Port=5432;Database=lab1;Username=lab1;Password=lab1-local-only"
+   dotnet user-secrets set --project "$SERVER" Jwt:Issuer GeoSearch.Development
+   dotnet user-secrets set --project "$SERVER" Jwt:Audience GeoSearch.Client
+   dotnet user-secrets set --project "$SERVER" Jwt:SigningKey "$(openssl rand -base64 48)"
+   dotnet user-secrets set --project "$SERVER" Bootstrap:Email dev@example.test
+   read -rsp 'Temporary development password: ' DEV_PASSWORD; echo
+   dotnet user-secrets set --project "$SERVER" Bootstrap:Password "$DEV_PASSWORD"
+   unset DEV_PASSWORD
+   ```
+
+   Set a unique password of at least 16 characters containing upper/lowercase letters and
+   a digit. The sample database credentials are **strictly local defaults**; replace them
+   if you changed `POSTGIS_PASSWORD` in Compose. User Secrets are not committed to Git.
+4. **Run the server and client in separate terminals** (same environment and repository):
+
+   ```bash
+   dotnet run --project src/GeoSearch.Web.Server --launch-profile GeoSearch.Web.Server
+   dotnet run --project src/GeoSearch.Web.Client --launch-profile GeoSearch.Web.Client
+   ```
+
+5. Open `http://localhost:5100/swagger`, `http://localhost:5100/api/health`, and
+   `http://localhost:5200/login`. Log in with the provisioned development account.
+   The authenticated landing page is deliberately a map placeholder. Browser refresh
+   clears the in-memory access token.
+
+To check the API independently, use the Swagger login route or issue a JSON POST to
+`http://localhost:5100/api/auth/login`, then call `/api/auth/me` with the returned
+`Authorization: Bearer <accessToken>` header. Without a token `/api/auth/me` must
+return HTTP 401; invalid login credentials must not issue a token. The server applies
+migrations automatically on its first startup; if that fails, inspect its startup
+log and connection string before testing login.
+
+**Visual Studio on the host:** start the same two launch profiles as separate startup
+projects. The devcontainer and host use the same application ports; don't run both
+copies concurrently. For browser access from the devcontainer, allow VS Code to forward
+ports 5100 and 5200 and keep the client configuration at
+`src/GeoSearch.Web.Client/wwwroot/appsettings.json` (`http://localhost:5100/`).
+
+If `geosearch_auth` was previously initialized with `EnsureCreated`, stop the server
+and recreate only that **disposable** development database before retrying. Leave
+`lab1` intact. A development reset can be performed with `dropdb geosearch_auth`
+followed by `./scripts/setup-identity-db.sh`, provided all connections are closed.
 
 ## Auth scope
 

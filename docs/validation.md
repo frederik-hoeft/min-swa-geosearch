@@ -5,39 +5,36 @@ endpoints, browser geolocation, basemap tiles, GeoServer publishing, or a produc
 
 ## Reproducible offline checks
 
-The provided SDK archive contains .NET SDK **10.0.403** for Linux x64. The supplied NuGet ZIP
-contains **121** packages. They were extracted into an isolated cache outside the Git tree;
+The provided SDK archive contains .NET SDK **10.0.403** for Linux x64. The refreshed NuGet ZIP
+contains **130** packages. They were extracted into an isolated cache outside the Git tree;
 package sources were cleared during restore. Environment variables affecting MSBuild platform
 selection were unset.
 
 The following checks passed with the supplied package set:
 
-- Offline solution restore and compilation for .NET 10 with `GeoSearchEnableSassCompiler=false`.
+- Offline solution restore and compilation for .NET 10 with SCSS compilation enabled.
 - Warnings-as-errors compilation using the complete analyzer policies in `src/.editorconfig`
   and `src/.globalconfig`, including the narrow project-local exceptions.
-- `dotnet format src/GeoSearch.slnx --verify-no-changes --no-restore`.
-- MSTest baseline: one client and four server tests, no failures. The fourth server test
-  constructs the WKG-configured Identity model without a database connection and checks
-  the application schema and user table mapping.
+- Targeted `dotnet format whitespace --verify-no-changes --no-restore` on the modified C# files.
+- MSTest baseline includes client session tests, WKG model construction, and an initial migration
+  consistency check that does not connect to a database.
 - Git whitespace and patch-application checks; XML/JSON and Bash syntax validation.
 
-The supplied package set does **not** contain `AspNetCore.SassCompiler` 1.103.0.
-Normal restores intentionally require that package, following the same SCSS compilation setup
-as the repository's project configuration. The offline compile above excluded only the Sass
-package; it did not compile or verify SCSS-generated CSS.
+The refreshed package set contains `AspNetCore.SassCompiler` 1.103.0; its Dart executable
+required restoring the executable bit after direct ZIP extraction. This change affects the
+isolated package cache only, not the repository or its package versions.
 
 ## Unverified behavior
 
 A database instance with the imported OSM dataset was not available for integration tests.
-The Identity and WKG transaction integration have been compiled, but no end-to-end login,
-lockout persistence, EF migration, or web host startup test has been run against PostgreSQL.
-The current development-only `EnsureCreatedAsync` bootstrap is intentionally restricted to
-an empty Identity database. No EF migration has yet been scaffolded; generate one, review it,
-and disable the temporary bootstrap before deployment. Source-generated WKG model discovery and WKG entity mapping policies pass a model-construction
-unit test. Actual database schema creation and transactional persistence still require Postgres.
+The Identity and WKG transaction integration compile, but no end-to-end login, lockout
+persistence, migration application, or web host startup has been tested against PostgreSQL.
+The generated initial migration is committed and applied by API startup. The migration snapshot
+is checked against the WKG-configured model without a database connection. Actual schema creation
+and transactional persistence still require PostgreSQL.
 
 The devcontainer definition is structurally checked but has not been built or launched.
-The normal online build, Sass output, WASM application startup, MapLibre resources, GeoJSON
+WASM application startup, MapLibre resources, GeoJSON
 rendering, and browser/CORS/security flows remain deployment review gates.
 
 As the search API is introduced, test it against the lab's ten fixtures and measure the

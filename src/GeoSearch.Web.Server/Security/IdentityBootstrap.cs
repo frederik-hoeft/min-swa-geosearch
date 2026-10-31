@@ -12,21 +12,8 @@ internal static class IdentityBootstrap
         await using AsyncServiceScope scope = app.Services.CreateAsyncScope();
         IdentityDbContext dbContext = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
         CancellationToken cancellationToken = app.Lifetime.ApplicationStopping;
-        if (app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("Bootstrap:EnsureCreated"))
-        {
-            // Only safe for a separate *empty* development database. Switch to migrations after the SDK audit.
-            await dbContext.Database.EnsureCreatedAsync(cancellationToken);
-        }
-        else
-        {
-            IEnumerable<string> migrations = dbContext.Database.GetMigrations();
-            bool hasMigrations = migrations.Any();
-            if (!hasMigrations)
-            {
-                throw new InvalidOperationException("No Identity migrations exist. See docs/development.md.");
-            }
-            await dbContext.Database.MigrateAsync(cancellationToken);
-        }
+        // The application owns only the Identity database; imported GIS schemas are external.
+        await dbContext.Database.MigrateAsync(cancellationToken);
 
         if (!app.Environment.IsDevelopment())
         {
