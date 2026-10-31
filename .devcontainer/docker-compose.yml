@@ -1,0 +1,22 @@
+services:
+  dev:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    volumes:
+      - ..:/workspace:cached
+      - nuget-cache:/home/vscode/.nuget/packages
+    environment:
+      PGHOST: postgis
+      PGPORT: "5432"
+      PGDATABASE: lab1
+      PGUSER: lab1
+      PGPASSWORD: ${POSTGIS_PASSWORD:-lab1-local-only}
+    depends_on:
+      postgis:
+        condition: service_healthy
+    init: true
+    command: sleep infinity
+
+volumes:
+  nuget-cache:

@@ -1,0 +1,42 @@
+{
+  "name": "GeoSearch (.NET 10 / PostGIS)",
+  "dockerComposeFile": ["../lab/compose.yaml", "docker-compose.yml"],
+  "service": "dev",
+  "workspaceFolder": "/workspace",
+  "shutdownAction": "stopCompose",
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "username": "vscode",
+      "installZsh": true,
+      "configureZshAsDefaultShell": true,
+      "installOhMyZsh": true
+    },
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csharp",
+        "ms-dotnettools.csdevkit",
+        "ms-azuretools.vscode-docker",
+        "github.copilot"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "files.autoSave": "afterDelay"
+      }
+    }
+  },
+  "forwardPorts": [5100, 5200, 8081, 5432],
+  "portsAttributes": {
+    "5100": {"label": "GeoSearch API", "onAutoForward": "notify"},
+    "5200": {"label": "GeoSearch Blazor", "onAutoForward": "notify"},
+    "8081": {"label": "GeoServer (optional)", "onAutoForward": "silent"},
+    "5432": {"label": "PostgreSQL/PostGIS", "onAutoForward": "silent"}
+  },
+  "postCreateCommand": "bash .devcontainer/setup-shell.sh && dotnet --info && psql --version && ogr2ogr --version",
+  "waitFor": "postCreateCommand",
+  "remoteUser": "vscode"
+}
