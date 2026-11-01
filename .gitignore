@@ -103,3 +103,6 @@ lab/data/*.osm.pbf
 lab/data/*-free/
 src/GeoSearch.Web.Client/wwwroot/css/app.css
 src/GeoSearch.Web.Client/**/*.razor.css
+
+# development configs
+appsettings.json

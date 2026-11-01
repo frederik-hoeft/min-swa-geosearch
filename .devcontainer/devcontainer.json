@@ -21,7 +21,8 @@
         "ms-dotnettools.csharp",
         "ms-dotnettools.csdevkit",
         "ms-azuretools.vscode-docker",
-        "github.copilot"
+        "shd101wyy.markdown-preview-enhanced",
+        "ms-ossdata.vscode-pgsql"
       ],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "zsh",

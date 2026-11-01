@@ -50,10 +50,10 @@ builder.Services.AddDbContext<SearchReadDbContext>(options => options.UseNpgsql(
 
 builder.Services.AddIdentityCore<GeoSearchUser>(options =>
     {
-        options.Password.RequiredLength = 16;
-        options.Password.RequireDigit = true;
-        options.Password.RequireLowercase = true;
-        options.Password.RequireUppercase = true;
+        options.Password.RequiredLength = 8;
+        options.Password.RequireDigit = false;
+        options.Password.RequireLowercase = false;
+        options.Password.RequireUppercase = false;
         options.Password.RequireNonAlphanumeric = false;
         options.User.RequireUniqueEmail = true;
         options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);

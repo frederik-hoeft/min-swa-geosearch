@@ -8,7 +8,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         bash ca-certificates curl git gnupg jq less openssh-client \
         postgresql-client gdal-bin osm2pgsql python3 python3-venv \
-        vim wget zip unzip build-essential \
+        vim wget zip unzip build-essential just \
     && rm -rf /var/lib/apt/lists/*
 
 RUN useradd --create-home --shell /bin/zsh vscode \
