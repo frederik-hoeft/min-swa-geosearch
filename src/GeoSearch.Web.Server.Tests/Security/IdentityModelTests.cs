@@ -20,8 +20,9 @@ public sealed class IdentityModelTests
         using IdentityDbContext dbContext = new(options, modelLoader);
         string[] migrations = [.. dbContext.Database.GetMigrations()];
 
-        Assert.HasCount(1, migrations);
+        Assert.HasCount(2, migrations);
         StringAssert.Contains(migrations[0], "InitialIdentity", StringComparison.Ordinal);
+        StringAssert.Contains(migrations[1], "AddRefreshTokenSessions", StringComparison.Ordinal);
         Assert.IsFalse(dbContext.Database.HasPendingModelChanges());
     }
 

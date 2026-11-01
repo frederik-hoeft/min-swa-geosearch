@@ -10,7 +10,7 @@ namespace GeoSearch.Web.Server.Security;
 
 public sealed class JwtTokenIssuer(JwtOptions options, TimeProvider timeProvider)
 {
-    private static readonly TimeSpan s_tokenLifetime = TimeSpan.FromMinutes(20);
+    private static readonly TimeSpan s_tokenLifetime = TimeSpan.FromMinutes(2);
 
     public LoginResponse Issue(GeoSearchUser user)
     {

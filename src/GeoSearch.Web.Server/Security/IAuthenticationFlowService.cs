@@ -2,8 +2,14 @@
 
 namespace GeoSearch.Web.Server.Security;
 
-/// <summary>Owns authentication workflow and persistent Identity changes.</summary>
+/// <summary>Transactional authentication, refresh rotation, and revocation operations.</summary>
 public interface IAuthenticationFlowService
 {
-    Task<LoginResponse?> LoginAsync(string email, string password, CancellationToken cancellationToken = default);
+    Task<AuthenticationTokenResult?> LoginAsync(string email, string password, CancellationToken cancellationToken = default);
+
+    Task<AuthenticationTokenResult?> RefreshAsync(string refreshToken, CancellationToken cancellationToken = default);
+
+    Task RevokeAsync(string refreshToken, CancellationToken cancellationToken = default);
+
+    Task<PasswordChangeResult?> ChangePasswordAsync(string userId, string currentPassword, string newPassword, CancellationToken cancellationToken = default);
 }

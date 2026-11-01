@@ -1,40 +1,127 @@
 ﻿using GeoSearch.Web.Server.Security;
 using GeoSearch.Web.Shared.Auth;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
 namespace GeoSearch.Web.Server.Api.Auth;
 
 [ApiController]
 [Route("api/auth")]
-public sealed class AuthController(IAuthenticationFlowService authentication) : ControllerBase
+[ResponseCache(Location = ResponseCacheLocation.None, NoStore = true)]
+public sealed class AuthController(
+    IAuthenticationFlowService authentication,
+    IAntiforgery antiforgery,
+    IOptions<RefreshTokenOptions> refreshOptions) : ControllerBase
 {
+    private readonly RefreshTokenOptions _refreshOptions = refreshOptions.Value;
+
+    [HttpGet("antiforgery")]
+    [AllowAnonymous]
+    public ActionResult<AntiforgeryResponse> GetAntiforgeryToken()
+    {
+        AntiforgeryTokenSet tokenSet = antiforgery.GetAndStoreTokens(HttpContext);
+        string token = tokenSet.RequestToken
+            ?? throw new InvalidOperationException("Antiforgery token generation failed.");
+        return Ok(new AntiforgeryResponse(token));
+    }
+
     [HttpPost("login")]
     [AllowAnonymous]
     [EnableRateLimiting("login")]
-    [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiError), StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<LoginResponse>> LoginAsync([FromBody] LoginRequest request, CancellationToken cancellationToken)
     {
-        Response.Headers.CacheControl = "no-store";
-        LoginResponse? result = await authentication.LoginAsync(request.Email, request.Password, cancellationToken);
+        AuthenticationTokenResult? result = await authentication.LoginAsync(request.Email, request.Password, cancellationToken);
         if (result is null)
         {
             return Unauthorized(new ApiError("Invalid email or password."));
         }
 
-        return Ok(result);
+        SetRefreshCookie(result);
+        return Ok(result.AccessToken);
+    }
+
+    [HttpPost("refresh")]
+    [AllowAnonymous]
+    [ValidateAntiForgeryToken]
+    public async Task<ActionResult<LoginResponse>> RefreshAsync(CancellationToken cancellationToken)
+    {
+        if (!TryGetRefreshToken(out string? refreshToken))
+        {
+            return Unauthorized();
+        }
+
+        AuthenticationTokenResult? result = await authentication.RefreshAsync(refreshToken!, cancellationToken);
+        if (result is null)
+        {
+            DeleteRefreshCookie();
+            return Unauthorized();
+        }
+
+        SetRefreshCookie(result);
+        return Ok(result.AccessToken);
+    }
+
+    [HttpPost("logout")]
+    [AllowAnonymous]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> LogoutAsync(CancellationToken cancellationToken)
+    {
+        if (TryGetRefreshToken(out string? refreshToken))
+        {
+            await authentication.RevokeAsync(refreshToken!, cancellationToken);
+        }
+
+        DeleteRefreshCookie();
+        return NoContent();
+    }
+
+    [HttpPost("password")]
+    [Authorize]
+    public async Task<ActionResult<LoginResponse>> ChangePasswordAsync([FromBody] ChangePasswordRequest request, CancellationToken cancellationToken)
+    {
+        string? userId = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return Unauthorized();
+        }
+
+        PasswordChangeResult? result = await authentication.ChangePasswordAsync(userId, request.CurrentPassword, request.NewPassword, cancellationToken);
+        if (result is null)
+        {
+            DeleteRefreshCookie();
+            return Unauthorized();
+        }
+        if (!result.Succeeded)
+        {
+            return BadRequest(new ApiError("Password change rejected."));
+        }
+
+        AuthenticationTokenResult replacement = result.Authentication
+            ?? throw new InvalidOperationException("A successful password change must issue a replacement session.");
+        SetRefreshCookie(replacement);
+        return Ok(replacement.AccessToken);
     }
 
     [HttpGet("me")]
     [Authorize]
-    [ProducesResponseType(typeof(AccountResponse), StatusCodes.Status200OK)]
     public ActionResult<AccountResponse> Me()
     {
-        Response.Headers.CacheControl = "no-store";
         string email = User.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
         return Ok(new AccountResponse(email));
     }
+
+    private bool TryGetRefreshToken(out string? token) =>
+        Request.Cookies.TryGetValue(_refreshOptions.CookieName, out token) && !string.IsNullOrWhiteSpace(token);
+
+    private void SetRefreshCookie(AuthenticationTokenResult result) => Response.Cookies.Append(
+        _refreshOptions.CookieName, result.RefreshToken,
+        RefreshTokenCookiePolicy.Create(result.RefreshExpiresUtc));
+
+    private void DeleteRefreshCookie() => Response.Cookies.Delete(
+        _refreshOptions.CookieName, RefreshTokenCookiePolicy.Create());
 }

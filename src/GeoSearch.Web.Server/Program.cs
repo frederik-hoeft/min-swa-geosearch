@@ -1,5 +1,7 @@
 ﻿using GeoSearch.Web.Server.Data;
+using GeoSearch.Web.Server.Data.RefreshTokens;
 using GeoSearch.Web.Server.Security;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
@@ -23,6 +25,21 @@ builder.Services.AddSingleton(jwt);
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<JwtTokenIssuer>();
 builder.Services.AddScoped<IAuthenticationFlowService, AuthenticationFlowService>();
+builder.Services.AddSingleton<IAuthenticationTimingService, PasswordHashAuthenticationTimingService>();
+builder.Services.AddScoped<IRefreshTokenDataAccess, RefreshTokenDataAccess>();
+builder.Services.AddOptions<RefreshTokenOptions>()
+    .Bind(builder.Configuration.GetSection(RefreshTokenOptions.SECTION_NAME))
+    .Validate(options => options.Lifetime > TimeSpan.Zero && options.Lifetime <= TimeSpan.FromDays(90)
+        && options.CookieName.StartsWith("__Host-", StringComparison.Ordinal),
+        "Refresh token lifetime must be 1-90 days and the cookie must use the __Host- prefix.")
+    .ValidateOnStart();
+builder.Services.AddAntiforgery(options =>
+{
+    options.HeaderName = "X-CSRF-TOKEN";
+    options.Cookie.Name = "__Host-geosearch-csrf";
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Strict;
+});
 builder.Services.AddSingleton<IModelLoader, GeoSearchModelLoader>();
 builder.Services.AddDbContext<IdentityDbContext>(options => options.UseNpgsql(identityConnectionString));
 
@@ -66,6 +83,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 builder.Services.AddAuthorization();
+// Refresh and logout are cookie-authenticated and require a request-token header.
+// Authentication itself remains stateless JWT bearer for normal API requests.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -87,7 +106,7 @@ if (builder.Environment.IsDevelopment())
 {
     string clientOrigin = builder.Configuration["Cors:ClientOrigin"] ?? "http://localhost:5200";
     builder.Services.AddCors(options => options.AddPolicy("DevClient", policy =>
-        policy.WithOrigins(clientOrigin).AllowAnyHeader().AllowAnyMethod()));
+        policy.WithOrigins(clientOrigin).AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
 }
 
 WebApplication app = builder.Build();
