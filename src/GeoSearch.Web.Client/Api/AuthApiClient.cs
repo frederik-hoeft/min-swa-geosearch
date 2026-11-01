@@ -17,7 +17,7 @@ public sealed class AuthApiClient(HttpClient httpClient)
         };
         message.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
         using HttpResponseMessage response = await httpClient.SendAsync(message, cancellationToken);
-        if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.BadRequest or HttpStatusCode.TooManyRequests)
+        if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.BadRequest)
         {
             return null;
         }

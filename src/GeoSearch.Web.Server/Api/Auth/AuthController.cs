@@ -3,7 +3,6 @@ using GeoSearch.Web.Shared.Auth;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -32,7 +31,6 @@ public sealed class AuthController(
 
     [HttpPost("login")]
     [AllowAnonymous]
-    [EnableRateLimiting(LoginRateLimitPolicy.NAME)]
     public async Task<ActionResult<LoginResponse>> LoginAsync([FromBody] LoginRequest request, CancellationToken cancellationToken)
     {
         AuthenticationTokenResult? result = await authentication.LoginAsync(request.Email, request.Password, cancellationToken);

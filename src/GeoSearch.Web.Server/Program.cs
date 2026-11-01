@@ -4,12 +4,10 @@ using GeoSearch.Web.Server.Security;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Data;
 using System.Text;
-using System.Threading.RateLimiting;
 using Wkg.AspNetCore.Transactions.Configuration;
 using Wkg.EntityFrameworkCore.Configuration;
 
@@ -100,19 +98,6 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddTransactionManagement<IdentityDbContext>(options =>
     options.UseIsolationLevel(IsolationLevel.ReadCommitted));
 
-builder.Services.AddRateLimiter(options =>
-{
-    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    options.AddPolicy(LoginRateLimitPolicy.NAME, context =>
-        RateLimitPartition.GetFixedWindowLimiter(LoginRateLimitPolicy.GetClientPartition(context), _ => new FixedWindowRateLimiterOptions
-        {
-            PermitLimit = 5,
-            Window = TimeSpan.FromMinutes(1),
-            QueueLimit = 0,
-            AutoReplenishment = true,
-        }));
-});
-
 if (builder.Environment.IsDevelopment())
 {
     string clientOrigin = builder.Configuration["Cors:ClientOrigin"] ?? "https://localhost:5200";
@@ -132,7 +117,6 @@ if (app.Environment.IsDevelopment())
 {
     app.UseCors("DevClient");
 }
-app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseMiddleware<AntiforgeryValidationMiddleware>();
