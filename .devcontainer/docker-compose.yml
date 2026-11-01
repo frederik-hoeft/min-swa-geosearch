@@ -14,7 +14,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       # The published client uses a different browser origin from the host Visual Studio client.
-      Cors__ClientOrigin: "http://localhost:${GEOSEARCH_DEV_CLIENT_PORT:-15200}"
+      Cors__ClientOrigin: "https://localhost:${GEOSEARCH_DEV_CLIENT_PORT:-15200}"
       PGHOST: postgis
       GEOSERVER_URL: http://geoserver:8080/geoserver
       PGPORT: "5432"

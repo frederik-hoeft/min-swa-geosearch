@@ -82,7 +82,30 @@ dotnet run --project src/GeoSearch.Web.Server --launch-profile GeoSearch.Web.Ser
 dotnet run --project src/GeoSearch.Web.Client --launch-profile GeoSearch.Web.Client
 ```
 
-The development server runs at `http://localhost:5100`, and the client at `http://localhost:5200` with the API base set through `wwwroot/appsettings.json`. A single-origin production deployment should use `/api/` on the frontend host, not a separately exposed database or GIS service. Local development CORS is restricted to the configured client origin.
+The host development server runs at `https://localhost:5100`, and the Blazor client at
+`https://localhost:5200`. The client API base is configured in the committed
+`src/GeoSearch.Web.Client/wwwroot/appsettings.json`. A single-origin production deployment
+should use `/api/` on the frontend host. Development CORS is restricted to the configured
+HTTPS client origin. **Both applications must use HTTPS**: antiforgery refuses HTTP requests
+because its cookie uses `SecurePolicy=Always`, and the host-scoped refresh token is a
+`Secure`, `HttpOnly`, `SameSite=Strict` cookie. Mixing HTTP and HTTPS on localhost also
+makes refresh requests cross-site under schemeful SameSite rules.
+
+On Windows, trust the SDK-provided ASP.NET Core HTTPS development certificate once:
+
+```powershell
+dotnet dev-certs https --check --trust
+# If the certificate is missing or untrusted:
+dotnet dev-certs https --trust
+```
+
+Run the API and Blazor launch profiles in Visual Studio as usual. Trust is managed on the
+**Windows host**, not within the devcontainer used for PostGIS tooling. If you created a
+local ignored `src/GeoSearch.Web.Server/appsettings.json` or User Secrets with
+`Cors:ClientOrigin=http://localhost:5200`, change the origin to
+`https://localhost:5200`; this local configuration overrides the project default.
+Use `localhost` consistently for both sites, not an HTTP/HTTPS or localhost/127.0.0.1
+mixture.
 
 ## First-run smoke test (login and API only)
 
@@ -124,13 +147,13 @@ importing the OSM extracts or starting GeoServer.
    dotnet run --project src/GeoSearch.Web.Client --launch-profile GeoSearch.Web.Client
    ```
 
-5. Open `http://localhost:5100/swagger`, `http://localhost:5100/api/health`, and
-   `http://localhost:5200/login`. Log in with the provisioned development account.
-   The authenticated landing page is deliberately a map placeholder. Browser refresh
-   clears the in-memory access token.
+5. Open `https://localhost:5100/swagger`, `https://localhost:5100/api/health`, and
+   `https://localhost:5200/login`. Log in with the provisioned development account.
+   The authenticated landing page is deliberately a map placeholder. Reloading the browser
+   obtains a new access JWT through the secure refresh cookie.
 
 To check the API independently, use the Swagger login route or issue a JSON POST to
-`http://localhost:5100/api/auth/login`, then call `/api/auth/me` with the returned
+`https://localhost:5100/api/auth/login`, then call `/api/auth/me` with the returned
 `Authorization: Bearer <accessToken>` header. Without a token `/api/auth/me` must
 return HTTP 401; invalid login credentials must not issue a token. The server applies
 migrations automatically on its first startup; if that fails, inspect its startup
@@ -140,7 +163,7 @@ log and connection string before testing login.
 projects. VS Code port forwarding is disabled in the devcontainer. Docker translates
 container application ports 5100/5200 to host-loopback ports 15100/15200 instead,
 so a second .NET instance running in the container cannot claim Visual Studio's
-host ports. The host-side client keeps its default API URL `http://localhost:5100/`.
+host ports. The host-side client keeps its default API URL `https://localhost:5100/`.
 For container-hosted application testing, see
 [devcontainer port configuration](../.devcontainer/README.md#application-ports-and-host-debugging)
 for container binding, browser API URLs, and CORS requirements.
@@ -152,9 +175,17 @@ followed by `./scripts/setup-identity-db.sh`, provided all connections are close
 
 ## Auth scope
 
-The bootstrap has a login endpoint and a JWT-protected account endpoint. The client holds its access token in memory and clears it on logout; there are no refresh cookies or remember-me persistence. This is suitable for initial wiring and tests, not the final authentication design. Rate limits, TLS, monitoring, key rotation and reset/recovery flows require later review. The lab itself does not require login and the geospatial read endpoints should not be gated without a good reason.
+The API uses two-minute bearer access JWTs, rotating opaque refresh tokens in secure
+host-scoped cookies, and antiforgery validation for refresh/logout. The browser keeps the
+access token in memory and restores a session using the refresh cookie. Logout revokes its
+refresh-token family; changing the password revokes all active refresh sessions. Already
+issued JWTs remain usable until expiry, so individual bearer requests are not immediately
+revoked. The lab does not require login for GIS read operations; do not gate public search
+endpoints without a concrete requirement.
 
-WKG ASP.NET Core and EF Core packages are GPLv3 and require a licensing review for any public distribution. The RECAP source generator is registered for future application-owned models; no provider-specific PostGIS stored procedure mapper is wired into the bootstrap.
+Production deployments need HTTPS termination and reviewed proxy, key rotation, logging
+and monitoring configuration. Development certificates and sample credentials must never be
+used for production.
 
 ## Initial review gate
 

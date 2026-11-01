@@ -104,7 +104,7 @@ builder.Services.AddRateLimiter(options =>
 
 if (builder.Environment.IsDevelopment())
 {
-    string clientOrigin = builder.Configuration["Cors:ClientOrigin"] ?? "http://localhost:5200";
+    string clientOrigin = builder.Configuration["Cors:ClientOrigin"] ?? "https://localhost:5200";
     builder.Services.AddCors(options => options.AddPolicy("DevClient", policy =>
         policy.WithOrigins(clientOrigin).AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
 }

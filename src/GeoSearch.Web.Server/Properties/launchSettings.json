@@ -4,7 +4,7 @@
     "GeoSearch.Web.Server": {
       "commandName": "Project",
       "launchBrowser": false,
-      "applicationUrl": "http://localhost:5100",
+      "applicationUrl": "https://localhost:5100",
       "environmentVariables": { "ASPNETCORE_ENVIRONMENT": "Development" }
     }
   }

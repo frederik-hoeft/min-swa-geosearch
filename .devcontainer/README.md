@@ -45,24 +45,22 @@ The Docker host ports can be overridden before creating/recreating the Compose s
 `GEOSEARCH_DEV_API_PORT=25100` if `15100` is reserved on Windows. This changes only
 host publication, not the ports that ASP.NET Core listens on inside the container.
 
-When starting an ASP.NET Core process **inside** the container, bind to all container
-interfaces rather than the loopback-only URLs in the existing launch profiles:
+The ports above are Docker TCP mappings, not TLS termination; they can also carry HTTPS.
+Running the web apps **inside the container** requires a separate HTTPS development
+certificate available to the container process **and trusted by the Windows browser**.
+Do not use the earlier HTTP `--urls` examples for authentication: `SecurePolicy=Always`
+will reject the antiforgery exchange. If container-hosted web development is needed,
+provision a trusted development certificate for the container and bind the apps to
+`https://0.0.0.0:5100` and `https://0.0.0.0:5200`. The browser-visible URLs will then
+be `https://localhost:15100` and `https://localhost:15200` (or the configured host ports).
+Set the container-hosted client's `Api:BaseUrl` to the former and the API's
+`Cors:ClientOrigin` to the latter. The Compose environment already sets the HTTPS
+client origin. Do not commit the certificate or its password.
 
-```bash
-dotnet run --project src/GeoSearch.Web.Server --no-launch-profile --urls http://0.0.0.0:5100
-# In a second container terminal:
-dotnet run --project src/GeoSearch.Web.Client --no-launch-profile --urls http://0.0.0.0:5200
-```
-
-The container sets `ASPNETCORE_ENVIRONMENT=Development` and its browser CORS origin
-(`http://localhost:15200`, or the configured client host port). The backend still
-needs container-local connection strings (`Host=postgis`). In particular,
-when testing the container-hosted browser client, the static client configuration
-(`src/GeoSearch.Web.Client/wwwroot/appsettings.json`) must point at the Docker-published
-API URL (`http://localhost:15100/`) rather than the host Visual Studio API URL
-(`http://localhost:5100/`). Its browser origin is `http://localhost:15200`.
-The checked-in settings remain aimed at Visual Studio on the host; adjust the client
-configuration only when deliberately running a separate container-hosted frontend.
+For the intended **Visual Studio on Windows + devcontainer for GIS tooling** workflow,
+no container certificate is needed: Visual Studio uses the trusted Windows developer
+certificate for `https://localhost:5100` and `https://localhost:5200`, and PostgreSQL
+remains published by Docker at `localhost:5432`.
 
 When the devcontainer is used only for GIS tooling and scripts, **do not start either
 .NET process inside it**. The host's Visual Studio projects can run on 5100/5200
