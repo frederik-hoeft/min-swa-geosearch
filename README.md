@@ -7,7 +7,7 @@ GeoSearch is a .NET 10 / Blazor WebAssembly project for the Software Architectur
 - `lab/`: unchanged instructor SQL, Compose, import settings and original `justfile` (for provenance); large datasets are not included.
 - `scripts/lab.sh`: Bash replacement for the instructor's `just` recipes; see `lab/data/README.md` for required downloads.
 - `src/GeoSearch.Web.Server/`: ASP.NET Core HTTP API and app-owned Identity database.
-- `src/GeoSearch.Web.Client/`: Blazor WebAssembly UI, login and empty search page.
+- `src/GeoSearch.Web.Client/`: Blazor WebAssembly UI with code-behind views, a branded login experience and a clearly marked map placeholder.
 - `src/GeoSearch.Web.Shared/`: DTOs shared by the client and server.
 - `src/GeoSearch.Web.Server.Tests/`: MSTest scaffolding.
 - `docs/architecture.md`: intended ownership, boundaries and deferred GIS features.
@@ -42,9 +42,9 @@ dotnet test src/GeoSearch.slnx --no-restore --no-build
 
 To collect all direct and transitive NuGet packages for an offline build, run `./src/restore.sh` on a machine with a .NET 10 SDK, Python 3 and NuGet.org access. The script restores the complete solution using a fresh isolated cache and writes the ignored `src/nuget-packages.zip` bundle for handoff. See [development setup](docs/development.md#offline-dependency-bundle) for limitations.
 
-The ASP.NET server requires an application-owned PostgreSQL connection string and JWT signing key via User Secrets or environment variables. Copy `src/GeoSearch.Web.Server/appsettings.example.json` to a local, git-ignored `appsettings.json` and supply the private settings described in `docs/development.md`. The initial JWT login API uses a locally provisioned Identity account; public registration is disabled. No hard-coded production credentials or signing key are included.
+The ASP.NET server requires an application-owned PostgreSQL connection string and JWT signing key via User Secrets or environment variables. Copy `src/GeoSearch.Web.Server/appsettings.example.json` to a local, git-ignored `appsettings.json` and supply the private settings described in `docs/development.md`. The authentication API uses two-minute JWTs and rotating, HttpOnly-cookie refresh sessions; the development account can be provisioned at startup. Public registration is disabled. No hard-coded production credentials or signing key are included.
 
-Run the server and the separate WASM client in two terminals for development. For same-origin deployment, the frontend is served as static assets and `/api/*` is reverse proxied to the server; a production container recipe has not been created. Run `./scripts/setup-identity-db.sh` to provision the independent Identity database; the API applies the committed EF migration at startup (see development documentation). Offline bootstrap compilation and five MSTest tests have been validated against the provided .NET 10.0.403 SDK and dependency archive, with the SCSS package excluded because it was not in the supplied archive. See [validation](docs/validation.md) for exact scope and the outstanding database/runtime verification.
+Run the server and the separate WASM client in two terminals for development. For same-origin deployment, the frontend is served as static assets and `/api/*` is reverse proxied to the server; a production container recipe has not been created. Run `./scripts/setup-identity-db.sh` to provision the independent Identity database; the API applies the committed EF migration at startup (see development documentation). The refreshed offline dependency bundle includes SassCompiler. Build, formatting and MSTest are verified independently of the browser and PostgreSQL integration checks. See [validation](docs/validation.md) for exact scope and the outstanding database/runtime verification.
 
 ## References
 
@@ -53,3 +53,4 @@ Run the server and the separate WASM client in two terminals for development. Fo
 - [Bootstrap validation and limitations](docs/validation.md)
 - [Lab requirements](lab/lab-2.md)
 - [Code style](code-style.md)
+- [UI visual identity and component conventions](docs/ui-design.md)

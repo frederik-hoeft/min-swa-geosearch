@@ -1,13 +1,1 @@
 @inject NavigationManager Navigation
-
-@code {
-    protected override void OnInitialized()
-    {
-        string? returnUrl = new Uri(Navigation.Uri).PathAndQuery;
-        if (returnUrl?.StartsWith("/login", StringComparison.OrdinalIgnoreCase) == true)
-        {
-            return;
-        }
-        Navigation.NavigateTo("/login");
-    }
-}

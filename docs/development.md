@@ -45,8 +45,10 @@ local development, not application deployment or running unreviewed code.
 
 ## SCSS
 
-Blazor global styles live in `UI/Styles/app.scss` and component/page-specific isolated styles
-in adjacent `*.razor.scss` files. `sasscompiler.json` explicitly declares both outputs.
+Blazor global styles live in `UI/Styles/app.scss`, shared component styles are imported
+from there, and page-specific isolated styles live in adjacent `*.razor.scss` files.
+`sasscompiler.json` explicitly declares those outputs. See the standalone
+[UI conventions and identity](ui-design.md) for component locality, themes and layout patterns.
 `AspNetCore.SassCompiler` performs compilation during .NET builds, producing generated CSS
 that is ignored by Git; generated CSS must not be hand-edited. The latest supplied offline NuGet bundle includes `AspNetCore.SassCompiler` version 1.103.0.
 A normal offline build compiles the SCSS. If manually unpacking `.nupkg` files into the NuGet

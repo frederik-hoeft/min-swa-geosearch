@@ -1,0 +1,31 @@
+.gs-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
+    text-decoration: none;
+    color: var(--gs-ink);
+    white-space: nowrap;
+
+    &:focus-visible { border-radius: 6px; }
+}
+
+.gs-brand-symbol {
+    display: inline-flex;
+    width: 2.5rem;
+    height: 2.5rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: var(--gs-green);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(17, 122, 104, 0.15);
+}
+
+.gs-brand-name {
+    font-size: 1.2rem;
+    font-weight: 780;
+    letter-spacing: -0.055em;
+    color: var(--gs-ink);
+
+    > span { color: var(--gs-green); }
+}

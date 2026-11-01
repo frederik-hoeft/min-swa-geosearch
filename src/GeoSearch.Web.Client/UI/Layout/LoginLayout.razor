@@ -1,0 +1,20 @@
+@inherits LayoutComponentBase
+
+<main class="gs-login-shell">
+    <aside class="gs-login-story" aria-label="GeoSearch introduction">
+        <AppBrand />
+        <div class="gs-story-content">
+            <span class="gs-story-overline">LOCATION INTELLIGENCE / OPEN DATA</span>
+            <h2>Where data meets <em>place.</em></h2>
+            <p>Discover addresses, explore neighborhoods, and turn open geospatial data into useful answers.</p>
+            <div class="gs-story-tags" aria-label="Technologies">
+                <span>OpenStreetMap</span><span>PostGIS</span><span>MapLibre</span>
+            </div>
+        </div>
+        <div class="gs-story-footer">GeoSearch <span>·</span> Spatial discovery workspace</div>
+    </aside>
+    <section class="gs-login-content" aria-label="Account access">
+        <div class="gs-login-mobile-brand"><AppBrand /></div>
+        @Body
+    </section>
+</main>

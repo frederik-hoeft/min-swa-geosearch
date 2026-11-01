@@ -10,14 +10,15 @@ contains **130** packages. They were extracted into an isolated cache outside th
 package sources were cleared during restore. Environment variables affecting MSBuild platform
 selection were unset.
 
-The following checks passed with the supplied package set:
+The following checks passed with the supplied package set (including the Razor code-behind
+and GeoSearch theme updates):
 
 - Offline solution restore and compilation for .NET 10 with SCSS compilation enabled.
 - Warnings-as-errors compilation using the complete analyzer policies in `src/.editorconfig`
   and `src/.globalconfig`, including the narrow project-local exceptions.
-- Targeted `dotnet format whitespace --verify-no-changes --no-restore` on the modified C# files.
-- MSTest baseline includes client session tests, WKG model construction, and an initial migration
-  consistency check that does not connect to a database.
+- Solution-wide `dotnet format --verify-no-changes --no-restore`.
+- MSTest baseline covers client session/HTTP contracts, WKG model construction, migration
+  consistency, and record-constructor validation metadata, without a database connection.
 - Git whitespace and patch-application checks; XML/JSON and Bash syntax validation.
 
 The refreshed package set contains `AspNetCore.SassCompiler` 1.103.0; its Dart executable

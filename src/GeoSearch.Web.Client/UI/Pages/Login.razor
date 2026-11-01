@@ -1,63 +1,37 @@
-﻿@page "/login"
+@page "/login"
+@layout LoginLayout
 @attribute [AllowAnonymous]
+@implements IDisposable
 @inject AuthenticationService Authentication
 @inject NavigationManager Navigation
+@inject SessionAuthenticationStateProvider AuthenticationState
 
 <PageTitle>Sign in | GeoSearch</PageTitle>
-<MudContainer MaxWidth="MaxWidth.Small" Class="mt-12">
-    <MudPaper Class="pa-6" Elevation="2">
-        <MudText Typo="Typo.h5" GutterBottom="true">Sign in</MudText>
-        <MudText Typo="Typo.body2" Class="mb-4">Use the development account configured on the API server.</MudText>
-        @if (_error is not null)
-        {
-            <MudAlert Severity="Severity.Error" Class="mb-3">@_error</MudAlert>
-        }
-        <MudTextField T="string" Label="Email" InputType="InputType.Email"
-                      @bind-Value="_email" Disabled="_busy" Class="mb-3" />
-        <MudTextField T="string" Label="Password" InputType="InputType.Password"
-                      @bind-Value="_password" Disabled="_busy" Class="mb-3" />
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy"
-                   OnClick="SignInAsync" FullWidth="true">Sign in</MudButton>
-    </MudPaper>
-</MudContainer>
-
-@code {
-    private string _email = string.Empty;
-    private string _password = string.Empty;
-    private string? _error;
-    private bool _busy;
-
-    private async Task SignInAsync()
+<div class="gs-auth-card">
+    <div class="gs-auth-eyebrow">SECURE ACCESS</div>
+    <h1>Welcome back</h1>
+    <p class="gs-auth-description">Sign in to your GeoSearch workspace.</p>
+    @if (_error is not null)
     {
-        if (_busy)
-        {
-            return;
-        }
-        _error = null;
-        if (string.IsNullOrWhiteSpace(_email) || string.IsNullOrEmpty(_password))
-        {
-            _error = "Enter your email and password.";
-            return;
-        }
-        _busy = true;
-        try
-        {
-            bool success = await Authentication.LoginAsync(_email.Trim(), _password);
-            if (!success)
-            {
-                _error = "Sign-in failed. Check your credentials and try again.";
-                return;
-            }
-            Navigation.NavigateTo("/");
-        }
-        catch (HttpRequestException)
-        {
-            _error = "The authentication service is unavailable.";
-        }
-        finally
-        {
-            _password = string.Empty;
-            _busy = false;
-        }
+        <MudAlert Severity="Severity.Error" Variant="Variant.Outlined" Class="gs-auth-error" role="alert">@_error</MudAlert>
     }
-}
+    <MudForm @ref="_form" OnEnterPressed="SignInAsync" aria-busy="@_busy">
+        <MudTextField T="string" Label="Email address" InputType="InputType.Email" InputMode="InputMode.email"
+                      @bind-Value="_email" Validation="@EmailValidation" Required="true" RequiredError="Enter your email address."
+                      autocomplete="username" autocapitalize="off" spellcheck="false" Disabled="_busy"
+                      Variant="Variant.Outlined" Margin="Margin.Normal" />
+        <MudTextField T="string" Label="Password" InputType="InputType.Password"
+                      @bind-Value="_password" Required="true" RequiredError="Enter your password."
+                      autocomplete="current-password" Disabled="_busy"
+                      Variant="Variant.Outlined" Margin="Margin.Normal" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy" FullWidth="true"
+                   OnClick="SignInAsync" Class="gs-auth-submit">
+            @if (_busy)
+            {
+                <MudProgressCircular Indeterminate="true" Size="Size.Small" Class="mr-2" />
+            }
+            @(_busy ? "Signing in..." : "Sign in")
+        </MudButton>
+    </MudForm>
+    <p class="gs-auth-footnote">Accounts are provisioned by your GeoSearch administrator.</p>
+</div>

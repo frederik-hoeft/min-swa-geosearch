@@ -1,6 +1,6 @@
-﻿using GeoSearch.Web.Client;
-using GeoSearch.Web.Client.Api;
+﻿using GeoSearch.Web.Client.Api;
 using GeoSearch.Web.Client.Auth;
+using GeoSearch.Web.Client.UI;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;

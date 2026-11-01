@@ -1,0 +1,66 @@
+.gs-appbar.mud-appbar {
+    border-bottom: 1px solid var(--gs-border);
+    box-shadow: none;
+
+    .mud-toolbar {
+        padding: 0 clamp(1rem, 3vw, 3rem);
+        gap: 2rem;
+    }
+
+    .gs-primary-nav .mud-nav-link {
+        min-height: 2.75rem;
+        padding: 0.5rem 0.875rem;
+        border-radius: 8px;
+        color: var(--gs-muted);
+        font-weight: 600;
+
+        &.active {
+            background: #e6f3ee;
+            color: var(--gs-green-deep);
+        }
+    }
+}
+
+.gs-account-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+
+    .mud-button-outlined { border-color: var(--gs-border); }
+}
+
+.gs-account-name {
+    max-width: 16rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--gs-muted);
+    font-size: 0.8rem;
+}
+
+.gs-main-content {
+    min-height: 100vh;
+}
+
+.gs-main {
+    max-width: var(--gs-page-max);
+    margin: 0 auto;
+    padding: clamp(1.5rem, 4vw, 3.5rem);
+}
+
+.gs-shell-alert { margin-bottom: 1rem; }
+
+@media (max-width: 760px) {
+    .gs-account-name { display: none; }
+    .gs-appbar.mud-appbar .mud-toolbar { gap: 0.75rem; }
+}
+
+@media (max-width: 540px) {
+    .gs-appbar.mud-appbar .mud-toolbar { padding-inline: 0.75rem; }
+    .gs-account-actions .mud-button-root { min-width: auto; padding-inline: 0.5rem; }
+    .gs-account-actions .mud-button-label { font-size: 0.75rem; }
+    .gs-primary-nav { display: none; }
+}
+
+.gs-skip-link { position: fixed; left: 1rem; top: 0.5rem; z-index: 2000; padding: 0.6rem 0.85rem; background: #fff; color: var(--gs-green-deep); border-radius: 8px; transform: translateY(-200%); }
+.gs-skip-link:focus { transform: translateY(0); }

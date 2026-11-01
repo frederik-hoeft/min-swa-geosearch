@@ -43,4 +43,4 @@ A modular monolith is favored over microservices because the API is a small read
 
 ## Current implementation boundary
 
-This document defines the target architecture. The bootstrap implements the solution structure, authentication shell and empty search page; GeoJSON endpoints, geolocation, map rendering, PostGIS integration, data seeding/import, browser integration tests and local tile hosting remain future implementation work. Do not interpret their design as functionality already delivered.
+This document defines the target architecture. The bootstrap implements the solution structure, authentication shell and a styled, noninteractive map workspace; GeoJSON endpoints, geolocation, map rendering, PostGIS integration, data seeding/import, browser integration tests and local tile hosting remain future implementation work. Do not interpret their design as functionality already delivered.
