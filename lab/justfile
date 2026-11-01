@@ -21,7 +21,7 @@ export PGUSER     := "lab1"
 export PGDATABASE := "lab1"
 export PGPASSWORD := env("POSTGIS_PASSWORD", "lab1-local-only")
 pg       := "PG:host=" + PGHOST + " port=" + PGPORT + " dbname=" + PGDATABASE + " user=" + PGUSER
-geoserver := "http://localhost:" + env("GEOSERVER_PORT", "8081") + "/geoserver"
+geoserver := env("GEOSERVER_URL", "http://localhost:" + env("GEOSERVER_PORT", "8081") + "/geoserver")
 gs_auth  := "admin:" + env("GEOSERVER_ADMIN_PASSWORD", "lab1-local-only")
 # Database host as seen from the GeoServer container (Compose service name)
 gs_db_host := "postgis"
