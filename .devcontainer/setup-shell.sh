@@ -31,5 +31,9 @@ ln -sf "$HOME/.oh-my-zsh-themes/themes/fred.zsh-theme" "$ZSH_CUSTOM_DIR/themes/f
 wget -q https://raw.githubusercontent.com/frederik-hoeft/dot-files/refs/heads/main/default.zshrc -O "$HOME/.zshrc"
 wget -q https://raw.githubusercontent.com/frederik-hoeft/dot-files/refs/heads/main/default.vimrc -O "$HOME/.vimrc"
 sed -i "s|/opt/shared/oh-my-zsh/oh-my-zsh|${ZSH_DIR}|g" "$HOME/.zshrc"
-# WSL volume mounts cause git to report dubious ownership
-git config --global --add safe.directory '*'
+# WSL bind mounts can have a different owner; trust only the project mount.
+# Replace any wildcard setting left by earlier devcontainer setups.
+git config --global --fixed-value --unset-all safe.directory '*' || true
+if ! git config --global --get-all safe.directory | grep -Fxq '/workspace'; then
+    git config --global --add safe.directory '/workspace'
+fi
