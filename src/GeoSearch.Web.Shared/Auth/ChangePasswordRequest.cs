@@ -2,6 +2,8 @@
 
 namespace GeoSearch.Web.Shared.Auth;
 
-public sealed record ChangePasswordRequest(
-    [property: Required] string CurrentPassword,
-    [property: Required] string NewPassword);
+public sealed record ChangePasswordRequest
+(
+    [Required] string CurrentPassword,
+    [Required] string NewPassword
+);
