@@ -84,7 +84,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 builder.Services.AddAuthorization();
 // Refresh and logout are cookie-authenticated and require a request-token header.
-// Authentication itself remains stateless JWT bearer for normal API requests.
+// Normal API requests remain stateless JWT bearer authenticated.
+builder.Services.AddProblemDetails();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -124,6 +125,7 @@ if (app.Environment.IsDevelopment())
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<AntiforgeryValidationMiddleware>();
 app.MapControllers();
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 

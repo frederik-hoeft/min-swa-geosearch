@@ -3,7 +3,7 @@
   "profiles": {
     "GeoSearch.Web.Client": {
       "commandName": "Project",
-      "launchBrowser": false,
+      "launchBrowser": true,
       "applicationUrl": "https://localhost:5200",
       "environmentVariables": { "ASPNETCORE_ENVIRONMENT": "Development" }
     }

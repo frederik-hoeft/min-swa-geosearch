@@ -47,7 +47,7 @@ public sealed class AuthController(
 
     [HttpPost("refresh")]
     [AllowAnonymous]
-    [ValidateAntiForgeryToken]
+    [RequireAntiforgeryValidation]
     public async Task<ActionResult<LoginResponse>> RefreshAsync(CancellationToken cancellationToken)
     {
         if (!TryGetRefreshToken(out string? refreshToken))
@@ -68,7 +68,7 @@ public sealed class AuthController(
 
     [HttpPost("logout")]
     [AllowAnonymous]
-    [ValidateAntiForgeryToken]
+    [RequireAntiforgeryValidation]
     public async Task<IActionResult> LogoutAsync(CancellationToken cancellationToken)
     {
         if (TryGetRefreshToken(out string? refreshToken))
