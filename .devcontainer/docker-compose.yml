@@ -12,6 +12,8 @@ services:
       - "127.0.0.1:${GEOSEARCH_DEV_API_PORT:-15100}:5100"
       - "127.0.0.1:${GEOSEARCH_DEV_CLIENT_PORT:-15200}:5200"
     environment:
+      # Explicit marker for recipes that must not start a second Compose stack.
+      GEOSEARCH_DEVCONTAINER: "1"
       ASPNETCORE_ENVIRONMENT: Development
       # The published client uses a different browser origin from the host Visual Studio client.
       Cors__ClientOrigin: "https://localhost:${GEOSEARCH_DEV_CLIENT_PORT:-15200}"

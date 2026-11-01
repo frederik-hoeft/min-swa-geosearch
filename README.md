@@ -21,7 +21,7 @@ GeoSearch is a .NET 10 / Blazor WebAssembly application for [Software Architectu
    just s06-search "Limmerstr 12 Hannover"
    ```
 
-   `s01-stack-up` is not needed inside the devcontainer: PostGIS is already running as its Compose dependency. Importing the datasets is optional until the GIS API is implemented.
+   `s01-stack-up` is disabled inside the devcontainer: PostGIS is already running as its Compose dependency. Importing the datasets is optional until the GIS API is implemented.
 4. Configure the server and start the web projects following the [development guide](docs/development.md). To initialize the separate Identity database, run `./scripts/setup-identity-db.sh` from `/workspace`.
 
 The devcontainer forwards PostgreSQL to Windows at `localhost:5432`. Its web app ports are kept separate from Visual Studio's ports; see the [container and host debugging guide](.devcontainer/README.md).

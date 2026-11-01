@@ -1,5 +1,5 @@
 # Software Architectures 2026 — runnable steps for Lecture 2 / Lab 2.
-# Run `just` in this folder to list the recipes; run them in order: just s01-stack-up, just s02-db-setup, ...
+# Run `just` in this folder to list recipes. Outside the devcontainer, start at s01-stack-up; inside, start at s02-db-setup.
 # just runs every recipe in the folder of this justfile, so all paths below are relative to it.
 # Put the Geofabrik downloads into data/ (see lab-2.md), or point gpkg/pbf elsewhere: just pbf=/path/x.osm.pbf s04-import-addresses
 # Imports are restricted to Hannover by default; import all of Lower Saxony with: just bbox="" s03-import-gpkg
@@ -32,6 +32,7 @@ default:
 
 # Start PostGIS and GeoServer and wait until the database accepts connections
 s01-stack-up:
+    if [[ "${GEOSEARCH_DEVCONTAINER:-}" == "1" || -d /workspace/.devcontainer ]]; then echo "Refusing s01-stack-up inside the GeoSearch devcontainer: PostGIS is already managed by its Compose project. Start with 'just s02-db-setup'." >&2; exit 1; fi
     docker compose -f {{compose}} up -d
     for i in $(seq 1 90); do psql -Atc "SELECT 1" >/dev/null 2>&1 && exit 0; sleep 2; done; echo "PostGIS not ready after 3 minutes" >&2; exit 1
 

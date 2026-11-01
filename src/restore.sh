@@ -2,8 +2,7 @@
 set -euo pipefail
 
 # Collect every NuGet package needed to restore the whole solution from a clean cache.
-# This runs on a connected development machine; the resulting ZIP is the handoff
-# artifact for the isolated .NET toolchain (see docs/development.md).
+# Optional package-archive helper; not required for normal development or CI.
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 CACHE="$SCRIPT_DIR/.nuget-cache"
 OUT="$SCRIPT_DIR/nuget-packages"

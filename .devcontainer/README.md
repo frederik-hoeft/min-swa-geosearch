@@ -36,7 +36,7 @@ just s06-search 'Limmerstr 12 Hannover'
 just s07-reverse 9.7320 52.3759
 ```
 
-Download the [external Geofabrik data](../lab/data/README.md) before running the import recipes. **Skip `s01-stack-up` in the devcontainer:** the Compose configuration has already started PostGIS. Running the standalone recipe may attempt to start a second Compose stack on the same published database port.
+Download the [external Geofabrik data](../lab/data/README.md) before running the import recipes. `s01-stack-up` is guarded and refuses to run in the devcontainer, where its Compose project has already started PostGIS. It remains available for standalone lab setups.
 
 The optional GeoServer service uses the same internal Docker network. If it is started through the devcontainer's Compose project, `GEOSERVER_URL=http://geoserver:8080/geoserver` directs the `s08-geoserver-publish` recipe to it. GeoServer is not needed for application search or the initial imports.
 

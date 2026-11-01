@@ -17,8 +17,6 @@ GitHub Actions restores dependencies, checks formatting, builds in Release with 
 
 The automated tests exercise Identity/JWT configuration, refresh-token mapping and EF migration metadata, browser session request contracts, record-constructor validation, API-only antiforgery middleware, and refresh-token cleanup boundaries. These tests do not require PostgreSQL or a browser, and do not prove database concurrency or cross-origin cookie behavior.
 
-For network-isolated .NET builds, see the [offline bundle procedure](development.md#offline-dependency-bundle). Offline package preparation is separate from the normal devcontainer workflow.
-
 ## Runtime verification
 
 Use the [devcontainer database](../.devcontainer/README.md) for the following checks:

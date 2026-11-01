@@ -4,7 +4,7 @@ The preferred environment is [the VS Code devcontainer](../.devcontainer/README.
 
 ## Start the devcontainer and prepare the databases
 
-Open the repository in VS Code, choose **Dev Containers: Reopen in Container**, and open a terminal at `/workspace`. PostGIS starts as a Compose dependency and is reachable through `postgis:5432`. Do **not** run the instructor's `s01-stack-up` recipe inside the devcontainer; it would try to start a separate stack.
+Open the repository in VS Code, choose **Dev Containers: Reopen in Container**, and open a terminal at `/workspace`. PostGIS starts as a Compose dependency and is reachable through `postgis:5432`. The `s01-stack-up` recipe refuses to run inside the devcontainer because its Compose project already provides PostGIS.
 
 For the geospatial dataset, follow [the download instructions](../lab/data/README.md), then run:
 
@@ -89,19 +89,9 @@ dotnet test src/GeoSearch.slnx --no-restore --no-build
 
 SCSS is compiled as part of the .NET build. Editing generated CSS directly is unsupported; source styling conventions are in [the UI guide](ui-design.md).
 
-### Offline dependency bundle
+### Dependency archive helper
 
-The normal devcontainer uses NuGet restore and caches packages on a persistent volume. For an isolated environment without NuGet access, `./src/restore.sh` can collect direct and transitive packages from NuGet.org into an ignored `src/nuget-packages.zip`; this preparation requires .NET SDK 10, Bash, Python 3, and network access. The SDK itself is distributed separately.
-
-Extract the SDK and package archive into isolated locations, use a temporary NuGet configuration clearing all package sources, and point `DOTNET_ROOT`, `PATH`, and `NUGET_PACKAGES` at the prepared copies. Restore once using that configuration, then build and test with `--no-restore`:
-
-```bash
-dotnet restore src/GeoSearch.slnx --configfile "$OFFLINE_NUGET_CONFIG" --force --no-cache
-dotnet build src/GeoSearch.slnx --no-restore -warnaserror
-dotnet test src/GeoSearch.slnx --no-restore --no-build
-```
-
-The archive must include all transitive build tools, including `AspNetCore.SassCompiler`; unpacking packages directly into NuGet's global-cache layout requires restoring the Sass compiler executable permission on Linux. See [the offline engineering instructions](https://github.com/frederik-hoeft/custom-skills/blob/main/dev/dotnet-offline.skill) for package-cache preparation. These archives are not committed to Git.
+`./src/restore.sh` is an optional helper that creates an ignored `src/nuget-packages.zip` archive from a clean NuGet restore. It is not needed for normal development or CI, which use `dotnet restore` directly.
 
 ## Database model changes
 
