@@ -34,6 +34,13 @@ builder.Services.AddOptions<RefreshTokenOptions>()
         && options.CookieName.StartsWith("__Host-", StringComparison.Ordinal),
         "Refresh token lifetime must be 1-90 days and the cookie must use the __Host- prefix.")
     .ValidateOnStart();
+builder.Services.AddOptions<RefreshTokenCleanupOptions>()
+    .Bind(builder.Configuration.GetSection(RefreshTokenCleanupOptions.SECTION_NAME))
+    .Validate(options => options.Retention >= TimeSpan.FromDays(1) && options.Retention <= TimeSpan.FromDays(365)
+        && options.Interval >= TimeSpan.FromMinutes(1) && options.Interval <= TimeSpan.FromDays(30),
+        "Refresh-token cleanup retention must be 1-365 days and its interval must be 1 minute to 30 days.")
+    .ValidateOnStart();
+builder.Services.AddHostedService<RefreshTokenPruningService>();
 builder.Services.AddAntiforgery(options =>
 {
     options.HeaderName = "X-CSRF-TOKEN";
