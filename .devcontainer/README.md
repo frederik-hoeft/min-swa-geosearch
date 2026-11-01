@@ -6,7 +6,7 @@ It uses the lab Compose definition to start PostGIS on the same internal Compose
 workspace container. `PGHOST=postgis` resolves the database service without exposing credentials
 in source code. GeoServer remains an optional service; start it with `./scripts/lab.sh geoserver-up`.
 
-Open this repository in a Dev Containers-compatible editor and choose **Reopen in Container**.
+**Preferred workflow:** open this repository in VS Code and choose **Dev Containers: Reopen in Container**. Run the lab scripts, GIS imports, PostgreSQL commands, .NET CLI, and tests from the container terminal. Visual Studio on Windows can optionally run and debug the web applications against the same Docker-hosted database.
 The first creation downloads base images, extensions and shell customizations, so it requires
 network access. Subsequent `dotnet restore`, `dotnet build` and `dotnet test` use the ordinary SDK.
 
@@ -23,7 +23,7 @@ clients, but these are not ports of the devcontainer itself. The lab's provided 
 are development-only and should not be reused in a production deployment.
 
 The devcontainer shares the Docker daemon through a host socket. Do not use it to work with
-untrusted repositories. The initial build requires the container service and the PostGIS image;
+untrusted repositories. The Git ownership exception is limited to the `/workspace` project mount; other repositories are not globally trusted. The initial build requires the container service and the PostGIS image;
 rebuilding the devcontainer without network access requires pre-cached images/features.
 
 ## Application ports and host debugging
@@ -57,12 +57,14 @@ Set the container-hosted client's `Api:BaseUrl` to the former and the API's
 `Cors:ClientOrigin` to the latter. The Compose environment already sets the HTTPS
 client origin. Do not commit the certificate or its password.
 
-For the intended **Visual Studio on Windows + devcontainer for GIS tooling** workflow,
+For the optional **Visual Studio on Windows + devcontainer for GIS tooling** workflow,
 no container certificate is needed: Visual Studio uses the trusted Windows developer
 certificate for `https://localhost:5100` and `https://localhost:5200`, and PostgreSQL
 remains published by Docker at `localhost:5432`.
 
-When the devcontainer is used only for GIS tooling and scripts, **do not start either
+.NET projects can also build and run inside the devcontainer once a trusted development certificate is configured. When the devcontainer is used only for GIS tooling and scripts, **do not start either
 .NET process inside it**. The host's Visual Studio projects can run on 5100/5200
 without changing their launch profiles, while the running PostGIS service remains
 accessible through `localhost:5432`.
+
+The client uses its hosting origin by default (`wwwroot/appsettings.json`); `wwwroot/appsettings.Development.json` sets the Visual Studio API origin to `https://localhost:5100/`. For a container-hosted browser client, override that Development value to the Docker-published API port (`https://localhost:15100/`) before launching it. The API and client must use the same URL scheme for secure, SameSite cookies.

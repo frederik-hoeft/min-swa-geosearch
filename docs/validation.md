@@ -1,47 +1,34 @@
-# Bootstrap validation
+# Validation and integration boundaries
 
-The initial bootstrap is a locally compiled scaffold. It does not yet implement Lab 2 GIS
-endpoints, browser geolocation, basemap tiles, GeoServer publishing, or a production deployment.
+GeoSearch's initial implementation is an application foundation, not a completed GIS submission. The map is a placeholder; search, nearby/reverse GeoJSON endpoints, browser geolocation, and a local basemap are outside the current implementation.
 
-## Reproducible offline checks
+## Automated checks
 
-The provided SDK archive contains .NET SDK **10.0.403** for Linux x64. The refreshed NuGet ZIP
-contains **130** packages. They were extracted into an isolated cache outside the Git tree;
-package sources were cleared during restore. Environment variables affecting MSBuild platform
-selection were unset.
+Build and test the solution with the .NET 10 SDK:
 
-The following checks passed with the supplied package set (including the Razor code-behind
-and GeoSearch theme updates):
+```bash
+dotnet restore src/GeoSearch.slnx
+dotnet format src/GeoSearch.slnx --no-restore --verify-no-changes
+dotnet build src/GeoSearch.slnx --no-restore -warnaserror
+dotnet test src/GeoSearch.slnx --no-restore --no-build
+```
 
-- Offline solution restore and compilation for .NET 10 with SCSS compilation enabled.
-- Warnings-as-errors compilation using the complete analyzer policies in `src/.editorconfig`
-  and `src/.globalconfig`, including the narrow project-local exceptions.
-- Solution-wide `dotnet format --verify-no-changes --no-restore`.
-- MSTest baseline covers client session/HTTP contracts, WKG model construction, migration
-  consistency, and record-constructor validation metadata, without a database connection.
-- Git whitespace and patch-application checks; XML/JSON and Bash syntax validation.
+The GitHub Actions workflow performs restore, formatting verification, a Release build with warnings treated as errors, and tests. Local builds also compile the SCSS sources through SassCompiler.
 
-The refreshed package set contains `AspNetCore.SassCompiler` 1.103.0; its Dart executable
-required restoring the executable bit after direct ZIP extraction. This change affects the
-isolated package cache only, not the repository or its package versions.
+The unit tests cover Identity/JWT configuration, refresh-token model and migration metadata, browser authentication HTTP contracts, record-constructor validation, API-only antiforgery middleware, per-client login limiter partition keys, and refresh-token cleanup cutoffs. These tests do not require a database server.
 
-## Unverified behavior
+For an isolated/offline build, see [the offline dependency procedure](development.md#offline-dependency-bundle). The supplied test archive contains .NET SDK 10.0.403 and an offline NuGet package set; SassCompiler's Dart executable needs executable permission when the package is unpacked manually on Linux.
 
-A database instance with the imported OSM dataset was not available for integration tests.
-The Identity and WKG transaction integration compile, but no end-to-end login, lockout
-persistence, migration application, or web host startup has been tested against PostgreSQL.
-The generated initial migration is committed and applied by API startup. The migration snapshot
-is checked against the WKG-configured model without a database connection. Actual schema creation
-and transactional persistence still require PostgreSQL.
+## Runtime verification
 
-The devcontainer definition is structurally checked but has not been built or launched.
-WASM application startup, MapLibre resources, GeoJSON
-rendering, and browser/CORS/security flows remain deployment review gates.
+Use the [preferred devcontainer environment](development.md#preferred-development-environment) and PostgreSQL to exercise the application after changing authentication, migrations, or setup scripts. The following checks require real infrastructure rather than unit tests:
 
-As the search API is introduced, test it against the lab's ten fixtures and measure the
-required latency using an imported PostGIS database. Avoid representing baseline unit tests
-as evidence for that integration behavior.
+- Apply EF migrations to a disposable `geosearch_auth` database; exercise failed-login persistence, login, refresh rotation, expired/replayed-token family revocation, password-change session invalidation, and logout under concurrent requests.
+- Confirm that the pruning service deletes only tokens older than expiry plus retention, including consumed tokens in a still-active family, and that a database outage does not prevent API startup. An expired-and-pruned token must remain unauthorized.
+- Test per-IP login rate limiting through the actual hosting pipeline, including distinct clients, IPv4-mapped IPv6 addresses, and deployment behind a correctly configured trusted reverse proxy.
+- Verify HTTPS development certificates, secure cookies, credentialed CORS, antiforgery validation, browser reload/session restoration, multi-tab refresh, and the Development-only client API-origin override.
+- Check Dev Containers startup and Docker port publication. Visual Studio on the host is an optional debugging environment; its 5100/5200 ports must remain available when the devcontainer is running.
 
-## Authentication session integration boundary
+No PostgreSQL or browser end-to-end test was run as part of the isolated .NET validation. In particular, compilation and mock-host tests do not prove actual token retention, rotation races, database migrations, or cookie behavior in deployed browsers.
 
-Offline tests validate the mapped refresh-token schema and migration consistency, HTTP client request contracts, and cookie attributes. Browser cookie behavior, simultaneous refresh rotation across browser tabs, database-backed replay/family revocation, password-change persistence, and host-port CORS are integration checks requiring a running PostgreSQL server and browser. Execute those checks before deployment.
+When the GIS feature work begins, import the instructor's dated OSM snapshot, exercise the ten supplied search fixtures, validate the GeoJSON contract and coordinates, and measure the required median search latency against real PostGIS data. Keep this performance validation independent of authentication unit tests.

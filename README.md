@@ -1,6 +1,6 @@
 # GeoSearch
 
-GeoSearch is a .NET 10 / Blazor WebAssembly project for the Software Architectures Lab 2: local search and nearby queries over an OSM-derived Hannover PostGIS snapshot. The backend exposes GeoJSON; the browser will display results with MapLibre. This repository is currently an **application bootstrap**, not a completed lab submission.
+GeoSearch is a .NET 10 / Blazor WebAssembly project for the Software Architectures Lab 2: local search and nearby queries over an OSM-derived Hannover PostGIS snapshot. The planned API exposes GeoJSON for a MapLibre-based map client. The repository currently provides the application, authentication, and development foundation; the GIS endpoints and interactive map remain to be implemented.
 
 ## Structure
 
@@ -25,12 +25,11 @@ Requires Docker Compose, `psql`, `ogr2ogr` (GDAL), and `bash`. The optional GeoS
 ./scripts/lab.sh search 'Limmerstr 12 Hannover'
 ```
 
-## Development container
+## Preferred development workflow
 
-Open the repository in a Dev Containers-compatible editor and select **Reopen in Container**.
-The Debian-based .NET 10 container includes `psql`, `createdb`, GDAL (`ogr2ogr`), Docker CLI,
-Git, and the custom Zsh setup. It joins the supplied PostGIS Compose network. See
-[development container setup](.devcontainer/README.md) for database addresses and trust boundaries.
+Use the [development container](.devcontainer/README.md) for the .NET 10 toolchain, PostgreSQL/PostGIS, GDAL, and lab import scripts. Open the repository in VS Code with **Dev Containers: Reopen in Container**. The workspace is mounted at `/workspace`, and the database is available as `postgis:5432` inside the container.
+
+Visual Studio on Windows is an optional frontend and debugger: run the API and Blazor projects on the host at `https://localhost:5100` and `https://localhost:5200` while the devcontainer and database remain running. Docker publishes PostgreSQL on host port 5432. The container's application ports use separate host mappings to avoid conflicts. See the [development guide](docs/development.md) for setup and HTTPS requirements.
 
 ## Build and application configuration
 
@@ -42,9 +41,9 @@ dotnet test src/GeoSearch.slnx --no-restore --no-build
 
 To collect all direct and transitive NuGet packages for an offline build, run `./src/restore.sh` on a machine with a .NET 10 SDK, Python 3 and NuGet.org access. The script restores the complete solution using a fresh isolated cache and writes the ignored `src/nuget-packages.zip` bundle for handoff. See [development setup](docs/development.md#offline-dependency-bundle) for limitations.
 
-The ASP.NET server requires an application-owned PostgreSQL connection string and JWT signing key via User Secrets or environment variables. Copy `src/GeoSearch.Web.Server/appsettings.example.json` to a local, git-ignored `appsettings.json` and supply the private settings described in `docs/development.md`. The authentication API uses two-minute JWTs and rotating, HttpOnly-cookie refresh sessions; the development account can be provisioned at startup. Public registration is disabled. No hard-coded production credentials or signing key are included.
+The ASP.NET server requires an application-owned PostgreSQL connection string and JWT signing key via local configuration, User Secrets, or environment variables. Copy `src/GeoSearch.Web.Server/appsettings.example.json` to a local, git-ignored `appsettings.json` and supply the private settings described in `docs/development.md`. The authentication API uses two-minute JWTs and rotating, HttpOnly-cookie refresh sessions; the development account can be provisioned at startup. Public registration is disabled. No hard-coded production credentials or signing key are included.
 
-Run the server and the separate WASM client in two terminals for development. For same-origin deployment, the frontend is served as static assets and `/api/*` is reverse proxied to the server; a production container recipe has not been created. Run `./scripts/setup-identity-db.sh` to provision the independent Identity database; the API applies the committed EF migration at startup (see development documentation). The refreshed offline dependency bundle includes SassCompiler. Build, formatting and MSTest are verified independently of the browser and PostgreSQL integration checks. See [validation](docs/validation.md) for exact scope and the outstanding database/runtime verification.
+When developing the web apps, run the server and the separate WASM client in two terminals or as Visual Studio startup projects. The client uses the hosting origin by default and an explicit API origin in Development. For same-origin deployment, the frontend is served as static assets and `/api/*` is reverse proxied to the server; a production container recipe has not been created. Run `./scripts/setup-identity-db.sh` to provision the independent Identity database; the API applies the committed EF migration at startup (see development documentation). The refreshed offline dependency bundle includes SassCompiler. Build, formatting and MSTest are verified independently of the browser and PostgreSQL integration checks. See [validation](docs/validation.md) for exact scope and the outstanding database/runtime verification.
 
 ## References
 
@@ -53,4 +52,5 @@ Run the server and the separate WASM client in two terminals for development. Fo
 - [Bootstrap validation and limitations](docs/validation.md)
 - [Lab requirements](lab/lab-2.md)
 - [Code style](code-style.md)
+- [Project skills](.agents/skills/)
 - [UI visual identity and component conventions](docs/ui-design.md)

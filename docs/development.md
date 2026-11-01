@@ -31,17 +31,11 @@ See [the bootstrap validation record](validation.md) for the verified offline bu
 
 The script intentionally uses NuGet.org as its only feed. If package references require another feed in the future, review its trust and package provenance before extending the script.
 
-## Development container
+## Preferred development environment
 
-The included [development container](../.devcontainer/README.md) provides a Debian-based .NET 10 SDK
-with PostgreSQL client tools and GDAL, plus the standard Zsh configuration. The same Compose
-project starts the provided PostGIS service. From inside this container, use `Host=postgis`
-in `ConnectionStrings__Identity` and `ConnectionStrings__Search`; host-side programs can use
-`Host=localhost` with the host-loopback published port. The optional GeoServer service is
-reachable on `http://geoserver:8080/geoserver` from inside the container.
+The [development container](../.devcontainer/README.md) is the supported starting point. Reopen the repository in VS Code using Dev Containers; it provides a Debian-based .NET 10 SDK, PostgreSQL command-line tools, GDAL, and the project shell setup. The Compose project also starts PostGIS. Run `./scripts/lab.sh` and `./scripts/setup-identity-db.sh` from the container terminal, using `Host=postgis` for database connections made inside the container.
 
-The Docker socket exposes the host Docker daemon. The devcontainer is intended only for trusted
-local development, not application deployment or running unreviewed code.
+For Windows host debugging, keep the devcontainer running for PostGIS and GIS tooling, but run the ASP.NET API and Blazor client using Visual Studio's HTTPS launch profiles. Host applications connect to PostgreSQL through the published `localhost:5432` port; Docker publishes any apps started inside the container on separate 15100/15200 host ports. See the [port and certificate guide](../.devcontainer/README.md#application-ports-and-host-debugging). The Docker socket grants access to the host daemon: this environment is for trusted local development, not untrusted code or production deployment.
 
 ## SCSS
 
@@ -63,6 +57,7 @@ Server configuration is read through normal ASP.NET Core providers. Copy `src/Ge
 - `ConnectionStrings__Identity`: PostgreSQL connection for app-owned tables in `app_auth` schema; the role must be permitted to create/migrate that schema. The lab's `osm` and `search` schemas are not EF-owned.
 - `Jwt__Issuer`, `Jwt__Audience`, `Jwt__SigningKey`: issuer/audience values and a secret random key of at least 32 bytes. Never check it in. For local development use `dotnet user-secrets` or environment variables.
 - `Bootstrap__Email`, `Bootstrap__Password`: optional one-time development-only account provisioner (password at least 8 characters). Never include values in logs, CI or committed configuration. The bootstrapper refuses to run outside Development.
+- `Auth__RefreshTokenCleanup__Retention`, `Auth__RefreshTokenCleanup__Interval`: optional retention after token expiry (default 30 days) and background cleanup interval (default one day). Expired history is purged without touching unexpired sessions.
 
 Create the independent Identity database by running `./scripts/setup-identity-db.sh` after `./scripts/lab.sh stack-up`. On startup the API applies the committed initial migration and any later migrations to this database. The migration creates the Identity tables under `app_auth` and leaves the instructor-owned `lab1` database unchanged. Do not use `EnsureCreated` on a database intended for migrations.
 
@@ -82,10 +77,7 @@ dotnet run --project src/GeoSearch.Web.Server --launch-profile GeoSearch.Web.Ser
 dotnet run --project src/GeoSearch.Web.Client --launch-profile GeoSearch.Web.Client
 ```
 
-The host development server runs at `https://localhost:5100`, and the Blazor client at
-`https://localhost:5200`. The client API base is configured in the committed
-`src/GeoSearch.Web.Client/wwwroot/appsettings.json`. A single-origin production deployment
-should use `/api/` on the frontend host. Development CORS is restricted to the configured
+The host development server runs at `https://localhost:5100`, and the Blazor client at `https://localhost:5200`. The client defaults to its own hosting origin in `wwwroot/appsettings.json`; `wwwroot/appsettings.Development.json` overrides the API origin to `https://localhost:5100/` for host debugging. In same-origin deployments, omit the override and route `/api/*` through the frontend origin. Development CORS is restricted to the configured
 HTTPS client origin. **Both applications must use HTTPS**: antiforgery refuses HTTP requests
 because its cookie uses `SecurePolicy=Always`, and the host-scoped refresh token is a
 `Secure`, `HttpOnly`, `SameSite=Strict` cookie. Mixing HTTP and HTTPS on localhost also
@@ -163,7 +155,7 @@ log and connection string before testing login.
 projects. VS Code port forwarding is disabled in the devcontainer. Docker translates
 container application ports 5100/5200 to host-loopback ports 15100/15200 instead,
 so a second .NET instance running in the container cannot claim Visual Studio's
-host ports. The host-side client keeps its default API URL `https://localhost:5100/`.
+host ports. The host-side client uses the Development-only API URL `https://localhost:5100/`.
 For container-hosted application testing, see
 [devcontainer port configuration](../.devcontainer/README.md#application-ports-and-host-debugging)
 for container binding, browser API URLs, and CORS requirements.
@@ -183,21 +175,16 @@ issued JWTs remain usable until expiry, so individual bearer requests are not im
 revoked. The lab does not require login for GIS read operations; do not gate public search
 endpoints without a concrete requirement.
 
-Production deployments need HTTPS termination and reviewed proxy, key rotation, logging
-and monitoring configuration. Development certificates and sample credentials must never be
+Production deployments need HTTPS termination, trusted forwarded-header configuration, upstream/global traffic controls, key rotation, logging and monitoring. Development certificates and sample credentials must never be
 used for production.
-
-## Initial review gate
-
-- Confirm NuGet versions/restore and update only with evidence.
-- Run `dotnet format --verify-no-changes`, `dotnet build`, `dotnet test`.
-- Generate the Identity migration, run it against an isolated PostgreSQL database, test login and access-token expiry with a real HTTP host.
-- Verify Swagger/OpenAPI, local CORS, auth failures, no committed keys, and no coordinate query-string logging.
-- For GIS, use a real imported PostGIS dataset and verify the ten instructor fixtures and latency separately.
 
 ## Authentication session lifecycle
 
 The server issues a short-lived access JWT in the login response and a 30-day, rotating refresh token as a `__Host-geosearch-refresh` cookie. The browser does not persist access tokens in Web Storage. A refresh attempt first fetches `/api/auth/antiforgery` and sends its request token in `X-CSRF-TOKEN`, with browser credentials included. The API allows credentialed CORS only from the configured development origin; use `localhost` consistently across both services and do not mix `127.0.0.1` with `localhost`. Production deployments should use HTTPS and a same-origin reverse proxy.
+
+The login endpoint is rate-limited to five attempts per minute per connecting IP address, alongside Identity's per-account lockout. Behind a reverse proxy, the application must be configured to accept forwarded addresses only from trusted proxies; otherwise the proxy address shares one partition for all its clients. Client-supplied forwarding headers are not trusted by default.
+
+The refresh-token maintenance service prunes records after their expiration plus a configurable 30-day retention window. This bounds history growth for long-lived rotating sessions while allowing replay detection during the retention period. Reuse of a token deleted beyond that window is rejected as unknown and cannot identify its family for revocation; tokens that have not expired are never pruned. Cleanup runs at startup and daily thereafter by default, retries after database failures, and operates only on the Identity database.
 
 The frontend restores a session from the refresh cookie on initial load, refreshes near expiry, and logs out through `POST /api/auth/logout`. A failed logout request leaves the local session intact rather than claiming server revocation. Change a password at `/password`; the server revokes existing refresh-token families and returns a replacement session. Access JWTs are intentionally not individually revoked, so an old JWT may remain accepted for up to two minutes. Revocation and rotation require the Identity database; the read-only PostGIS database is not modified.
 
