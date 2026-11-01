@@ -60,7 +60,7 @@ Server configuration is read through normal ASP.NET Core providers. Copy `src/Ge
 - `ConnectionStrings__Search`: read-only access to the instructor-provisioned `lab1` database (not migrated by EF). Use a read-only database role in deployments.
 - `ConnectionStrings__Identity`: PostgreSQL connection for app-owned tables in `app_auth` schema; the role must be permitted to create/migrate that schema. The lab's `osm` and `search` schemas are not EF-owned.
 - `Jwt__Issuer`, `Jwt__Audience`, `Jwt__SigningKey`: issuer/audience values and a secret random key of at least 32 bytes. Never check it in. For local development use `dotnet user-secrets` or environment variables.
-- `Bootstrap__Email`, `Bootstrap__Password`: optional one-time development-only account provisioner (password >= 16 chars). Never include values in logs, CI or committed configuration. The bootstrapper refuses to run outside Development.
+- `Bootstrap__Email`, `Bootstrap__Password`: optional one-time development-only account provisioner (password at least 8 characters). Never include values in logs, CI or committed configuration. The bootstrapper refuses to run outside Development.
 
 Create the independent Identity database by running `./scripts/setup-identity-db.sh` after `./scripts/lab.sh stack-up`. On startup the API applies the committed initial migration and any later migrations to this database. The migration creates the Identity tables under `app_auth` and leaves the instructor-owned `lab1` database unchanged. Do not use `EnsureCreated` on a database intended for migrations.
 
@@ -112,8 +112,8 @@ importing the OSM extracts or starting GeoServer.
    unset DEV_PASSWORD
    ```
 
-   Set a unique password of at least 16 characters containing upper/lowercase letters and
-   a digit. The sample database credentials are **strictly local defaults**; replace them
+   Set a unique development password of at least 8 characters. The local Identity
+   policy does not require particular character classes. The sample database credentials are **strictly local defaults**; replace them
    if you changed `POSTGIS_PASSWORD` in Compose. User Secrets are not committed to Git.
 4. **Run the server and client in separate terminals** (same environment and repository):
 
@@ -134,11 +134,14 @@ return HTTP 401; invalid login credentials must not issue a token. The server ap
 migrations automatically on its first startup; if that fails, inspect its startup
 log and connection string before testing login.
 
-**Visual Studio on the host:** start the same two launch profiles as separate startup
-projects. The devcontainer and host use the same application ports; don't run both
-copies concurrently. For browser access from the devcontainer, allow VS Code to forward
-ports 5100 and 5200 and keep the client configuration at
-`src/GeoSearch.Web.Client/wwwroot/appsettings.json` (`http://localhost:5100/`).
+**Visual Studio on the host:** start the two launch profiles as separate startup
+projects. VS Code port forwarding is disabled in the devcontainer. Docker translates
+container application ports 5100/5200 to host-loopback ports 15100/15200 instead,
+so a second .NET instance running in the container cannot claim Visual Studio's
+host ports. The host-side client keeps its default API URL `http://localhost:5100/`.
+For container-hosted application testing, see
+[devcontainer port configuration](../.devcontainer/README.md#application-ports-and-host-debugging)
+for container binding, browser API URLs, and CORS requirements.
 
 If `geosearch_auth` was previously initialized with `EnsureCreated`, stop the server
 and recreate only that **disposable** development database before retrying. Leave

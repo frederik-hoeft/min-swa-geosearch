@@ -25,3 +25,46 @@ are development-only and should not be reused in a production deployment.
 The devcontainer shares the Docker daemon through a host socket. Do not use it to work with
 untrusted repositories. The initial build requires the container service and the PostGIS image;
 rebuilding the devcontainer without network access requires pre-cached images/features.
+
+## Application ports and host debugging
+
+The devcontainer's Compose service uses Docker to publish application ports on distinct
+host-loopback ports. Visual Studio continues to use the ordinary project launch-profile ports.
+
+| Application | Inside devcontainer | Docker-published on host | Visual Studio on host |
+|---|---|---|---|
+| ASP.NET Core API | `5100` | `15100` | `5100` |
+| Blazor WebAssembly dev server | `5200` | `15200` | `5200` |
+
+VS Code's automatic port forwarding is disabled for the devcontainer, so it does not
+compete for the host application's `5100` and `5200` ports. PostgreSQL is still published
+by `lab/compose.yaml` on host port `5432`; no additional database tunnel is required.
+
+The Docker host ports can be overridden before creating/recreating the Compose services:
+`GEOSEARCH_DEV_API_PORT` and `GEOSEARCH_DEV_CLIENT_PORT`. For example, set
+`GEOSEARCH_DEV_API_PORT=25100` if `15100` is reserved on Windows. This changes only
+host publication, not the ports that ASP.NET Core listens on inside the container.
+
+When starting an ASP.NET Core process **inside** the container, bind to all container
+interfaces rather than the loopback-only URLs in the existing launch profiles:
+
+```bash
+dotnet run --project src/GeoSearch.Web.Server --no-launch-profile --urls http://0.0.0.0:5100
+# In a second container terminal:
+dotnet run --project src/GeoSearch.Web.Client --no-launch-profile --urls http://0.0.0.0:5200
+```
+
+The container sets `ASPNETCORE_ENVIRONMENT=Development` and its browser CORS origin
+(`http://localhost:15200`, or the configured client host port). The backend still
+needs container-local connection strings (`Host=postgis`). In particular,
+when testing the container-hosted browser client, the static client configuration
+(`src/GeoSearch.Web.Client/wwwroot/appsettings.json`) must point at the Docker-published
+API URL (`http://localhost:15100/`) rather than the host Visual Studio API URL
+(`http://localhost:5100/`). Its browser origin is `http://localhost:15200`.
+The checked-in settings remain aimed at Visual Studio on the host; adjust the client
+configuration only when deliberately running a separate container-hosted frontend.
+
+When the devcontainer is used only for GIS tooling and scripts, **do not start either
+.NET process inside it**. The host's Visual Studio projects can run on 5100/5200
+without changing their launch profiles, while the running PostGIS service remains
+accessible through `localhost:5432`.

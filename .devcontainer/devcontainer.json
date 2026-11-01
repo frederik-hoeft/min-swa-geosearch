@@ -26,14 +26,10 @@
       ],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "zsh",
-        "files.autoSave": "afterDelay"
+        "files.autoSave": "afterDelay",
+        "remote.autoForwardPorts": false
       }
     }
-  },
-  "forwardPorts": [5100, 5200],
-  "portsAttributes": {
-    "5100": {"label": "GeoSearch API", "onAutoForward": "notify"},
-    "5200": {"label": "GeoSearch Blazor", "onAutoForward": "notify"}
   },
   "postCreateCommand": "bash .devcontainer/setup-shell.sh && dotnet --info && psql --version && ogr2ogr --version",
   "waitFor": "postCreateCommand",

@@ -6,7 +6,15 @@ services:
     volumes:
       - ..:/workspace:cached
       - nuget-cache:/home/vscode/.nuget/packages
+    # Keep in-container application ports unchanged while reserving separate host ports.
+    # Do not use VS Code forwarding for 5100/5200; Docker publishes 15100/15200.
+    ports:
+      - "127.0.0.1:${GEOSEARCH_DEV_API_PORT:-15100}:5100"
+      - "127.0.0.1:${GEOSEARCH_DEV_CLIENT_PORT:-15200}:5200"
     environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      # The published client uses a different browser origin from the host Visual Studio client.
+      Cors__ClientOrigin: "http://localhost:${GEOSEARCH_DEV_CLIENT_PORT:-15200}"
       PGHOST: postgis
       GEOSERVER_URL: http://geoserver:8080/geoserver
       PGPORT: "5432"
