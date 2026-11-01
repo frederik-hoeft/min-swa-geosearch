@@ -32,7 +32,7 @@ public sealed class AuthController(
 
     [HttpPost("login")]
     [AllowAnonymous]
-    [EnableRateLimiting("login")]
+    [EnableRateLimiting(LoginRateLimitPolicy.NAME)]
     public async Task<ActionResult<LoginResponse>> LoginAsync([FromBody] LoginRequest request, CancellationToken cancellationToken)
     {
         AuthenticationTokenResult? result = await authentication.LoginAsync(request.Email, request.Password, cancellationToken);

@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Data;
 using System.Text;
+using System.Threading.RateLimiting;
 using Wkg.AspNetCore.Transactions.Configuration;
 using Wkg.EntityFrameworkCore.Configuration;
 
@@ -95,12 +96,14 @@ builder.Services.AddTransactionManagement<IdentityDbContext>(options =>
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    options.AddFixedWindowLimiter("login", limiter =>
-    {
-        limiter.PermitLimit = 5;
-        limiter.Window = TimeSpan.FromMinutes(1);
-        limiter.QueueLimit = 0;
-    });
+    options.AddPolicy(LoginRateLimitPolicy.NAME, context =>
+        RateLimitPartition.GetFixedWindowLimiter(LoginRateLimitPolicy.GetClientPartition(context), _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 5,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+            AutoReplenishment = true,
+        }));
 });
 
 if (builder.Environment.IsDevelopment())
