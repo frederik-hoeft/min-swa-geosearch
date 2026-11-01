@@ -16,6 +16,9 @@ remain the reference for component organization.
 - Page-specific styles live beside the view as `Page.razor.scss` and compile into **CSS-isolated**
   `Page.razor.css`. Shared/custom component styles that intentionally affect multiple views live
   in `Component.scss`, imported from `UI/Styles/app.scss`.
+- SCSS source must use expanded, readable formatting: four-space indentation, one declaration
+  per line, and separate blocks for nested rules and media queries. Minification is only a
+  build-output concern, never a source-code style.
 - Global resets, shared design tokens, and deliberate MudBlazor customization belong in
   `UI/Styles/core`, not inside individual page styles. Do not create multiple conflicting
   site-wide overrides for the same MudBlazor component.

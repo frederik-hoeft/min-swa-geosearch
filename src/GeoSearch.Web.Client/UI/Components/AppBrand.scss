@@ -5,8 +5,9 @@
     text-decoration: none;
     color: var(--gs-ink);
     white-space: nowrap;
-
-    &:focus-visible { border-radius: 6px; }
+    &:focus-visible {
+        border-radius: 6px;
+    }
 }
 
 .gs-brand-symbol {
@@ -26,6 +27,7 @@
     font-weight: 780;
     letter-spacing: -0.055em;
     color: var(--gs-ink);
-
-    > span { color: var(--gs-green); }
+    > span {
+        color: var(--gs-green);
+    }
 }
