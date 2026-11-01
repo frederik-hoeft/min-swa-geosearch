@@ -1,3 +1,11 @@
+﻿@inject AuthenticationService Authentication
+
+@if (!_initialized)
+{
+    <p>Restoring authentication session...</p>
+}
+else
+{
 <Router AppAssembly="@typeof(App).Assembly">
     <Found Context="routeData">
         <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
@@ -16,3 +24,25 @@
         </LayoutView>
     </NotFound>
 </Router>
+
+}
+
+@code {
+    private bool _initialized;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await Authentication.InitializeAsync();
+        }
+        catch (HttpRequestException)
+        {
+            // Continue unauthenticated when API is temporarily unreachable.
+        }
+        finally
+        {
+            _initialized = true;
+        }
+    }
+}

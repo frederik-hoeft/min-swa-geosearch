@@ -161,3 +161,11 @@ WKG ASP.NET Core and EF Core packages are GPLv3 and require a licensing review f
 - Generate the Identity migration, run it against an isolated PostgreSQL database, test login and access-token expiry with a real HTTP host.
 - Verify Swagger/OpenAPI, local CORS, auth failures, no committed keys, and no coordinate query-string logging.
 - For GIS, use a real imported PostGIS dataset and verify the ten instructor fixtures and latency separately.
+
+## Authentication session lifecycle
+
+The server issues a short-lived access JWT in the login response and a 30-day, rotating refresh token as a `__Host-geosearch-refresh` cookie. The browser does not persist access tokens in Web Storage. A refresh attempt first fetches `/api/auth/antiforgery` and sends its request token in `X-CSRF-TOKEN`, with browser credentials included. The API allows credentialed CORS only from the configured development origin; use `localhost` consistently across both services and do not mix `127.0.0.1` with `localhost`. Production deployments should use HTTPS and a same-origin reverse proxy.
+
+The frontend restores a session from the refresh cookie on initial load, refreshes near expiry, and logs out through `POST /api/auth/logout`. A failed logout request leaves the local session intact rather than claiming server revocation. Change a password at `/password`; the server revokes existing refresh-token families and returns a replacement session. Access JWTs are intentionally not individually revoked, so an old JWT may remain accepted for up to two minutes. Revocation and rotation require the Identity database; the read-only PostGIS database is not modified.
+
+Manual smoke test: login, refresh the browser tab (session is restored), wait for access expiry and reopen the protected page, open two tabs and refresh both, log out and verify that refresh returns 401, then change the password and verify older sessions can no longer refresh. Confirm request-cookie/CORS/antiforgery behavior in browser developer tools.

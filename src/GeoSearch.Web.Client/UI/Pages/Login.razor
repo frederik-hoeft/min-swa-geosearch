@@ -1,8 +1,6 @@
-@page "/login"
+﻿@page "/login"
 @attribute [AllowAnonymous]
-@inject AuthApiClient AuthApi
-@inject AuthSession Session
-@inject SessionAuthenticationStateProvider Authentication
+@inject AuthenticationService Authentication
 @inject NavigationManager Navigation
 
 <PageTitle>Sign in | GeoSearch</PageTitle>
@@ -44,14 +42,12 @@
         _busy = true;
         try
         {
-            LoginResponse? response = await AuthApi.LoginAsync(new LoginRequest(_email.Trim(), _password));
-            if (response is null)
+            bool success = await Authentication.LoginAsync(_email.Trim(), _password);
+            if (!success)
             {
                 _error = "Sign-in failed. Check your credentials and try again.";
                 return;
             }
-            Session.Set(response);
-            Authentication.NotifySessionChanged();
             Navigation.NavigateTo("/");
         }
         catch (HttpRequestException)

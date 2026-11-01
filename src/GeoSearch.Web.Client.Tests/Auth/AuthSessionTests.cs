@@ -7,7 +7,7 @@ namespace GeoSearch.Web.Client.Tests.Auth;
 public sealed class AuthSessionTests
 {
     [TestMethod]
-    public void SessionExpiresAndClearsWithoutPersistence()
+    public void SessionTracksAccessTokenSeparatelyFromItsExpiry()
     {
         AuthSession session = new();
         session.Set(new LoginResponse("token", DateTimeOffset.UtcNow.AddMinutes(5), "student@example.test"));
@@ -20,6 +20,7 @@ public sealed class AuthSessionTests
         Assert.IsNull(session.Email);
 
         session.Set(new LoginResponse("expired", DateTimeOffset.UtcNow.AddSeconds(-1), "student@example.test"));
-        Assert.IsFalse(session.IsAuthenticated);
+        Assert.IsTrue(session.IsAuthenticated);
+        Assert.IsTrue(session.ExpiresUtc < DateTimeOffset.UtcNow);
     }
 }

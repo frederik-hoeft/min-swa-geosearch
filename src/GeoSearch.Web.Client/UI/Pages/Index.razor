@@ -1,8 +1,8 @@
-@page "/"
+﻿@page "/"
 @attribute [Authorize]
-@inject AuthSession Session
+@inject AuthenticationService Authentication
 @inject AuthApiClient AuthApi
-@inject SessionAuthenticationStateProvider Authentication
+@inject SessionAuthenticationStateProvider AuthenticationState
 @inject NavigationManager Navigation
 
 <PageTitle>Map and search | GeoSearch</PageTitle>
@@ -18,26 +18,34 @@
 @code {
     protected override async Task OnInitializedAsync()
     {
-        if (Session.AccessToken is null)
-        {
-            Authentication.Logout();
-            Navigation.NavigateTo("/login");
-            return;
-        }
         try
         {
-            AccountResponse? account = await AuthApi.GetAccountAsync(Session.AccessToken);
+            string? token = await Authentication.GetAccessTokenAsync();
+            if (token is null)
+            {
+                Navigation.NavigateTo("/login");
+                return;
+            }
+
+            AccountResponse? account = await AuthApi.GetAccountAsync(token);
             if (account is null)
             {
-                Authentication.Logout();
+                string? refreshed = await Authentication.RefreshAfterUnauthorizedAsync(token);
+                if (refreshed is not null)
+                {
+                    account = await AuthApi.GetAccountAsync(refreshed);
+                }
+            }
+
+            if (account is null)
+            {
+                AuthenticationState.Logout();
                 Navigation.NavigateTo("/login");
             }
         }
         catch (HttpRequestException)
         {
-            // Do not turn a temporary network error into a successful authentication check.
-            Authentication.Logout();
-            Navigation.NavigateTo("/login");
+            // Report connectivity problems without pretending the server revoked the session.
         }
     }
 }

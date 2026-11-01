@@ -40,3 +40,7 @@ rendering, and browser/CORS/security flows remain deployment review gates.
 As the search API is introduced, test it against the lab's ten fixtures and measure the
 required latency using an imported PostGIS database. Avoid representing baseline unit tests
 as evidence for that integration behavior.
+
+## Authentication session integration boundary
+
+Offline tests validate the mapped refresh-token schema and migration consistency, HTTP client request contracts, and cookie attributes. Browser cookie behavior, simultaneous refresh rotation across browser tabs, database-backed replay/family revocation, password-change persistence, and host-port CORS are integration checks requiring a running PostgreSQL server and browser. Execute those checks before deployment.

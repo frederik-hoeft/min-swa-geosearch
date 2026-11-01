@@ -13,6 +13,9 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 builder.Services.AddMudServices();
 builder.Services.AddAuthorizationCore();
 builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<BrowserAuthCoordinator>();
+builder.Services.AddScoped<AuthenticationService>();
 builder.Services.AddScoped<AuthSession>();
 builder.Services.AddScoped<SessionAuthenticationStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(services =>

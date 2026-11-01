@@ -1,5 +1,5 @@
-@inherits LayoutComponentBase
-@inject SessionAuthenticationStateProvider Authentication
+﻿@inherits LayoutComponentBase
+@inject AuthenticationService Authentication
 @inject NavigationManager Navigation
 
 <MudThemeProvider />
@@ -12,19 +12,35 @@
         <MudSpacer />
         <AuthorizeView>
             <Authorized>
+                <MudButton Variant="Variant.Text" Color="Color.Inherit" Href="/password">Change password</MudButton>
                 <MudButton Variant="Variant.Text" Color="Color.Inherit" OnClick="Logout">Sign out</MudButton>
             </Authorized>
         </AuthorizeView>
     </MudAppBar>
     <MudMainContent Class="pa-6">
+        @if (_logoutError is not null)
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-3">@_logoutError</MudAlert>
+        }
         @Body
     </MudMainContent>
 </MudLayout>
 
 @code {
-    private void Logout()
+    private string? _logoutError;
+
+    private async Task Logout()
     {
-        Authentication.Logout();
-        Navigation.NavigateTo("/login");
+        _logoutError = null;
+        try
+        {
+            await Authentication.LogoutAsync();
+            Navigation.NavigateTo("/login");
+        }
+        catch (HttpRequestException)
+        {
+            // The server did not confirm token-family revocation; retain session state.
+            _logoutError = "Could not revoke this session. Please try again.";
+        }
     }
 }
