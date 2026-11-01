@@ -1,10 +1,10 @@
 # Validation and integration boundaries
 
-GeoSearch's initial implementation is an application foundation, not a completed GIS submission. The map is a placeholder; search, nearby/reverse GeoJSON endpoints, browser geolocation, and a local basemap are outside the current implementation.
+The initial GeoSearch implementation is an application foundation. Authentication, database ownership boundaries, and the browser shell are implemented; the GeoJSON search endpoints, interactive map, and geolocation features are pending. Validation therefore distinguishes automated scaffold checks from tests requiring a live browser and PostGIS instance.
 
-## Automated checks
+## Automated validation
 
-Build and test the solution with the .NET 10 SDK:
+From the repository root in the [preferred devcontainer](development.md#start-the-devcontainer-and-prepare-the-databases):
 
 ```bash
 dotnet restore src/GeoSearch.slnx
@@ -13,21 +13,25 @@ dotnet build src/GeoSearch.slnx --no-restore -warnaserror
 dotnet test src/GeoSearch.slnx --no-restore --no-build
 ```
 
-The GitHub Actions workflow performs restore, formatting verification, a Release build with warnings treated as errors, and tests. Local builds also compile the SCSS sources through SassCompiler.
+GitHub Actions restores dependencies, checks formatting, builds in Release with warnings treated as errors, and runs tests. The build also compiles the client SCSS through SassCompiler.
 
-The unit tests cover Identity/JWT configuration, refresh-token model and migration metadata, browser authentication HTTP contracts, record-constructor validation, API-only antiforgery middleware, and refresh-token cleanup cutoffs. These tests do not require a database server.
+The automated tests exercise Identity/JWT configuration, refresh-token mapping and EF migration metadata, browser session request contracts, record-constructor validation, API-only antiforgery middleware, and refresh-token cleanup boundaries. These tests do not require PostgreSQL or a browser, and do not prove database concurrency or cross-origin cookie behavior.
 
-For an isolated/offline build, see [the offline dependency procedure](development.md#offline-dependency-bundle). The supplied test archive contains .NET SDK 10.0.403 and an offline NuGet package set; SassCompiler's Dart executable needs executable permission when the package is unpacked manually on Linux.
+For network-isolated .NET builds, see the [offline bundle procedure](development.md#offline-dependency-bundle). Offline package preparation is separate from the normal devcontainer workflow.
 
 ## Runtime verification
 
-Use the [preferred devcontainer environment](development.md#preferred-development-environment) and PostgreSQL to exercise the application after changing authentication, migrations, or setup scripts. The following checks require real infrastructure rather than unit tests:
+Use the [devcontainer database](../.devcontainer/README.md) for the following checks:
 
-- Apply EF migrations to a disposable `geosearch_auth` database; exercise failed-login persistence, login, refresh rotation, expired/replayed-token family revocation, password-change session invalidation, and logout under concurrent requests.
-- Confirm that the pruning service deletes only tokens older than expiry plus retention, including consumed tokens in a still-active family, and that a database outage does not prevent API startup. An expired-and-pruned token must remain unauthorized.
-- Verify HTTPS development certificates, secure cookies, credentialed CORS, antiforgery validation, browser reload/session restoration, multi-tab refresh, and the Development-only client API-origin override.
-- Check Dev Containers startup and Docker port publication. Visual Studio on the host is an optional debugging environment; its 5100/5200 ports must remain available when the devcontainer is running.
+- **Persistence:** apply migrations to a disposable `geosearch_auth` database; verify failed-login persistence, refresh rotation, token-family replay revocation, logout, password-change invalidation, and concurrent refresh behavior.
+- **Cleanup:** verify that only records older than expiry plus retention are pruned, including consumed records from active families; verify that database outages do not stop API startup and that pruned tokens remain unauthorized.
+- **Browser security:** verify HTTPS, Secure and SameSite cookies, the `X-CSRF-TOKEN` exchange, CORS, reload/session restoration, and multi-tab refresh. Check both normal container configuration and the optional Windows Visual Studio origin when applicable.
+- **Development environment:** build/reopen the devcontainer, execute the `just` import recipes against PostGIS, and confirm that Docker host-port publication does not occupy Visual Studio's application ports.
 
-No PostgreSQL or browser end-to-end test was run as part of the isolated .NET validation. In particular, compilation and mock-host tests do not prove actual token retention, rotation races, database migrations, or cookie behavior in deployed browsers.
+These are integration checks to perform on the running development stack; automated unit tests are not substitutes for them.
 
-When the GIS feature work begins, import the instructor's dated OSM snapshot, exercise the ten supplied search fixtures, validate the GeoJSON contract and coordinates, and measure the required median search latency against real PostGIS data. Keep this performance validation independent of authentication unit tests.
+## GIS acceptance criteria (future implementation)
+
+After the spatial API and client have been implemented, load the dated Geofabrik snapshot through the instructor's `just` recipes. Validate `/api/search`, `/api/reverse`, `/api/nearby`, and `/api/categories` against the lab's fixtures, including GeoJSON structure, longitude/latitude order, category and distance behavior, and failure responses. Measure the required median search latency below 300 ms over ten fixture queries on real PostGIS data.
+
+Browser tests should exercise map updates, geolocation permission denial, cancellation of obsolete requests, and the absence of third-party geocoding. The initial styled map workspace is explicitly not evidence of these capabilities.

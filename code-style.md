@@ -31,19 +31,19 @@ The general rules we follow are "use Visual Studio defaults" and "readability ov
     - except: when working generic types that would conflict with non-generic types of the same name, append ``​`N`` to the file name, where `N` corresponds to the arity of the generic type, e.g. `class Foo` in `Foo.cs`, `class Foo<T>` in ``Foo`1.cs``, and `class Foo<TKey, TValue>` in ``Foo`2.cs``. Apart from avoiding naming conflicts, this convention also matches the string representation of the corresponding unbound generic types returned by reflection, which can be helpful when navigating the codebase and searching for types.
 10. Avoid `var`, even when the type is obvious (to maintain consistency). Explicit types improve readability, reduce the risk of bugs, and allow reviewers and other developers to understand code at a glance, which is especially important in code reviews where no IntelliSense is available.
     - Why? In conjunction with rule 11, disallowing usage of `var` prevents bugs where the type is not what the developer expected, which is especially common in async contexts. For example:
-    ```csharp
-    [HttpGet]
-    public IActionResult GetFoo()
-    {
-        var foo = dbContext.Set<Foo>().FirstOrDefaultAsync();
-        if (foo == null)
+        ```csharp
+        [HttpGet]
+        public IActionResult GetFoo()
         {
-            return NotFound();
+            var foo = dbContext.Set<Foo>().FirstOrDefaultAsync();
+            if (foo == null)
+            {
+                return NotFound();
+            }
+            // we expect foo to be a Foo but it's actually a Task that was never awaited :C
+            return Ok(foo);
         }
-        // we expect foo to be a Foo but it's actually a Task that was never awaited :C
-        return Ok(foo);
-    }
-    ```
+        ```
     - The argument that `var` reduces boilerplate is less relevant in modern C# versions where target-typed `new()` is available, which we use where possible but only when the type is explicitly named on the left-hand side, e.g., `FileStream stream = new(...);`, but not `stream = new(...);` (where the variable was declared on a previous line).
     - in foreach loops, we can use tuple deconstruction to avoid the need for `var` and make the code more readable, e.g., `foreach ((int key, string value) in dictionary) { ... }`.
     - In all other cases, we still prefer explicit types over `var` for readability and consistency, even if it brings the inconvenience of having to type more characters while writing code.

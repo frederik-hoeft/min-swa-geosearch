@@ -1,70 +1,61 @@
-# Development container
+# GeoSearch development container
 
-The development environment uses a Debian Trixie .NET 10 SDK image with GDAL (`ogr2ogr`),
-PostgreSQL CLI utilities, the Docker CLI, Git and the developer's customary Oh My Zsh configuration.
-It uses the lab Compose definition to start PostGIS on the same internal Compose network as the
-workspace container. `PGHOST=postgis` resolves the database service without exposing credentials
-in source code. GeoServer remains an optional service; start it with `./scripts/lab.sh geoserver-up`.
+The devcontainer is the **preferred development environment**. It provides a .NET 10 SDK, `just`, GDAL/`ogr2ogr`, PostgreSQL clients, Git, and Docker CLI access. Docker Compose starts a PostGIS service alongside the workspace container and mounts the repository at `/workspace`. The optional GeoServer service publishes GIS data independently of the application API.
 
-**Preferred workflow:** open this repository in VS Code and choose **Dev Containers: Reopen in Container**. Run the lab scripts, GIS imports, PostgreSQL commands, .NET CLI, and tests from the container terminal. Visual Studio on Windows can optionally run and debug the web applications against the same Docker-hosted database.
-The first creation downloads base images, extensions and shell customizations, so it requires
-network access. Subsequent `dotnet restore`, `dotnet build` and `dotnet test` use the ordinary SDK.
+Visual Studio on Windows can be used for host-side debugging without replacing the container-based GIS toolchain.
 
-The container uses a persistent NuGet volume and binds the repository at `/workspace`.
-Docker-outside-of-Docker shares the host's Docker daemon and should only be enabled on trusted
-machines. Do not mount or expose the database or Docker sockets to production containers.
+## Start the environment
 
-The lab database and GeoServer run as **separate services on the Compose network**, not in the
-.NET container. Inside the devcontainer, use `postgis` (not `localhost`) for the database host,
-and `http://geoserver:8080/geoserver` for optional GIS publishing. The server's local configuration
-can use `ConnectionStrings__Identity` and `ConnectionStrings__Search` with `Host=postgis`.
-The Compose lab file also publishes database and GeoServer ports on host loopback for host-side
-clients, but these are not ports of the devcontainer itself. The lab's provided credentials
-are development-only and should not be reused in a production deployment.
+1. Install Docker with Compose, VS Code, and the Dev Containers extension.
+2. Open the repository in VS Code and choose **Dev Containers: Reopen in Container**.
+3. In the container terminal, verify the tools and database:
 
-The devcontainer shares the Docker daemon through a host socket. Do not use it to work with
-untrusted repositories. The Git ownership exception is limited to the `/workspace` project mount; other repositories are not globally trusted. The initial build requires the container service and the PostGIS image;
-rebuilding the devcontainer without network access requires pre-cached images/features.
+   ```bash
+   dotnet --version
+   just --version
+   ogr2ogr --version
+   psql -Atc 'SELECT 1'
+   ```
+
+   PostGIS is reachable at `postgis:5432` from the devcontainer, with the lab defaults `lab1` for both the database and user. The Compose service publishes PostgreSQL at `localhost:5432` on the Windows host.
+
+The initial container build needs network access for images, extensions, and shell setup. NuGet packages are cached in a named volume. The container shares the host Docker daemon via its socket and is suitable only for trusted local development. Git's safe-directory exception is limited to `/workspace`.
+
+## Run the GIS recipes
+
+The instructor's recipes live in `lab/justfile`. The container includes `just`, so no translation or additional script is necessary:
+
+```bash
+cd /workspace/lab
+just                       # List available recipes
+just s02-db-setup
+just s03-import-gpkg
+just s04-import-addresses
+just s05-search-index
+just s06-search 'Limmerstr 12 Hannover'
+just s07-reverse 9.7320 52.3759
+```
+
+Download the [external Geofabrik data](../lab/data/README.md) before running the import recipes. **Skip `s01-stack-up` in the devcontainer:** the Compose configuration has already started PostGIS. Running the standalone recipe may attempt to start a second Compose stack on the same published database port.
+
+The optional GeoServer service uses the same internal Docker network. If it is started through the devcontainer's Compose project, `GEOSERVER_URL=http://geoserver:8080/geoserver` directs the `s08-geoserver-publish` recipe to it. GeoServer is not needed for application search or the initial imports.
+
+The separate Identity database is created from the repository root with `./scripts/setup-identity-db.sh`; the API applies EF migrations to it at startup. See [development configuration](../docs/development.md#configure-the-server).
 
 ## Application ports and host debugging
 
-The devcontainer's Compose service uses Docker to publish application ports on distinct
-host-loopback ports. Visual Studio continues to use the ordinary project launch-profile ports.
+Docker publishes application ports on host-loopback addresses distinct from the Visual Studio launch-profile ports.
 
-| Application | Inside devcontainer | Docker-published on host | Visual Studio on host |
-|---|---|---|---|
+| Application | In container | Container published on host | Visual Studio on host |
+| --- | --- | --- | --- |
 | ASP.NET Core API | `5100` | `15100` | `5100` |
-| Blazor WebAssembly dev server | `5200` | `15200` | `5200` |
+| Blazor WASM client | `5200` | `15200` | `5200` |
+| PostgreSQL | `5432` on `postgis` | `5432` | `5432` |
 
-VS Code's automatic port forwarding is disabled for the devcontainer, so it does not
-compete for the host application's `5100` and `5200` ports. PostgreSQL is still published
-by `lab/compose.yaml` on host port `5432`; no additional database tunnel is required.
+The application mappings use `GEOSEARCH_DEV_API_PORT` and `GEOSEARCH_DEV_CLIENT_PORT` to override the published host ports. VS Code automatic port forwarding is disabled to prevent it from taking Visual Studio's ports. A Docker port mapping carries TCP traffic but does not terminate TLS.
 
-The Docker host ports can be overridden before creating/recreating the Compose services:
-`GEOSEARCH_DEV_API_PORT` and `GEOSEARCH_DEV_CLIENT_PORT`. For example, set
-`GEOSEARCH_DEV_API_PORT=25100` if `15100` is reserved on Windows. This changes only
-host publication, not the ports that ASP.NET Core listens on inside the container.
+**Recommended Windows debugging workflow:** leave the devcontainer and PostGIS running, open the solution in Visual Studio on Windows, and start the API and client HTTPS launch profiles at `https://localhost:5100` and `https://localhost:5200`. Configure their server connection strings with `Host=localhost`; trust the Windows development certificate using `dotnet dev-certs https --trust`. No container certificate is required for this workflow. The client Development configuration points to the host API, and the server allows the `https://localhost:5200` CORS origin.
 
-The ports above are Docker TCP mappings, not TLS termination; they can also carry HTTPS.
-Running the web apps **inside the container** requires a separate HTTPS development
-certificate available to the container process **and trusted by the Windows browser**.
-Do not use the earlier HTTP `--urls` examples for authentication: `SecurePolicy=Always`
-will reject the antiforgery exchange. If container-hosted web development is needed,
-provision a trusted development certificate for the container and bind the apps to
-`https://0.0.0.0:5100` and `https://0.0.0.0:5200`. The browser-visible URLs will then
-be `https://localhost:15100` and `https://localhost:15200` (or the configured host ports).
-Set the container-hosted client's `Api:BaseUrl` to the former and the API's
-`Cors:ClientOrigin` to the latter. The Compose environment already sets the HTTPS
-client origin. Do not commit the certificate or its password.
+**Running the web apps inside the devcontainer:** requires configuring an HTTPS certificate that the browser trusts, and binding Kestrel to container-accessible interfaces rather than loopback only. The browser URLs become `https://localhost:15100` and `https://localhost:15200` by default. Configure the client Development API origin as `https://localhost:15100/` and the server's `Cors:ClientOrigin` as `https://localhost:15200`. Both sites must use HTTPS and `localhost` consistently for the Secure, SameSite=Strict authentication cookies. Details are in [the development guide](../docs/development.md#run-the-applications).
 
-For the optional **Visual Studio on Windows + devcontainer for GIS tooling** workflow,
-no container certificate is needed: Visual Studio uses the trusted Windows developer
-certificate for `https://localhost:5100` and `https://localhost:5200`, and PostgreSQL
-remains published by Docker at `localhost:5432`.
-
-.NET projects can also build and run inside the devcontainer once a trusted development certificate is configured. When the devcontainer is used only for GIS tooling and scripts, **do not start either
-.NET process inside it**. The host's Visual Studio projects can run on 5100/5200
-without changing their launch profiles, while the running PostGIS service remains
-accessible through `localhost:5432`.
-
-The client uses its hosting origin by default (`wwwroot/appsettings.json`); `wwwroot/appsettings.Development.json` sets the Visual Studio API origin to `https://localhost:5100/`. For a container-hosted browser client, override that Development value to the Docker-published API port (`https://localhost:15100/`) before launching it. The API and client must use the same URL scheme for secure, SameSite cookies.
+The container's applications do not start automatically. For the host-debugging workflow, use the devcontainer for GIS recipes and tooling, and run the .NET processes on Windows.

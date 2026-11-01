@@ -1,56 +1,52 @@
 # GeoSearch
 
-GeoSearch is a .NET 10 / Blazor WebAssembly project for the Software Architectures Lab 2: local search and nearby queries over an OSM-derived Hannover PostGIS snapshot. The planned API exposes GeoJSON for a MapLibre-based map client. The repository currently provides the application, authentication, and development foundation; the GIS endpoints and interactive map remain to be implemented.
+GeoSearch is a .NET 10 / Blazor WebAssembly application for [Software Architectures Lab 2](lab/lab-2.md). It will provide address, place, and nearby search over the instructor's OpenStreetMap-derived Hannover dataset through a PostGIS-backed API and a MapLibre map.
 
-## Structure
+**Current scope:** the solution, development environment, Identity integration, and styled browser shell are implemented. The search API, GeoJSON results, and interactive map are planned; the map screen is a placeholder. Identity is included but is not required by the lab's read-only GIS functionality.
 
-- `lab/`: unchanged instructor SQL, Compose, import settings and original `justfile` (for provenance); large datasets are not included.
-- `scripts/lab.sh`: Bash replacement for the instructor's `just` recipes; see `lab/data/README.md` for required downloads.
-- `src/GeoSearch.Web.Server/`: ASP.NET Core HTTP API and app-owned Identity database.
-- `src/GeoSearch.Web.Client/`: Blazor WebAssembly UI with code-behind views, a branded login experience and a clearly marked map placeholder.
-- `src/GeoSearch.Web.Shared/`: DTOs shared by the client and server.
-- `src/GeoSearch.Web.Server.Tests/`: MSTest scaffolding.
-- `docs/architecture.md`: intended ownership, boundaries and deferred GIS features.
+## Getting started
 
-## Lab database
+**Use the VS Code Dev Containers environment.** It includes .NET 10, PostgreSQL client tools, GDAL, `just`, and the Docker tooling. The devcontainer also starts PostGIS. Visual Studio 2026 is an optional debugging environment using the same database.
 
-Requires Docker Compose, `psql`, `ogr2ogr` (GDAL), and `bash`. The optional GeoServer publishing command also uses `curl` and `python3`. Copy the two external datasets referenced in `lab/data/README.md` to their expected paths. The lab Compose includes a PostGIS instance and optional GeoServer (`./scripts/lab.sh geoserver-up`); database credentials in `lab/compose.yaml` are local-only defaults and must not be deployed unchanged.
+1. Open this repository in VS Code and select **Dev Containers: Reopen in Container**.
+2. Download the required datasets following [the geodata instructions](lab/data/README.md), or skip the imports if you only want to test authentication.
+3. From a terminal **inside the devcontainer**, initialize the GIS database:
 
-```bash
-./scripts/lab.sh stack-up
-./scripts/lab.sh db-setup
-./scripts/lab.sh import-gpkg
-./scripts/lab.sh import-addresses
-./scripts/lab.sh search-index
-./scripts/lab.sh search 'Limmerstr 12 Hannover'
-```
+   ```bash
+   cd /workspace/lab
+   just s02-db-setup
+   just s03-import-gpkg
+   just s04-import-addresses
+   just s05-search-index
+   just s06-search "Limmerstr 12 Hannover"
+   ```
 
-## Preferred development workflow
+   `s01-stack-up` is not needed inside the devcontainer: PostGIS is already running as its Compose dependency. Importing the datasets is optional until the GIS API is implemented.
+4. Configure the server and start the web projects following the [development guide](docs/development.md). To initialize the separate Identity database, run `./scripts/setup-identity-db.sh` from `/workspace`.
 
-Use the [development container](.devcontainer/README.md) for the .NET 10 toolchain, PostgreSQL/PostGIS, GDAL, and lab import scripts. Open the repository in VS Code with **Dev Containers: Reopen in Container**. The workspace is mounted at `/workspace`, and the database is available as `postgis:5432` inside the container.
+The devcontainer forwards PostgreSQL to Windows at `localhost:5432`. Its web app ports are kept separate from Visual Studio's ports; see the [container and host debugging guide](.devcontainer/README.md).
 
-Visual Studio on Windows is an optional frontend and debugger: run the API and Blazor projects on the host at `https://localhost:5100` and `https://localhost:5200` while the devcontainer and database remain running. Docker publishes PostgreSQL on host port 5432. The container's application ports use separate host mappings to avoid conflicts. See the [development guide](docs/development.md) for setup and HTTPS requirements.
+## Build and test
 
-## Build and application configuration
+From the repository root inside the devcontainer:
 
 ```bash
 dotnet restore src/GeoSearch.slnx
-dotnet build src/GeoSearch.slnx --no-restore
+dotnet format src/GeoSearch.slnx --no-restore --verify-no-changes
+dotnet build src/GeoSearch.slnx --no-restore -warnaserror
 dotnet test src/GeoSearch.slnx --no-restore --no-build
 ```
 
-To collect all direct and transitive NuGet packages for an offline build, run `./src/restore.sh` on a machine with a .NET 10 SDK, Python 3 and NuGet.org access. The script restores the complete solution using a fresh isolated cache and writes the ignored `src/nuget-packages.zip` bundle for handoff. See [development setup](docs/development.md#offline-dependency-bundle) for limitations.
+## Repository guide
 
-The ASP.NET server requires an application-owned PostgreSQL connection string and JWT signing key via local configuration, User Secrets, or environment variables. Copy `src/GeoSearch.Web.Server/appsettings.example.json` to a local, git-ignored `appsettings.json` and supply the private settings described in `docs/development.md`. The authentication API uses two-minute JWTs and rotating, HttpOnly-cookie refresh sessions; the development account can be provisioned at startup. Public registration is disabled. No hard-coded production credentials or signing key are included.
+| Path | Purpose |
+| --- | --- |
+| `lab/` | Instructor lab specification, SQL, Compose, and `just` recipes |
+| `src/GeoSearch.Web.Server/` | ASP.NET Core API, Identity persistence, and authentication |
+| `src/GeoSearch.Web.Client/` | Blazor WASM client and UI theme |
+| `src/GeoSearch.Web.Shared/` | Client/server DTO contracts |
+| `src/*Tests/` | Unit and middleware tests |
+| `.devcontainer/` | Preferred development environment |
+| `.agents/skills/` | Engineering-quality and documentation conventions |
 
-When developing the web apps, run the server and the separate WASM client in two terminals or as Visual Studio startup projects. The client uses the hosting origin by default and an explicit API origin in Development. For same-origin deployment, the frontend is served as static assets and `/api/*` is reverse proxied to the server; a production container recipe has not been created. Run `./scripts/setup-identity-db.sh` to provision the independent Identity database; the API applies the committed EF migration at startup (see development documentation). The refreshed offline dependency bundle includes SassCompiler. Build, formatting and MSTest are verified independently of the browser and PostgreSQL integration checks. See [validation](docs/validation.md) for exact scope and the outstanding database/runtime verification.
-
-## References
-
-- [Architecture](docs/architecture.md)
-- [Development and remaining bootstrap work](docs/development.md)
-- [Bootstrap validation and limitations](docs/validation.md)
-- [Lab requirements](lab/lab-2.md)
-- [Code style](code-style.md)
-- [Project skills](.agents/skills/)
-- [UI visual identity and component conventions](docs/ui-design.md)
+For detailed instructions and system boundaries, see [development](docs/development.md), [architecture](docs/architecture.md), [validation](docs/validation.md), [UI conventions](docs/ui-design.md), and [code style](code-style.md). The instructor's original [lab task](lab/lab-2.md) remains the authority for feature requirements.

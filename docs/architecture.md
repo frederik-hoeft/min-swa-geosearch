@@ -1,46 +1,63 @@
 # GeoSearch architecture
 
-GeoSearch is a Blazor WebAssembly search client over a thin ASP.NET Core API and the database-first Hannover PostGIS snapshot supplied by Software Architectures Lab 2. The purpose of the application is to make address, place and POI search accessible through a unified GeoJSON contract and a map. Search and geospatial computation remain in PostgreSQL; visualization, browser geolocation and transient interaction state remain in the client.
+GeoSearch is a Blazor WebAssembly frontend and a thin ASP.NET Core API over the instructor's Hannover PostGIS dataset. The application will expose local address, place, and nearby search through GeoJSON, with MapLibre rendering those results in the browser. The current implementation includes the solution foundation, Identity services, and a styled map placeholder; the GIS API and interactive map are designed but not yet implemented.
 
 ## System boundaries
 
+The following diagram describes the **target GIS data flow**, together with the implemented Identity boundary:
+
 ```mermaid
 flowchart LR
-    Browser[Blazor WASM and MapLibre]
+    Browser[Blazor WASM client]
     Api[ASP.NET Core API]
-    Identity[(PostgreSQL auth schema)]
-    Spatial[(PostGIS: osm and search)]
-    GeoServer[GeoServer optional WMS/WFS publisher]
-    Browser -->|same-origin /api/*| Api
-    Api -->|EF Core identity persistence| Identity
-    Api -->|read-only SQL functions/queries| Spatial
-    GeoServer -.->|publishes GIS data independently| Spatial
+    Identity[(Application Identity database)]
+    Spatial[(Lab PostGIS database)]
+    GeoServer[GeoServer optional]
+    Browser -->|HTTP API| Api
+    Api -->|EF Core / WKG transactions| Identity
+    Api -.->|planned read-only spatial queries| Spatial
+    GeoServer -.->|optional WMS / WFS| Spatial
 ```
 
-The browser communicates only with the application's HTTP API for search, reverse and nearby operations. Its mapping adapter translates the application GeoJSON contract into MapLibre sources and visual layers; MapLibre types stay inside the mapping component. The browser must not receive a database connection string or invoke a third-party geocoder. Search input is debounced and canceled when superseded. Device coordinates are acquired only on user action and are not logged or persisted.
+The client handles UI state, browser location permissions, and eventually MapLibre rendering. It communicates with the application API, never directly with PostGIS or a third-party geocoder. A future map adapter will own MapLibre-specific representations and translate GeoJSON into map sources and layers, keeping mapping-library types out of shared HTTP contracts.
 
-The server owns authentication, the HTTP contract, validation and GeoJSON projection. Read-only PostGIS query adapters invoke `search.search(q, lim)` and `search.reverse(lon, lat, radius, lim)` and implement nearby/categories with parameterized SQL. They do not reconstruct the supplied ranking or write to the `osm` or `search` schema. The supplied `search.search_index` is an imported/derived materialized view, not an EF aggregate. Nearby distances use PostGIS geography in meters; map and GeoJSON coordinates use longitude then latitude.
+The API owns HTTP validation, authentication, and the GeoJSON contract. The planned search adapter invokes the instructor's `search.search(q, lim)` and `search.reverse(lon, lat, radius, lim)` functions and uses parameterized PostGIS queries for nearby and categories. The instructor's ranking logic remains authoritative; geometry and distances are computed by PostGIS. GeoJSON coordinates use longitude followed by latitude, and nearby distances use meters.
 
-Identity is isolated in an application-owned PostgreSQL schema through a separate EF Core `DbContext`. Only this schema belongs to EF migrations. The existing OSM data and `search` SQL lifecycle are provisioned by the lab scripts. The WKG EF discovery integration is limited to app-owned models; PostGIS function mapping is deliberately deferred until provider support is verified. WKG ASP transactions, when needed, span application-owned writes, not the imported search dataset.
+## Database ownership
 
-GeoServer is optional and can publish the same PostGIS dataset over WMS/WFS for GIS clients. It is not a translation layer between the API and PostGIS. A self-hosted basemap, if chosen, is a separate static tile/style deployment concern, not a search API dependency. No ArcGIS or public geocoding service is needed.
+GeoSearch uses distinct PostgreSQL databases with different ownership models:
 
-## HTTP contract and data ownership
+- **`lab1` (instructor-owned):** contains the imported `osm` schema, `search.search_index` materialized view, and supplied search functions. The application accesses these through a read-only search context. The `just` recipes in `lab/` own import and index lifecycle; EF Core does not migrate this database.
+- **`geosearch_auth` (application-owned):** contains ASP.NET Core Identity and hashed refresh-token records in the `app_auth` schema. EF Core migrations own its schema, and WKG transactions coordinate Identity writes.
 
-The lab contract defines `/api/search`, `/api/reverse`, `/api/nearby`, and `/api/categories`. The first three respond with a GeoJSON `FeatureCollection` carrying `snapshot`, OSM attribution and point features. `/api/categories` may return a JSON array. Validation rejects missing/invalid parameters with HTTP 400 (`{"error":"..."}`). IDs, labels, metadata and geometry are presentation inputs rather than mutable EF aggregates. The search and reverse functions are the authoritative query semantics.
+This separation allows the search API to remain independent of authentication. Lab 2's read-only search features require no user account, so future GIS endpoints should remain accessible without Identity unless an extension introduces a concrete authorization requirement.
 
-Authentication uses ASP.NET Core Identity, short-lived (two-minute) JWT bearer access tokens kept in Blazor process memory, and opaque rotating refresh tokens in Secure, HttpOnly, SameSite=Strict, host-only cookies. The server stores only SHA-256 refresh-token hashes and associates related rotations with a token family. Expired records are retained for a configurable replay-detection window (30 days by default), then removed by a periodic maintenance service; replay beyond that window is treated as an unknown token. A consumed, expired or invalidated token causes family revocation; logout revokes the cookie's family; password changes revoke all sessions before issuing a replacement. Each operation participates in WKG's scoped Identity transaction. The browser serializes credential mutations across tabs using the Web Locks API and sends an antiforgery request token on refresh/logout. API-only antiforgery middleware validates the request header for explicitly marked cookie-authenticated endpoints, without requiring MVC view or Razor Pages services. Access JWTs are not individually blacklisted and remain valid until expiry, including after logout or password change. Identity retains per-account failed-login lockout; the API does not apply application-level request rate limiting. User provisioning is explicitly Development-only, with no anonymous signup. The map page requires authentication while the lab's required read-only search endpoints can remain anonymous.
+GeoServer is an optional independent WMS/WFS publisher over the PostGIS dataset, not an intermediary for application search requests. A local basemap or tile server, if added, will be a separate deployment concern.
 
-## Failure, privacy and quality boundaries
+## Planned GIS HTTP contract
 
-Unusable or missing geodata is surfaced by a failed API request; no remote geocoder or tile-provider fallback is permitted under the fully local deployment policy. Database connections and credentials stay server-side. Request query strings containing coordinates are excluded from application request logging, tracing and reverse-proxy access logs; this includes reverse and nearby requests. Map location uses explicit browser permission and a visible map-center fallback if the user denies it.
+The lab specifies `/api/search`, `/api/reverse`, `/api/nearby`, and `/api/categories`. Search, reverse, and nearby return a GeoJSON `FeatureCollection` with snapshot metadata, OSM attribution, and point features; categories may return a JSON array. Parameter validation produces HTTP 400 for invalid input. The API will expose the supplied PostGIS search semantics without copying or mutating the imported OSM data.
 
-The lab requires a median search latency below 300 ms over ten supplied fixture queries. Validate that figure against the loaded Hannover database, rather than assuming compile-time or simulated results. Integration tests exercise provider-specific PostGIS functions; UI/browser tests cover map events and location permission/error paths. The shared contract should be tested independently of any MapLibre representation.
+The client will debounce text search, cancel superseded requests, and acquire device coordinates only after explicit user action. If permission is declined, the UI will provide a map-center fallback. Location data is transient: neither the client nor API should persist user coordinates or log reverse/nearby query strings.
 
-## Architectural tradeoffs
+These routes, map interactions, and privacy behavior are **design requirements**, not currently implemented features.
 
-A modular monolith is favored over microservices because the API is a small read-heavy boundary over one authoritative data source. EF Core is useful for owned Identity persistence; calling provided SQL functions directly is a better fit for search than generating entities for imported OSM tables. Exposing GIS via GeoServer could add interoperable publishing but does not add value in the search request path. MapLibre is isolated behind a narrow UI adapter because the Blazor wrapper remains relatively young and has incomplete advanced APIs; it can be replaced without modifying the server or the HTTP contract.
+## Authentication and session lifecycle
 
-## Implementation status
+The implemented authentication subsystem uses ASP.NET Core Identity and two-minute JWT access tokens held only in browser memory. Login also issues a rotating opaque refresh token in a Secure, HttpOnly, SameSite=Strict, host-only cookie. Only its SHA-256 hash is stored in the Identity database; successive refresh tokens belong to a token family.
 
-The application foundation includes the solution structure, authentication and account workflows, read-only database access context, and a styled, noninteractive map workspace. The documented GeoJSON search endpoints, browser geolocation, MapLibre rendering, and local tile hosting are planned rather than implemented. The PostGIS import pipeline is available through lab scripts but the data itself is external to this repository.
+Refresh rotation and logout are cookie-authenticated operations. The browser first requests an antiforgery token and then submits it in the `X-CSRF-TOKEN` header. The API's endpoint-metadata middleware validates that token for marked endpoints; ordinary bearer-token API requests do not require antiforgery validation. The browser coordinates refresh operations across tabs with the Web Locks API.
+
+Rotation detects consumed or invalidated tokens and revokes their family; logout revokes the active family, and password changes revoke all existing refresh sessions before issuing a replacement. WKG transaction scopes cover the application-owned Identity writes. Access JWTs are not blacklisted and remain valid until their short expiry, including after a refresh session is revoked. Identity applies per-account failed-login lockout; the API has no application-level request rate limiter.
+
+The maintenance service periodically deletes records whose expiry is older than a configurable retention period (30 days by default), including consumed history. Unexpired tokens remain stored so that a replay can identify its family. Once a record is pruned, reuse still fails authentication, but the deleted token can no longer identify a family for revocation. The service operates only on the Identity database and retries future cleanup after a database failure.
+
+Public registration is disabled. A development bootstrap account can be provisioned for testing the application shell; the lab's GIS features are independent of this optional account system.
+
+## Quality and deployment boundaries
+
+The lab requires a median search latency under 300 ms over ten supplied fixture queries. This must be measured against an imported PostGIS dataset; compilation and authentication unit tests cannot establish GIS performance. The future browser and spatial integration tests must also cover GeoJSON correctness, distance units, permission failures, and cancellation of stale requests.
+
+The intended application deployment is a single browser origin with `/api/*` routed to ASP.NET Core over HTTPS. The repository currently uses separate development origins for the API and client. Production TLS termination, key management, forwarded-header trust, monitoring, and any reverse-proxy traffic limits are not supplied by this initial scaffold.
+
+The modular monolith keeps a small deployment boundary around one authoritative spatial database. EF Core is reserved for application-owned Identity models; invoking the provided SQL functions directly preserves the existing search behavior. The MapLibre integration is isolated in the client so the mapping library can evolve without changing the HTTP contracts.

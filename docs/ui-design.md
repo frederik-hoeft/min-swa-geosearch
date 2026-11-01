@@ -1,67 +1,43 @@
 # GeoSearch UI conventions and visual identity
 
-The Blazor client uses **MudBlazor for accessible controls**, with a small GeoSearch-specific
-visual vocabulary. The look is deliberately cartographic: deep mineral ink, evergreen accents,
-quiet light surfaces, subtle contour/grid motifs, and compact information hierarchy. It is not
-intended to mimic the presentation of UFWeb, whose architecture and engineering conventions
-remain the reference for component organization.
+The client uses MudBlazor for accessible controls and a restrained cartographic visual identity: mineral-ink text, evergreen accents, light surfaces, subtle contours, and compact information hierarchy. The styling is specific to GeoSearch; UFWeb remains a reference for Razor organization and engineering conventions rather than a visual template.
 
 ## Component responsibilities
 
-- `UI/Pages/*.razor` and `UI/Layout/*.razor` declare view structure, component bindings,
-  accessibility metadata, and route/layout directives. Logic, mutable state, async workflows,
-  disposal and navigation live in the matching `*.razor.cs` partial class.
-- Reusable markup belongs in `UI/Components`. A markup-only component does not need a code-behind
-  file; add one as soon as it acquires behavior.
-- Page-specific styles live beside the view as `Page.razor.scss` and compile into **CSS-isolated**
-  `Page.razor.css`. Shared/custom component styles that intentionally affect multiple views live
-  in `Component.scss`, imported from `UI/Styles/app.scss`.
-- SCSS source must use expanded, readable formatting: four-space indentation, one declaration
-  per line, and separate blocks for nested rules and media queries. Minification is only a
-  build-output concern, never a source-code style.
-- Global resets, shared design tokens, and deliberate MudBlazor customization belong in
-  `UI/Styles/core`, not inside individual page styles. Do not create multiple conflicting
-  site-wide overrides for the same MudBlazor component.
-- `Services/Theming/GeoSearchMudTheme.cs` is the authoritative MudBlazor theme: palette,
-  typography, corner radius, layout measurements and elevation. `UI/Styles/core/_tokens.scss`
-  provides complementary CSS tokens for the non-Mud surfaces and custom graphic details.
-  App-wide Mud providers are instantiated exactly once by `UI/App.razor`.
+Razor views declare the layout, component bindings, accessibility metadata, and routes. Behavior, mutable state, asynchronous workflows, lifecycle management, and navigation belong in matching `.razor.cs` partial classes. Markup-only components do not need code-behind files until they acquire behavior.
+
+Reusable markup lives in `UI/Components`. A component owns one meaningful unit of UI behavior and styling; avoid splitting an ordinary page into incidental helper files. Keep authentication and API interactions in dedicated services, with code-behind orchestrating the view instead of duplicating business logic.
+
+## Styles and theme
+
+- `Services/Theming/GeoSearchMudTheme.cs` owns MudBlazor palette, typography, radii, layout measurements, and elevation.
+- `UI/Styles/core/_tokens.scss` holds complementary CSS variables for custom surfaces and cartographic motifs.
+- `UI/Styles/core/_global.scss` contains global resets and intentional application-wide adjustments to MudBlazor elements.
+- `UI/Styles/app.scss` imports shared styles and custom component SCSS files.
+- Adjacent `Page.razor.scss` files compile to CSS-isolated `Page.razor.css` and contain only page-specific styling. Shared styles use component-specific classes to avoid global collisions.
+
+Write source SCSS in expanded form: four-space indentation, one property declaration per line, and separate blocks for nested selectors and media queries. Minification belongs to build artifacts, never source files. SassCompiler produces generated CSS during the .NET build; do not edit those outputs.
 
 ## Design tokens
 
-| Role | Light value | Application |
+| Role | Light value | Purpose |
 | --- | --- | --- |
-| Primary | `#117A68` | Actions, active navigation, map-related emphasis |
-| Ink | `#192C32` | Main headings and high-contrast text |
-| Muted text | `#61747A` | Descriptions, secondary navigation |
-| Background | `#F3F7F6` | Workspace surroundings |
+| Primary | `#117A68` | Actions, active navigation, map emphasis |
+| Ink | `#192C32` | Headings and high-contrast text |
+| Muted text | `#61747A` | Supporting descriptions |
+| Background | `#F3F7F6` | Workspace canvas |
 | Surface | `#FFFFFF` | Cards, forms, app bar |
-| Divider | `#DCE6E3` | Delineation without heavy shadow |
-| Warm accent | `#D4A153` | Reserved secondary emphasis |
+| Divider | `#DCE6E3` | Subtle visual boundaries |
+| Warm accent | `#D4A153` | Secondary emphasis |
 
-Default typography uses local system sans-serif fonts; the map workspace uses a monospace
-stack for coordinates. The dark palette is defined for future user-selectable theming, but
-GeoSearch currently starts in light mode. Keep any future mode preference in a dedicated
-client theme service rather than scattering booleans across pages.
+The client uses a local system sans-serif stack and monospace typography for coordinates. Dark palette values exist for a future theme switch, but the application currently starts in light mode. A user-selectable theme should be owned by a dedicated service rather than by individual pages.
 
 ## Layouts and feature boundaries
 
-`LoginLayout` is a two-panel, responsive authentication experience. `MainLayout` supplies
-common branding, navigation, account actions, and a keyboard skip link. The search page uses
-its own scoped two-column arrangement, collapsing to one column on narrow screens.
+`LoginLayout` presents a responsive authentication experience. `MainLayout` supplies branding, common navigation, account actions, and a keyboard skip link. The map workspace uses a two-column arrangement that collapses on smaller viewports. App-wide MudBlazor providers appear once in `UI/App.razor`.
 
-The map surface is an **explicitly noninteractive placeholder**. The disabled search control
-and the pending-map label must remain visibly disabled until real API-backed search and MapLibre
-integration land. Do not render simulated search results or a basemap that suggests live data.
-
-When implementing the real map, keep MapLibre-specific APIs inside a focused map component and
-pass it GeoJSON-facing UI models. Keep authentication/session logic in existing auth services;
-Razor code-behind should orchestrate, not duplicate API or token business rules.
+The map surface remains a **noninteractive placeholder** until the GIS API and MapLibre integration exist. Search controls and status labels must not imply working map or search functionality. The future MapLibre component will consume GeoJSON-facing view models and keep map-library types out of the rest of the UI.
 
 ## Accessibility and verification
 
-Use semantic headings, explicit form labels, meaningful error alerts, and visible focus states.
-Maintain keyboard operability, including Enter-to-submit and skip-to-content navigation.
-CSS must not encode operational state by color alone. Use `dotnet build` to compile both Razor
-and Sass, `dotnet format` for C#, and exercise the layout at desktop and mobile widths in a
-browser before considering visual behavior verified.
+Use semantic headings, explicit form labels, keyboard-operable controls, clear error announcements, and visible focus states. Convey operational status through text or icons as well as color. Verify layouts at desktop and mobile widths in a browser; the .NET build verifies Razor and SCSS compilation but not visual correctness.
