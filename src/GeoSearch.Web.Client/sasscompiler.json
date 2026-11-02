@@ -1,0 +1,28 @@
+{
+  "Source": "UI/Styles/app.scss",
+  "Target": "wwwroot/css/app.css",
+  "Arguments": "--style=expanded --no-source-map",
+  "GenerateScopedCss": false,
+  "IncludePaths": [
+    "UI/Styles"
+  ],
+  "Compilations": [
+    {
+      "Source": "UI/Pages/Index.razor.scss",
+      "Target": "UI/Pages/Index.razor.css"
+    },
+    {
+      "Source": "UI/Pages/Login.razor.scss",
+      "Target": "UI/Pages/Login.razor.css"
+    },
+    {
+      "Source": "UI/Pages/ChangePassword.razor.scss",
+      "Target": "UI/Pages/ChangePassword.razor.css"
+    }
+  ],
+  "Configurations": {
+    "Release": {
+      "Arguments": "--style=compressed --no-source-map"
+    }
+  }
+}

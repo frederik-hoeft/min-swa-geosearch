@@ -1,0 +1,3 @@
+[*.cs]
+# Tests execute in a controlled single-purpose host; avoid redundant context directives.
+dotnet_diagnostic.CA2007.severity = none

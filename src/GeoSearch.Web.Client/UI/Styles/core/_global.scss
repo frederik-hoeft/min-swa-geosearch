@@ -1,0 +1,62 @@
+html,
+body,
+#app {
+    min-height: 100%;
+}
+
+body {
+    margin: 0;
+    background: var(--mud-palette-background);
+    color: var(--mud-palette-text-primary);
+    font-family: var(--gs-font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+p {
+    margin-top: 0;
+}
+
+code,
+kbd,
+pre {
+    font-family: var(--gs-font-mono);
+}
+
+.gs-page-kicker,
+.gs-section-label {
+    font-size: 0.7rem;
+    font-weight: 750;
+    letter-spacing: 0.12em;
+    color: var(--gs-green);
+}
+
+.gs-page-heading h1 {
+    margin: 0.6rem 0 0.6rem;
+    font-size: clamp(1.75rem, 3vw, 2.35rem);
+    line-height: 1.16;
+    letter-spacing: -0.045em;
+    font-weight: 720;
+}
+
+.gs-page-heading p {
+    color: var(--mud-palette-text-secondary);
+    font-size: 0.94rem;
+}
+
+.startup-shell {
+    display: flex;
+    min-height: 100vh;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 1.25rem;
+    color: var(--gs-muted);
+}
+
+:focus-visible {
+    outline-offset: 3px;
+}

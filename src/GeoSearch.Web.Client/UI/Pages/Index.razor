@@ -1,0 +1,48 @@
+@page "/"
+@attribute [Authorize]
+@implements IDisposable
+@inject AuthenticationService Authentication
+@inject AuthApiClient AuthApi
+@inject SessionAuthenticationStateProvider AuthenticationState
+@inject NavigationManager Navigation
+
+<PageTitle>Explore | GeoSearch</PageTitle>
+<section class="gs-explore-page">
+    <header class="gs-page-heading gs-explore-heading">
+        <div class="gs-page-kicker">GEOSPATIAL WORKSPACE</div>
+        <h1>Explore the map</h1>
+        <p>One workspace for places, addresses, and nearby features.</p>
+    </header>
+    @if (_connectionError is not null)
+    {
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mb-4" role="alert">@_connectionError</MudAlert>
+    }
+    <div class="gs-explore-grid">
+        <aside class="gs-search-panel" aria-label="Search workspace">
+            <div class="gs-panel-heading">
+                <span class="gs-section-label">DISCOVERY</span>
+                <span class="gs-coming-soon">In development</span>
+            </div>
+            <h2>Find a place</h2>
+            <p>Search by place, address, or category to explore spatial results.</p>
+            <MudTextField T="string" Label="Search Niedersachsen" Variant="Variant.Outlined"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                          Disabled="true" Class="gs-search-input" />
+            <div class="gs-search-divider"></div>
+            <span class="gs-section-label">PLANNED TOOLS</span>
+            <div class="gs-feature-line"><MudIcon Icon="@Icons.Material.Filled.Place" Size="Size.Small" /> Place and address lookup</div>
+            <div class="gs-feature-line"><MudIcon Icon="@Icons.Material.Filled.NearMe" Size="Size.Small" /> Nearby features</div>
+            <div class="gs-feature-line"><MudIcon Icon="@Icons.Material.Filled.Layers" Size="Size.Small" /> Map layers and results</div>
+        </aside>
+        <div class="gs-map-surface" role="region" aria-label="Map placeholder">
+            <div class="gs-map-meta"><span class="gs-map-status-dot"></span> MAP VIEWER / PREVIEW</div>
+            <div class="gs-map-center">
+                <span class="gs-map-target" aria-hidden="true"><MudIcon Icon="@Icons.Material.Filled.TravelExplore" Size="Size.Large" /></span>
+                <h2>Map workspace</h2>
+                <p>Interactive MapLibre layers and GeoJSON results will appear here once the spatial API is connected.</p>
+                <span class="gs-map-stage">Map integration pending</span>
+            </div>
+            <div class="gs-map-coordinates">52.3759° N &nbsp; 9.7320° E <span>·</span> HANNOVER</div>
+        </div>
+    </div>
+</section>

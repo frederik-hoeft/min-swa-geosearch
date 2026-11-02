@@ -1,0 +1,120 @@
+.gs-login-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(400px, 47%);
+    min-height: 100vh;
+    background: #fff;
+}
+
+.gs-login-story {
+    position: relative;
+    display: flex;
+    overflow: hidden;
+    flex-direction: column;
+    padding: clamp(2rem, 4vw, 4.5rem);
+    background:
+        radial-gradient(circle at 79% 63%, rgba(95, 194, 162, 0.14) 0, transparent 32%),
+        repeating-radial-gradient(ellipse at 75% 85%, transparent 0 29px, rgba(166, 217, 200, 0.1) 30px 31px, transparent 32px 65px),
+        linear-gradient(145deg, #122e36 0%, #0b413f 100%);
+    color: #ecfaf6;
+
+    .gs-brand-name,
+    .gs-brand-name > span {
+        color: #fff;
+    }
+
+    .gs-brand-symbol {
+        background: #6bd3b7;
+        color: #123137;
+    }
+}
+
+.gs-story-content {
+    position: relative;
+    max-width: 35rem;
+    margin: auto 0;
+    padding-block: 6rem;
+
+    h2 {
+        margin: 1.5rem 0;
+        max-width: 32rem;
+        font-size: clamp(3rem, 5.6vw, 5.5rem);
+        font-weight: 720;
+        line-height: 1.05;
+        letter-spacing: -0.065em;
+    }
+
+    h2 em {
+        color: #79dabd;
+        font-style: normal;
+    }
+
+    p {
+        max-width: 27rem;
+        color: #b6d7d2;
+        line-height: 1.7;
+        font-size: 1.06rem;
+    }
+}
+
+.gs-story-overline {
+    color: #83d4bd;
+    letter-spacing: 0.16em;
+    font-size: 0.7rem;
+    font-weight: 750;
+}
+
+.gs-story-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 2rem;
+
+    span {
+        border: 1px solid rgba(187, 227, 215, 0.25);
+        border-radius: 30px;
+        padding: 0.5rem 0.8rem;
+        font-size: 0.75rem;
+        color: #cde6e0;
+    }
+}
+
+.gs-story-footer {
+    color: #8cb8b0;
+    font-size: 0.8rem;
+}
+
+.gs-story-footer span {
+    margin-inline: 0.5rem;
+}
+
+.gs-login-content {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem clamp(1.5rem, 6vw, 5rem);
+}
+
+.gs-login-mobile-brand {
+    display: none;
+}
+
+@media (max-width: 850px) {
+    .gs-login-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .gs-login-story {
+        display: none;
+    }
+
+    .gs-login-content {
+        padding-block: 3rem;
+    }
+
+    .gs-login-mobile-brand {
+        display: block;
+        margin-bottom: 4rem;
+    }
+}

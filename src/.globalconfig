@@ -1,0 +1,467 @@
+is_global = true
+
+#### Analyzer Settings ####
+# see https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/categories
+#
+# This section configures existing and enables disabled-by-default .NET Analyzers that are relevant in an enterprise context.
+# Initially, we are enabling most of the built-in analyzers and increasing the severity of some of them.
+# If you believe a rule is too strict, you may bring it up for discussion to reach a consensus.
+
+########################## Opt-in analyzers ##########################
+# The following rules are generally good to follow, but may be too strict / produce a lot of noise in existing codebases.
+# Please discuss with your team before enabling these rules.
+# CA1062: Validate arguments of public methods
+dotnet_diagnostic.CA1062.severity = suggestion
+# CA1515: Consider making public types internal
+dotnet_diagnostic.CA1515.severity = suggestion
+# CA1851: Possible multiple enumerations of IEnumerable collection
+dotnet_diagnostic.CA1851.severity = warning
+# IDE0079: Remove unnecessary suppression
+# - Visual Studio doesn't recognize valid suppressions targeting ReSharper, so we disable this rule.
+#   There shouldn't be a lot of suppressions in the codebase anyway.
+dotnet_diagnostic.IDE0079.severity = none
+
+######################################################################
+
+# The following rules are considered best practices and should be enabled in all codebases.
+# When maintaining an existing codebase and refactoring everything at once is not feasible,
+# it is recommended to keep these rules enabled and to perform drive-by fixes as you work on the code.
+# Note: Some analyzers are intentionally very strict, such as the IDisposable analyzers. While they may occasionally produce false positives,
+#       we prefer to have a few explicit suppressions in the codebase rather than leaving resources undisposed.
+
+## Design rules
+# CA1001: Types that own disposable fields should be disposable
+dotnet_diagnostic.CA1001.severity = suggestion
+# CA1003: Use generic event handler instances
+dotnet_diagnostic.CA1003.severity = warning
+# CA1008: Enums should have zero value
+dotnet_diagnostic.CA1008.severity = warning
+# CA1010: Collections should implement generic interface
+dotnet_diagnostic.CA1010.severity = warning
+# CA1012: Abstract types should not have public constructors
+dotnet_diagnostic.CA1012.severity = warning
+# CA1018: Mark attributes with AttributeUsageAttribute
+dotnet_diagnostic.CA1018.severity = warning
+# CA1019: Define accessors for attribute arguments
+dotnet_diagnostic.CA1019.severity = suggestion
+# CA1024: Use properties where appropriate
+# - sounds good in theory, but wants to convert every method starting with "Get" to a property
+dotnet_diagnostic.CA1024.severity = silent
+# CA1027: Mark enums with FlagsAttribute
+dotnet_diagnostic.CA1027.severity = suggestion
+# CA1028: Enum storage should be Int32
+dotnet_diagnostic.CA1028.severity = suggestion
+# CA1030: Use events where appropriate
+dotnet_diagnostic.CA1030.severity = warning
+# CA1031: Do not catch general exception types
+dotnet_diagnostic.CA1031.severity = silent
+# CA1032: Implement standard exception constructors
+dotnet_diagnostic.CA1032.severity = suggestion
+# CA1034: Nested types should not be visible
+dotnet_diagnostic.CA1034.severity = warning
+# CA1036: Override methods on comparable types
+dotnet_diagnostic.CA1036.severity = warning
+# CA1041: Provide ObsoleteAttribute message
+dotnet_diagnostic.CA1041.severity = suggestion
+# CA1044: Properties should not be write only
+# - there is no reason to ever do this
+dotnet_diagnostic.CA1044.severity = error
+# CA1047: Do not declare protected members in sealed types
+dotnet_diagnostic.CA1047.severity = warning
+# CA1050: Declare types in namespaces
+dotnet_diagnostic.CA1050.severity = warning
+# CA1051: Do not declare visible instance fields
+dotnet_diagnostic.CA1051.severity = suggestion
+# CA1052: Static holder types should be Static or NotInheritable
+dotnet_diagnostic.CA1052.severity = suggestion
+# CA1054: URI parameters should not be strings
+dotnet_diagnostic.CA1054.severity = suggestion
+# CA1058: Types should not extend certain base types
+dotnet_diagnostic.CA1058.severity = warning
+# CA1061: Do not hide base class methods
+dotnet_diagnostic.CA1061.severity = warning
+# CA1063: Implement IDisposable correctly
+dotnet_diagnostic.CA1063.severity = warning
+# CA1064: Exceptions should be public
+dotnet_diagnostic.CA1064.severity = warning
+# CA1065: Do not raise exceptions in unexpected locations
+dotnet_diagnostic.CA1065.severity = warning
+# CA1066: Implement IEquatable when overriding Equals
+dotnet_diagnostic.CA1066.severity = suggestion
+# CA1067: Override Equals when implementing IEquatable
+dotnet_diagnostic.CA1067.severity = warning
+# CA1068: CancellationToken parameters must come last
+dotnet_diagnostic.CA1068.severity = suggestion
+# CA1069: Enums should not have duplicate values
+dotnet_diagnostic.CA1069.severity = error
+# CA1070: Do not declare event fields as virtual
+dotnet_diagnostic.CA1070.severity = warning
+
+## Globalization rules
+# CA1303: Do not pass literals as localized parameters
+dotnet_diagnostic.CA1303.severity = warning
+# CA1308: Normalize strings to uppercase
+dotnet_diagnostic.CA1308.severity = warning
+# CA1309: Use ordinal StringComparison
+dotnet_diagnostic.CA1309.severity = suggestion
+# CA1310: Specify StringComparison for correctness
+dotnet_diagnostic.CA1310.severity = warning
+# CA1311: Specify a culture or use an invariant version
+dotnet_diagnostic.CA1311.severity = warning
+# CA2101: Specify marshalling for P/Invoke string arguments
+dotnet_diagnostic.CA2101.severity = warning
+
+## Interoperability rules
+# CA1401: P/Invokes should not be visible
+dotnet_diagnostic.CA1401.severity = warning
+# CA1416: Validate platform compatibility (call site reachable by all platforms, but only supported on X)
+dotnet_diagnostic.CA1416.severity = warning
+# CA1417: Do not use OutAttribute on string parameters for P/Invokes
+dotnet_diagnostic.CA1417.severity = warning
+# CA1418: Use valid platform string (Platform compatibility analyzer requires a valid platform name and version.)
+dotnet_diagnostic.CA1418.severity = error
+# CA1419: Provide a parameterless constructor that is as visible as the containing type for concrete types derived from 'System.Runtime.InteropServices.SafeHandle'
+dotnet_diagnostic.CA1419.severity = suggestion
+# CA1420: Property, type, or attribute requires runtime marshalling
+dotnet_diagnostic.CA1420.severity = error
+
+## Maintainability rules
+# CA1508: Avoid dead conditional code
+dotnet_diagnostic.CA1508.severity = warning
+# CA1510: Use ArgumentNullException throw helper
+dotnet_diagnostic.CA1510.severity = suggestion
+# CA1511: Use ArgumentException throw helper
+dotnet_diagnostic.CA1511.severity = suggestion
+# CA1512: Use ArgumentOutOfRangeException throw helper
+dotnet_diagnostic.CA1512.severity = suggestion
+# CA1513: Use ObjectDisposedException throw helper
+dotnet_diagnostic.CA1513.severity = suggestion
+# CA1514: Avoid redundant length argument
+dotnet_diagnostic.CA1514.severity = warning
+
+## Naming rules
+# CA1707: Identifiers should not contain underscores
+dotnet_diagnostic.CA1707.severity = none
+
+## Performance rules
+# CA1802: Use Literals Where Appropriate (make non-public static readonly fields const if possible)
+dotnet_diagnostic.CA1802.severity = warning
+dotnet_code_quality.CA1802.api_surface = private, internal
+# CA1813: Avoid unsealed attributes
+dotnet_diagnostic.CA1813.severity = warning
+# CA1821: Remove empty finalizers
+dotnet_diagnostic.CA1821.severity = warning
+# CA1825: Avoid zero-length array allocations
+dotnet_diagnostic.CA1825.severity = warning
+# CA1826: Use property instead of Linq Enumerable method
+dotnet_diagnostic.CA1826.severity = warning
+# CA1827: Do not use Count()/LongCount() when Any() can be used
+dotnet_diagnostic.CA1827.severity = warning
+# CA1828: Do not use CountAsync/LongCountAsync when AnyAsync can be used
+dotnet_diagnostic.CA1828.severity = warning
+# CA1829: Use Length/Count property instead of Enumerable.Count method
+dotnet_diagnostic.CA1829.severity = warning
+# CA1830: Prefer strongly-typed Append and Insert method overloads on StringBuilder
+dotnet_diagnostic.CA1830.severity = warning
+# CA1831: Use AsSpan instead of Range-based indexers for string when appropriate
+dotnet_diagnostic.CA1831.severity = warning
+# CA1832: Use AsSpan or AsMemory instead of Range-based indexers for getting ReadOnlySpan or ReadOnlyMemory portion of an array
+dotnet_diagnostic.CA1832.severity = warning
+# CA1833: Use AsSpan or AsMemory instead of Range-based indexers for getting Span or Memory portion of an array
+dotnet_diagnostic.CA1833.severity = warning
+# CA1834: Use StringBuilder.Append(char) for single character strings
+dotnet_diagnostic.CA1834.severity = warning
+# CA1835: Prefer the memory-based overloads of ReadAsync/WriteAsync methods in stream-based classes
+dotnet_diagnostic.CA1835.severity = suggestion
+# CA1836: Prefer IsEmpty over Count when available
+dotnet_diagnostic.CA1836.severity = warning
+# CA1841: Prefer Dictionary Contains methods
+dotnet_diagnostic.CA1841.severity = warning
+# CA1844: Provide memory-based overrides of async methods when subclassing 'Stream'
+dotnet_diagnostic.CA1844.severity = warning
+# CA1845: Use span-based 'string.Concat'
+dotnet_diagnostic.CA1845.severity = warning
+# CA1846: Prefer AsSpan over Substring
+dotnet_diagnostic.CA1846.severity = warning
+# CA1847: Use String.Contains(char) instead of String.Contains(string) with single characters
+dotnet_diagnostic.CA1847.severity = warning
+# CA1849: Call async methods when in an async method (NOTE: requires -Async suffix to work)
+dotnet_diagnostic.CA1849.severity = warning
+# CA1852: Seal internal types
+dotnet_diagnostic.CA1852.severity = warning
+dotnet_code_quality.CA1852.ignore_internalsvisibleto = true
+# CA1853: Unnecessary call to 'Dictionary.ContainsKey(key)'
+dotnet_diagnostic.CA1853.severity = warning
+# CA1854: Prefer the IDictionary.TryGetValue(TKey, out TValue) method
+dotnet_diagnostic.CA1854.severity = warning
+# CA1865-CA1867: Use 'string.Method(char)' instead of 'string.Method(string)' for string with single char
+dotnet_diagnostic.CA1865.severity = warning
+dotnet_diagnostic.CA1866.severity = warning
+dotnet_diagnostic.CA1867.severity = warning
+# CA1858: Use StartsWith instead of IndexOf
+dotnet_diagnostic.CA1858.severity = warning
+# CA1859: Use concrete types when possible for improved performance
+dotnet_diagnostic.CA1859.severity = suggestion
+# CA1860: Avoid using 'Enumerable.Any()' extension method
+dotnet_diagnostic.CA1860.severity = warning
+# CA1861: Avoid constant arrays as arguments
+dotnet_diagnostic.CA1861.severity = warning
+# CA1862: Use the 'StringComparison' method overloads to perform case-insensitive string comparisons
+dotnet_diagnostic.CA1862.severity = suggestion
+# CA1864: Prefer the 'IDictionary.TryAdd(TKey, TValue)' method
+dotnet_diagnostic.CA1864.severity = warning
+# CA1868: Unnecessary call to 'Contains' for sets
+dotnet_diagnostic.CA1868.severity = warning
+# CA1869: Cache and reuse 'JsonSerializerOptions' instances
+dotnet_diagnostic.CA1869.severity = warning
+# CA1870: Use a cached 'SearchValues' instance
+dotnet_diagnostic.CA1870.severity = warning
+# CA1872: Prefer 'Convert.ToHexString' and 'Convert.ToHexStringLower' over call chains based on 'BitConverter.ToString'
+dotnet_diagnostic.CA1872.severity = warning
+
+## SingleFile rules
+# IL3000/IL3001: Avoid accessing Assembly file path when publishing as a single file
+dotnet_diagnostic.IL3000.severity = warning
+dotnet_diagnostic.IL3001.severity = warning
+# IL3002: Avoid calling members annotated with 'RequiresAssemblyFilesAttribute' when publishing as a single file.
+dotnet_diagnostic.IL3002.severity = warning
+# IL3003: 'RequiresAssemblyFilesAttribute' annotations must match across all interface implementations or overrides
+dotnet_diagnostic.IL3003.severity = warning
+# IL3005: RequiresAssemblyFilesAttribute cannot be placed directly on application entry point
+dotnet_diagnostic.IL3005.severity = error
+
+## Reliability rules
+# CA2000: Dispose objects before losing scope
+dotnet_diagnostic.CA2000.severity = error
+# CA2002: Do not lock on objects with weak identity
+dotnet_diagnostic.CA2002.severity = warning
+# CA2009: Do not call ToImmutableCollection on an ImmutableCollection value
+dotnet_diagnostic.CA2009.severity = warning
+# CA2011: Do not assign property within its setter (avoiding infinite recursion)
+dotnet_diagnostic.CA2011.severity = warning
+# CA2012: Use ValueTasks correctly
+dotnet_diagnostic.CA2012.severity = warning
+# CA2013: Do not use ReferenceEquals with value types
+dotnet_diagnostic.CA2013.severity = error
+# CA2014: Do not use stackalloc in loops
+dotnet_diagnostic.CA2014.severity = warning
+# CA2016: Forward the CancellationToken parameter to methods that take one
+dotnet_diagnostic.CA2016.severity = warning
+# CA2018: The count argument to Buffer.BlockCopy should specify the number of bytes to copy
+dotnet_diagnostic.CA2018.severity = error
+# CA2019: ThreadStatic fields should not use inline initialization
+dotnet_diagnostic.CA2019.severity = error
+# CA2021: Don't call Enumerable.Cast<T> or Enumerable.OfType<T> with incompatible types
+dotnet_diagnostic.CA2021.severity = warning
+# CA2022: Avoid inexact read with Stream.Read
+dotnet_diagnostic.CA2022.severity = warning
+
+## Security rules
+# CA2100: Review SQL queries for security vulnerabilities
+dotnet_diagnostic.CA2100.severity = warning
+# CA2119: Seal methods that satisfy private interfaces
+dotnet_diagnostic.CA2119.severity = suggestion
+# CA3001: Review code for SQL injection vulnerabilities
+dotnet_diagnostic.CA3001.severity = warning
+# CA3002: Review code for XSS vulnerabilities
+dotnet_diagnostic.CA3002.severity = warning
+# CA3003: Review code for file path injection vulnerabilities
+dotnet_diagnostic.CA3003.severity = warning
+# CA3004: Review code for information disclosure vulnerabilities
+dotnet_diagnostic.CA3004.severity = warning
+# CA3005: Review code for LDAP injection vulnerabilities
+dotnet_diagnostic.CA3005.severity = warning
+# CA3006: Review code for process command injection vulnerabilities
+dotnet_diagnostic.CA3006.severity = warning
+# CA3007: Review code for open redirect vulnerabilities
+dotnet_diagnostic.CA3007.severity = warning
+# CA3008: Review code for XPath injection vulnerabilities
+dotnet_diagnostic.CA3008.severity = warning
+# CA3009: Review code for XML injection vulnerabilities
+dotnet_diagnostic.CA3009.severity = warning
+# CA3010: Review code for XAML injection vulnerabilities
+dotnet_diagnostic.CA3010.severity = warning
+# CA3011: Review code for DLL injection vulnerabilities
+dotnet_diagnostic.CA3011.severity = error
+# CA3012: Review code for regex injection vulnerabilities
+dotnet_diagnostic.CA3012.severity = warning
+# CA5350: Do Not Use Weak Cryptographic Algorithms
+dotnet_diagnostic.CA5350.severity = warning
+# CA5351 Do Not Use Broken Cryptographic Algorithms
+dotnet_diagnostic.CA5351.severity = error
+# CA5358: Do Not Use Unsafe Cipher Modes
+dotnet_diagnostic.CA5358.severity = warning
+# CA5359: Do not disable certificate validation
+dotnet_diagnostic.CA5359.severity = warning
+# CA5362: Potential reference cycle in deserialized object graph
+dotnet_diagnostic.CA5362.severity = warning
+# CA5363: Do not disable request validation
+dotnet_diagnostic.CA5363.severity = warning
+# CA5364: Do not use deprecated security protocols/SslProtocols
+dotnet_diagnostic.CA5364.severity = warning
+dotnet_diagnostic.CA5397.severity = warning
+# CA5365: Do Not Disable HTTP Header Checking
+dotnet_diagnostic.CA5365.severity = warning
+# CA5373: Do not use obsolete key derivation function
+dotnet_diagnostic.CA5373.severity = warning
+# CA5378: Do not disable ServicePointManagerSecurityProtocols
+dotnet_diagnostic.CA5378.severity = warning
+# CA5379: Ensure key derivation function algorithm is sufficiently strong
+dotnet_diagnostic.CA5379.severity = warning
+# CA5380: Do not add certificates to root store
+dotnet_diagnostic.CA5380.severity = error
+# CA5382: Use secure cookies in ASP.NET Core
+dotnet_diagnostic.CA5382.severity = warning
+# CA5384: Do not use digital signature algorithm (DSA)
+dotnet_diagnostic.CA5384.severity = warning
+# CA5385: Use Rivest–Shamir–Adleman (RSA) algorithm with sufficient key size
+dotnet_diagnostic.CA5385.severity = warning
+# CA5386: Avoid hardcoding SecurityProtocolType/SslProtocols value
+dotnet_diagnostic.CA5386.severity = warning
+dotnet_diagnostic.CA5398.severity = warning
+# CA5387: Do not use weak key derivation function with insufficient iteration count
+dotnet_diagnostic.CA5387.severity = warning
+# CA5388: Ensure sufficient iteration count when using weak key derivation function
+dotnet_diagnostic.CA5388.severity = warning
+# CA5390: Do not hard-code encryption key
+dotnet_diagnostic.CA5390.severity = warning
+# CA5391: Use antiforgery tokens in ASP.NET Core MVC controllers
+dotnet_diagnostic.CA5391.severity = warning
+# CA5392: Use DefaultDllImportSearchPaths attribute for P/Invokes
+dotnet_diagnostic.CA5392.severity = warning
+# CA5393: Do not use unsafe DllImportSearchPath value
+dotnet_diagnostic.CA5393.severity = error
+# CA5394: Do not use insecure randomness
+dotnet_diagnostic.CA5394.severity = suggestion
+# CA5395: Miss HttpVerb attribute for action methods
+dotnet_diagnostic.CA5395.severity = warning
+# CA5396: Set HttpOnly to true for HttpCookie
+dotnet_diagnostic.CA5396.severity = warning
+# CA5399: Enable HttpClient certificate revocation list check
+dotnet_diagnostic.CA5399.severity = suggestion
+# CA5400: Ensure HttpClient certificate revocation list check is not disabled
+dotnet_diagnostic.CA5400.severity = suggestion
+# CA5403: Do not hard-code certificate
+dotnet_diagnostic.CA5403.severity = warning
+# CA5404: Do not disable token validation checks
+dotnet_diagnostic.CA5404.severity = warning
+# CA5405: Do not always skip token validation in delegates
+dotnet_diagnostic.CA5405.severity = warning
+
+## Usage rules
+# CA1816: Call GC.SuppressFinalize correctly
+dotnet_diagnostic.CA1816.severity = warning
+# CA2215: Dispose methods should call base class dispose
+dotnet_diagnostic.CA2215.severity = warning
+# CA2200: Rethrow to preserve stack details
+dotnet_diagnostic.CA2200.severity = warning
+# CA2201: Do not raise reserved exception types
+dotnet_diagnostic.CA2201.severity = warning
+# CA2244: Do not duplicate indexed element initializations
+dotnet_diagnostic.CA2244.severity = warning
+# CA2246: Do not assign a symbol and its member in the same statement
+dotnet_diagnostic.CA2246.severity = warning
+# CA2217: Do not mark enums with FlagsAttribute
+dotnet_diagnostic.CA2217.severity = warning
+# CA2250: Use ThrowIfCancellationRequested
+dotnet_diagnostic.CA2250.severity = warning
+# CA2264: Do not pass a non-nullable value to 'ArgumentNullException.ThrowIfNull'
+dotnet_diagnostic.CA2264.severity = error
+# CA2265: Do not compare Span<T> to null or default
+dotnet_diagnostic.CA2265.severity = warning
+# CA2263: Prefer generic overload when type is known
+dotnet_diagnostic.CA2263.severity = warning
+
+## SYSLIB rules
+
+# SYSLIB1001: Logging method names can't start with an underscore
+dotnet_diagnostic.SYSLIB1001.severity = warning
+# SYSLIB1002: Don't include log level parameters as templates in the logging message
+dotnet_diagnostic.SYSLIB1002.severity = warning
+# SYSLIB1003: Logging method parameter names can't start with an underscore
+dotnet_diagnostic.SYSLIB1003.severity = warning
+# SYSLIB1005: Could not find a required type definition
+dotnet_diagnostic.SYSLIB1005.severity = error
+# SYSLIB1014: Logging template has no corresponding method argument
+dotnet_diagnostic.SYSLIB1014.severity = warning
+# SYSLIB1015: Argument is not referenced from the logging message
+dotnet_diagnostic.SYSLIB1015.severity = warning
+# SYSLIB1021: Multiple message-template item names differ only by case
+dotnet_diagnostic.SYSLIB1021.severity = warning
+# SYSLIB1022: Can't have malformed format strings
+dotnet_diagnostic.SYSLIB1022.severity = warning
+
+# System.Text.Json source generator rules
+# SYSLIB1030: System.Text.Json source generator did not generate output for type
+dotnet_diagnostic.SYSLIB1030.severity = error
+# SYSLIB1031: System.Text.Json source generator encountered a duplicate type info property name
+dotnet_diagnostic.SYSLIB1031.severity = error
+# SYSLIB1032: Context classes to be augmented by the System.Text.Json source generator must be declared as partial
+dotnet_diagnostic.SYSLIB1032.severity = warning
+# SYSLIB1033: System.Text.Json source generator encountered a type with multiple [JsonConstructor] annotations
+dotnet_diagnostic.SYSLIB1033.severity = error
+# SYSLIB1034: JsonSourceGenerator encountered a [JsonStringEnumConverter] annotation
+dotnet_diagnostic.SYSLIB1034.severity = warning
+# SYSLIB1035: System.Text.Json source generator encountered a type with multiple [JsonExtensionData] annotations
+dotnet_diagnostic.SYSLIB1035.severity = error
+# SYSLIB1036: System.Text.Json source generator encountered an invalid [JsonExtensionData] annotation
+dotnet_diagnostic.SYSLIB1036.severity = error
+# SYSLIB1037: System.Text.Json source generator encountered a type with init-only properties which are not supported for deserialization
+dotnet_diagnostic.SYSLIB1037.severity = warning
+# SYSLIB1038: System.Text.Json source generator encountered a property annotated with [JsonInclude] but with inaccessible accessors
+dotnet_diagnostic.SYSLIB1038.severity = error
+# SYSLIB1220: JsonSourceGenerator encountered a JsonConverterAttribute with an invalid type argument.
+dotnet_diagnostic.SYSLIB1220.severity = error
+# SYSLIB1221: JsonSourceGenerator does not support this C# language version.
+dotnet_diagnostic.SYSLIB1221.severity = error
+# SYSLIB1222: Constructor annotated with JsonConstructorAttribute is inaccessible.
+dotnet_diagnostic.SYSLIB1222.severity = error
+# SYSLIB1223: Attributes deriving from JsonConverterAttribute are not supported by the source generator.
+dotnet_diagnostic.SYSLIB1223.severity = error
+# SYSLIB1224: Types annotated with JsonSerializableAttribute must be classes deriving from JsonSerializerContext.
+dotnet_diagnostic.SYSLIB1224.severity = error
+
+# SYSLIB diagnostics for regex source generation
+# SYSLIB1040: Invalid GeneratedRegexAttribute usage.
+dotnet_diagnostic.SYSLIB1040.severity = error
+# SYSLIB1041: Multiple GeneratedRegexAttribute attributes were applied to the same method, but only one is allowed.
+dotnet_diagnostic.SYSLIB1041.severity = error
+# SYSLIB1042: The specified regular expression is invalid.
+dotnet_diagnostic.SYSLIB1042.severity = error
+# SYSLIB1043: A GeneratedRegexAttribute method must be partial, parameterless, non-generic, and non-abstract, and return Regex.
+dotnet_diagnostic.SYSLIB1043.severity = error
+# SYSLIB1044: The regex generator couldn't generate a complete source implementation for the specified regular expression due to an internal limitation. See the explanation in the generated source for more details.
+dotnet_diagnostic.SYSLIB1044.severity = warning
+# SYSLIB1045: Convert to 'GeneratedRegexAttribute'
+dotnet_diagnostic.SYSLIB1045.severity = warning
+
+# SYSLIB diagnostics for p/invoke source generation
+# SYSLIB1050: Invalid LibraryImportAttribute usage.
+dotnet_diagnostic.SYSLIB1050.severity = error
+# SYSLIB1051/SYSLIB1052: The specified type is not supported by source-generated p/invokes.
+dotnet_diagnostic.SYSLIB1051.severity = error
+dotnet_diagnostic.SYSLIB1052.severity = error
+# SYSLIB1053: The specified LibraryImportAttribute arguments cannot be forwarded to DllImportAttribute.
+dotnet_diagnostic.SYSLIB1053.severity = error
+# SYSLIB1054: Use LibraryImportAttribute instead of DllImportAttribute to generate p/invoke marshalling code at compile time.
+dotnet_diagnostic.SYSLIB1054.severity = warning
+# SYSLIB1055: Invalid CustomMarshallerAttribute usage.
+dotnet_diagnostic.SYSLIB1055.severity = error
+# SYSLIB1056: The specified native type is invalid.
+dotnet_diagnostic.SYSLIB1056.severity = error
+# SYSLIB1057: The marshaller type does not have the required shape.
+dotnet_diagnostic.SYSLIB1057.severity = warning
+# SYSLIB1058: Invalid NativeMarshallingAttribute usage.
+dotnet_diagnostic.SYSLIB1058.severity = error
+# SYSLIB1059: The marshaller type does not support an allocating constructor.
+dotnet_diagnostic.SYSLIB1059.severity = error
+# SYSLIB1060: The specified marshaller type is invalid.
+dotnet_diagnostic.SYSLIB1060.severity = error
+# SYSLIB1061: The marshaller type has incompatible method signatures.
+dotnet_diagnostic.SYSLIB1061.severity = error
+# SYSLIB1062: The project must be updated with <AllowUnsafeBlocks>true</AllowUnsafeBlocks>.
+dotnet_diagnostic.SYSLIB1062.severity = error
+
+## IDE rules
+# IDE0073: Require file header
+dotnet_diagnostic.IDE0073.severity = none
