@@ -30,6 +30,8 @@ GeoSearch uses distinct PostgreSQL databases with different ownership models:
 - **`lab1` (instructor-owned):** contains the imported `osm` schema, `search.search_index` materialized view, and supplied search functions. The application accesses these through a read-only search context. The `just` recipes in `lab/` own import and index lifecycle; EF Core does not migrate this database.
 - **`geosearch_auth` (application-owned):** contains ASP.NET Core Identity and hashed refresh-token records in the `app_auth` schema. EF Core migrations own its schema, and WKG transactions coordinate Identity writes.
 
+The read-only restriction is currently architectural, **not enforced by PostgreSQL permissions**: the development `ConnectionStrings:Search` example uses the same privileged `lab1` role as the import recipes. Before adding actual GIS query adapters, provision a separate login role with only database CONNECT, schema USAGE, required table/view SELECT, and required function EXECUTE permissions. Keep imports, index maintenance, and schema changes on the administrative role. Validate that write attempts using the application role are rejected.
+
 This separation allows the search API to remain independent of authentication. Lab 2's read-only search features require no user account, so future GIS endpoints should remain accessible without Identity unless an extension introduces a concrete authorization requirement.
 
 GeoServer is an optional independent WMS/WFS publisher over the PostGIS dataset, not an intermediary for application search requests. A local basemap or tile server, if added, will be a separate deployment concern.

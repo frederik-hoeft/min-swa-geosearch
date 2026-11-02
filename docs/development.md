@@ -43,7 +43,7 @@ Copy `src/GeoSearch.Web.Server/appsettings.example.json` to `src/GeoSearch.Web.S
 | `Auth:RefreshToken:*` | Secure refresh cookie name and lifetime |
 | `Auth:RefreshTokenCleanup:*` | Expired-token retention (30 days by default) and cleanup interval (one day by default) |
 
-Use `Host=postgis;Port=5432` in connection strings when the **API runs inside the devcontainer**, or `Host=localhost;Port=5432` when it runs **on Windows**. The Identity database name is `geosearch_auth`; the search database name is `lab1`. The local `appsettings.json` is not shared between separately configured Windows and Linux user-secret stores.
+Use `Host=postgis;Port=5432` in connection strings when the **API runs inside the devcontainer**, or `Host=localhost;Port=5432` when it runs **on Windows**. The Identity database name is `geosearch_auth`; the search database name is `lab1`. The local `appsettings.json` is not shared between separately configured Windows and Linux user-secret stores. The initial `Search` connection may use the privileged `lab1` development account while GIS endpoints do not exist; provision a restricted application login before implementing those endpoints (see [database ownership](architecture.md#database-ownership)).
 
 The bootstrap account is only created when absent. Changing `Bootstrap:Password` does not reset an existing password. Public registration is disabled, and the lab's GIS read operations do not depend on Identity.
 

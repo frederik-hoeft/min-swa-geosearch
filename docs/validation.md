@@ -1,6 +1,6 @@
 # Validation and integration boundaries
 
-The initial GeoSearch implementation is an application foundation. Authentication, database ownership boundaries, and the browser shell are implemented; the GeoJSON search endpoints, interactive map, and geolocation features are pending. Validation therefore distinguishes automated scaffold checks from tests requiring a live browser and PostGIS instance.
+The initial GeoSearch implementation is an application foundation. Authentication, separate database contexts, and the browser shell are implemented; the GeoJSON search endpoints, interactive map, and geolocation features are pending. Validation therefore distinguishes automated scaffold checks from tests requiring a live browser and PostGIS instance.
 
 ## Automated validation
 
@@ -29,6 +29,8 @@ Use the [devcontainer database](../.devcontainer/README.md) for the following ch
 These are integration checks to perform on the running development stack; automated unit tests are not substitutes for them.
 
 ## GIS acceptance criteria (future implementation)
+
+Before wiring the spatial API, configure a database login restricted to read-only query privileges and verify that it cannot modify `osm` or `search` objects. The current development `lab1` account is privileged and does not enforce the architectural read-only boundary.
 
 After the spatial API and client have been implemented, load the dated Geofabrik snapshot through the instructor's `just` recipes. Validate `/api/search`, `/api/reverse`, `/api/nearby`, and `/api/categories` against the lab's fixtures, including GeoJSON structure, longitude/latitude order, category and distance behavior, and failure responses. Measure the required median search latency below 300 ms over ten fixture queries on real PostGIS data.
 
