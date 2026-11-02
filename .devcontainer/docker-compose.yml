@@ -19,6 +19,7 @@ services:
       Cors__ClientOrigin: "https://localhost:${GEOSEARCH_DEV_CLIENT_PORT:-15200}"
       PGHOST: postgis
       GEOSERVER_URL: http://geoserver:8080/geoserver
+      GEOSERVER_ADMIN_PASSWORD: ${GEOSERVER_ADMIN_PASSWORD:-lab1-local-only}
       PGPORT: "5432"
       PGDATABASE: lab1
       PGUSER: lab1

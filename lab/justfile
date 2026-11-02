@@ -16,10 +16,10 @@ spat     := if bbox == "" { "" } else { "-spat " + bbox }
 
 # Local lab credentials (defaults from compose.yaml)
 export PGHOST     := env("PGHOST", "localhost")
-export PGPORT     := env("POSTGIS_PORT", "5432")
-export PGUSER     := "lab1"
+export PGPORT     := env("PGPORT", env("POSTGIS_PORT", "5432"))
+export PGUSER     := env("PGUSER", "lab1")
 export PGDATABASE := "lab1"
-export PGPASSWORD := env("POSTGIS_PASSWORD", "lab1-local-only")
+export PGPASSWORD := env("PGPASSWORD", env("POSTGIS_PASSWORD", "lab1-local-only"))
 pg       := "PG:host=" + PGHOST + " port=" + PGPORT + " dbname=" + PGDATABASE + " user=" + PGUSER
 geoserver := env("GEOSERVER_URL", "http://localhost:" + env("GEOSERVER_PORT", "8081") + "/geoserver")
 gs_auth  := "admin:" + env("GEOSERVER_ADMIN_PASSWORD", "lab1-local-only")

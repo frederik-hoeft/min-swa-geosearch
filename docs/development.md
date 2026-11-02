@@ -27,7 +27,7 @@ cd /workspace
 ./scripts/setup-identity-db.sh
 ```
 
-The script is idempotent. At API startup, EF Core applies committed migrations to the `app_auth` schema in `geosearch_auth`. Do not use `EnsureCreated` for this migrated schema. If a previous *disposable* development database was created using `EnsureCreated`, stop the API, drop **only** `geosearch_auth` while no clients are connected, and recreate it using this script. Never reset the imported `lab1` database as part of Identity troubleshooting.
+The script is idempotent. Lab recipes and the Identity setup script honor an existing `PGPASSWORD` and `PGPORT` (falling back to `POSTGIS_PASSWORD`/`POSTGIS_PORT` and then local defaults). The devcontainer propagates the Compose database password through `PGPASSWORD` and the optional GeoServer administrator password through `GEOSERVER_ADMIN_PASSWORD`. If you change those values, recreate the affected Compose services and update any host-side connection strings accordingly. At API startup, EF Core applies committed migrations to the `app_auth` schema in `geosearch_auth`. Do not use `EnsureCreated` for this migrated schema. If a previous *disposable* development database was created using `EnsureCreated`, stop the API, drop **only** `geosearch_auth` while no clients are connected, and recreate it using this script. Never reset the imported `lab1` database as part of Identity troubleshooting.
 
 ## Configure the server
 
