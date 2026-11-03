@@ -13,9 +13,9 @@ dotnet build src/GeoSearch.slnx --no-restore -warnaserror
 dotnet test src/GeoSearch.slnx --no-restore --no-build
 ```
 
-GitHub Actions also runs `python3 -m unittest discover -s scripts/tests -v` to verify the lab reset recipe's preflight rejection, ordering, and fail-fast behavior using mocked commands. These tests cannot prove PostgreSQL/GDAL runtime semantics.
+GitHub Actions runs three separate jobs: **lab-scripts** (parses the real Justfile, checks shell syntax, and executes Python automation tests), **build** (.NET restore, format verification, warnings-as-errors Release build), and **test** (a fresh restore and Release test run, after a successful build job). The build also compiles the client SCSS through SassCompiler.
 
-GitHub Actions restores dependencies, checks formatting, builds in Release with warnings treated as errors, and runs tests. The build also compiles the client SCSS through SassCompiler.
+The lab automation tests use a local HTTP fixture server to verify initial dataset download, no-network reruns, HTTP-range resume, and corruption recovery. They also mock the reset recipe's preflight rejection, ordering, and fail-fast behavior. These checks fetch no real Geofabrik data and cannot prove PostgreSQL/GDAL runtime semantics or production-scale download performance.
 
 The automated tests exercise Identity/JWT behavior and model metadata, browser session contracts, antiforgery behavior, refresh-token boundaries, GeoJSON field/coordinate serialization, the keyless read-only GIS model, simultaneous registration of the two WKG transaction contexts, and generation of OpenAPI paths. They do not require PostgreSQL or a browser, and do not prove GIS SQL, database concurrency, or cross-origin cookie behavior.
 

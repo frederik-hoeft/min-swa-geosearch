@@ -6,10 +6,11 @@ The preferred environment is [the VS Code devcontainer](../.devcontainer/README.
 
 Before opening the devcontainer, copy `.devcontainer/.env.example` to `.devcontainer/.env` and set `GEOSEARCH_READER_PASSWORD` to a locally managed password of at least 24 characters. Then open the repository in VS Code, choose **Dev Containers: Reopen in Container**, and open a terminal at `/workspace`. PostGIS starts as a Compose dependency and is reachable through `postgis:5432`. The `s01-stack-up` recipe refuses to run inside the devcontainer because its Compose project already provides PostGIS.
 
-For the geospatial dataset, follow [the download instructions](../lab/data/README.md), then run:
+For the geospatial dataset, use the pinned [Geofabrik download recipe](../lab/data/README.md), then prepare the database:
 
 ```bash
 cd /workspace/lab
+just s00-download-data
 just s02-db-setup
 just s03-import-gpkg
 just s04-import-addresses
@@ -21,7 +22,7 @@ just s07-reverse 9.7320 52.3759
 
 The import defaults to the Hannover bounding box. `s03-import-gpkg` and `s04-import-addresses` replace their destination tables rather than append duplicates, making completed imports repeatable for the same inputs. **Imports are not atomic across layers**: if interrupted, rerun the affected import before refreshing the index. Avoid imports against a database that must remain continuously available; a staged snapshot/swap workflow belongs in production deployment.
 
-For a complete **destructive reset** of the local GIS dataset, run `just reset-lab RESET-LAB1` in `lab/`. This drops and recreates only `lab1` (terminating its database connections), then replays the import, SQL, smoke-test, optional GeoServer publication, refresh, and restricted-role setup recipes in numeric order. The separate `geosearch_auth` database, named volumes, and downloaded OSM input files are preserved. GeoServer is published if reachable; pass `yes` to require it or `no` to skip it. Input files and the reader password are validated before the drop; however, rebuilding all imported layers is **not transactional**, so a failure partway through requires another run. This command is for disposable local data only. See [lab reset instructions](../lab/README.md#rebuild-the-disposable-gis-database).
+For a complete **destructive reset** of the local GIS dataset, run `just reset-lab RESET-LAB1` in `lab/`. This drops and recreates only `lab1` (terminating its database connections), then replays the import, SQL, smoke-test, optional GeoServer publication, refresh, and restricted-role setup recipes in numeric order. The separate `geosearch_auth` database, named volumes, and downloaded OSM input files are preserved. GeoServer is published if reachable; pass `yes` to require it or `no` to skip it. Download the source files with `just s00-download-data` first. Input files and the reader password are validated before the drop; however, rebuilding all imported layers is **not transactional**, so a failure partway through requires another run. This command is for disposable local data only. See [lab reset instructions](../lab/README.md#rebuild-the-disposable-gis-database).
 
 `just s05-search-index` rebuilds the instructor's index and search/reverse functions, then installs the API's read functions (`lab/sql/07-api-reads.sql`). The SQL files execute as a single database transaction: on failure, the previous index and function state remain intact. The rebuild may block readers while replacing the materialized view. `s10-reader-setup` provisions the restricted login and is safe to rerun. A full `s05` rebuild reapplies an existing reader's view grant.
 

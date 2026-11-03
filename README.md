@@ -9,7 +9,7 @@ GeoSearch is a .NET 10 / Blazor WebAssembly application for [Software Architectu
 **Use the VS Code Dev Containers environment.** It includes .NET 10, PostgreSQL client tools, GDAL, `just`, and the Docker tooling. The devcontainer also starts PostGIS. Visual Studio 2026 is an optional debugging environment using the same database.
 
 1. Copy `.devcontainer/.env.example` to `.devcontainer/.env` and set a strong `GEOSEARCH_READER_PASSWORD` (at least 24 characters). The file is ignored by Git. Then open the repository in VS Code and select **Dev Containers: Reopen in Container**.
-2. Download the required datasets following [the geodata instructions](lab/data/README.md), or skip the imports if you only want to test authentication.
+2. Inside the devcontainer, run `cd /workspace/lab && just s00-download-data` to fetch the two pinned Geofabrik datasets (about 1.3 GB). See [the geodata instructions](lab/data/README.md). Skip this step if you only need to build or test the application.
 3. From a terminal **inside the devcontainer**, initialize the GIS database:
 
    ```bash

@@ -29,6 +29,7 @@ The instructor's recipes live in `lab/justfile`. The container includes `just`, 
 ```bash
 cd /workspace/lab
 just                       # List available recipes
+just s00-download-data  # One-time download; skips verified existing files
 just s02-db-setup
 just s03-import-gpkg
 just s04-import-addresses
@@ -40,7 +41,7 @@ just s07-reverse 9.7320 52.3759
 
 To start over with an empty GIS database and replay the entire pipeline, use `just reset-lab RESET-LAB1` from `/workspace/lab`. This intentionally destroys **only** `lab1`; it preserves the separate Identity database. The GeoServer step runs when GeoServer is reachable. See [the reset procedure](../lab/README.md#rebuild-the-disposable-gis-database) for prerequisites and optional controls.
 
-Download the [external Geofabrik data](../lab/data/README.md) before running the import recipes. `s01-stack-up` is guarded and refuses to run in the devcontainer, where its Compose project has already started PostGIS. It remains available for standalone lab setups.
+The `s00-download-data` recipe downloads and verifies the [external Geofabrik data](../lab/data/README.md) before import; it does not require PostgreSQL or run in CI. `s01-stack-up` is guarded and refuses to run in the devcontainer, where its Compose project has already started PostGIS. It remains available for standalone lab setups.
 
 The dev service explicitly loads `.devcontainer/.env` through its optional Compose `env_file` setting; this makes `GEOSEARCH_READER_PASSWORD` available to `just` **inside** the devcontainer after it is recreated. A Compose `.env` file by itself does not export variables into a host shell, and the `env_file` injection does not automatically configure the API's `ConnectionStrings:Search`. See [development configuration](../docs/development.md#configure-the-server). Do not assume this dev-service `env_file` supplies `POSTGIS_PASSWORD` to the separate PostGIS service; that service uses Compose interpolation configured separately.
 

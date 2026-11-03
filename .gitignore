@@ -100,6 +100,7 @@ src/nuget-packages.zip
 .env
 .env.local
 lab/data/*.osm.pbf
+lab/data/.downloads/
 lab/data/*-free/
 src/GeoSearch.Web.Client/wwwroot/css/app.css
 src/GeoSearch.Web.Client/**/*.razor.css
