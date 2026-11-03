@@ -43,6 +43,8 @@ fi
         tar -xof - -C "$stage"
         test -s "$stage/fullchain.pem" && test -s "$stage/privkey.pem"
         chmod 0600 "$stage/fullchain.pem" "$stage/privkey.pem"
+        # nginx:stable-alpine uses UID/GID 101; nginx runs non-root.
+        chown 101:101 "$stage/fullchain.pem" "$stage/privkey.pem"
         mv -f "$stage/fullchain.pem" /run/tls/fullchain.pem
         mv -f "$stage/privkey.pem" /run/tls/privkey.pem
     '

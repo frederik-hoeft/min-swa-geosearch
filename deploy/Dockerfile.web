@@ -15,4 +15,6 @@ COPY --from=publish /out/client/wwwroot/ /usr/share/nginx/html/
 RUN rm -f /usr/share/nginx/html/appsettings.Development.json* \
     && chmod -R a-w /usr/share/nginx/html
 EXPOSE 8443
+# Start both master and workers as an unprivileged user: no startup chown/setuid.
+USER nginx
 ENTRYPOINT ["nginx", "-g", "daemon off;"]

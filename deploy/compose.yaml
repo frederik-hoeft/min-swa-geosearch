@@ -18,7 +18,7 @@ services:
       - frontend
     read_only: true
     tmpfs:
-      - /tmp:rw,nosuid,nodev,size=64m
+      - /tmp:rw,nosuid,nodev,size=64m,mode=1777
     cap_drop:
       - ALL
     security_opt:
@@ -71,6 +71,8 @@ services:
 
   # One-off, network-isolated importer for TLS assets. Certificate bytes arrive
   # over Docker stdin rather than through a host path or a container image layer.
+  # It alone needs CAP_CHOWN to transfer the private key to the unprivileged
+  # nginx runtime user (UID/GID 101), while retaining mode 0600.
   tls-loader:
     profiles: [setup]
     image: nginx:stable-alpine
@@ -79,6 +81,8 @@ services:
       - tls-certs:/run/tls
     cap_drop:
       - ALL
+    cap_add:
+      - CHOWN
     security_opt:
       - no-new-privileges:true
 

@@ -22,6 +22,8 @@ class DeploymentTests(unittest.TestCase):
         self.assertIn("USER $APP_UID", api)
         self.assertIn("mcr.microsoft.com/dotnet/sdk:10.0", web)
         self.assertIn("FROM nginx:stable-alpine", web)
+        self.assertIn("USER nginx", web)
+        self.assertIn("chown 101:101", (DEPLOY / "scripts/load-cert.sh").read_text())
         self.assertIn("/out/client/wwwroot/ /usr/share/nginx/html/", web)
         self.assertIn("_framework/blazor.webassembly#[.{fingerprint}].js", html)
         self.assertFalse((DEPLOY / "scripts/materialize-static-assets.py").exists())
@@ -57,6 +59,8 @@ class DeploymentTests(unittest.TestCase):
         self.assertIn("POSTGIS_PASSWORD", text)
         self.assertNotIn("ConnectionStrings__Identity", text)
         self.assertIn("tls-certs:/run/tls:ro", text)
+        self.assertIn("cap_add:\n      - CHOWN", text)
+        self.assertIn("/tmp:rw,nosuid,nodev,size=64m,mode=1777", text)
         self.assertIn("network_mode: none", text)
         self.assertIn("tls-certs:/run/tls", text)
         self.assertNotIn("./certs:/run/tls", text)
@@ -148,6 +152,10 @@ assert "tls-loader" in args, args
 assert "--user" in args and "0:0" in args, args
 assert "--no-deps" in args, args
 script = args[-1].replace("/run/tls", os.environ["FAKE_TLS_VOLUME"])
+# Non-root CI hosts cannot chown to arbitrary users. The real one-off loader
+# has CAP_CHOWN; simulate the ownership step while still testing contents/mode.
+if os.geteuid() != 0:
+    script = "chown() { :; }; " + script
 Path(os.environ["DOCKER_TEST_LOG"]).write_text("called")
 result = subprocess.run(["busybox", "sh", "-ec", script], stdin=sys.stdin.buffer)
 sys.exit(result.returncode)
@@ -174,6 +182,9 @@ sys.exit(result.returncode)
                 installed = volume / name
                 self.assertEqual((certs / name).read_bytes(), installed.read_bytes())
                 self.assertEqual(0o600, stat.S_IMODE(installed.stat().st_mode))
+                if os.geteuid() == 0:
+                    self.assertEqual(101, installed.stat().st_uid)
+                    self.assertEqual(101, installed.stat().st_gid)
             self.assertEqual([], list(volume.glob(".import.*")))
 
             # A repeat import replaces the cert without permission changes.
