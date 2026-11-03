@@ -1,12 +1,15 @@
-﻿using System.Text.Json.Serialization;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Text.Json.Serialization;
 
 namespace GeoSearch.Web.Shared.GeoJson;
 
 /// <summary>A point-only GeoJSON feature collection with OSM snapshot provenance.</summary>
-#pragma warning disable CA1711 // FeatureCollection is the RFC 7946 GeoJSON type name.
-public sealed record GeoJsonFeatureCollection(
+[SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix", Justification = "FeatureCollection is the RFC 7946 GeoJSON type name.")]
+public sealed record GeoJsonFeatureCollection
+(
     [property: JsonPropertyName("snapshot")] string Snapshot,
-    [property: JsonPropertyName("features")] IReadOnlyList<GeoJsonFeature> Features)
+    [property: JsonPropertyName("features")] IReadOnlyList<GeoJsonFeature> Features
+)
 {
     [JsonPropertyName("type")]
     public string Type { get; } = "FeatureCollection";
@@ -14,4 +17,3 @@ public sealed record GeoJsonFeatureCollection(
     [JsonPropertyName("attribution")]
     public string Attribution { get; } = "© OpenStreetMap contributors, ODbL";
 }
-#pragma warning restore CA1711

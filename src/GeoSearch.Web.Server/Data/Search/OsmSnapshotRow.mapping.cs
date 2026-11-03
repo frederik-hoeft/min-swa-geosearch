@@ -9,9 +9,15 @@ internal sealed partial class OsmSnapshotRow : IDiscoverableModelConfiguration<O
     public static void Configure(EntityTypeBuilder<OsmSnapshotRow> self)
     {
         ArgumentNullException.ThrowIfNull(self);
-        self.HasNoKey();
-        self.ToView("snapshot", "osm");
-        self.Property(static row => row.SnapshotId).HasColumnName("snapshot_id").HasColumnType("text");
-        self.Property(static row => row.ImportedAt).HasColumnName("imported_at").HasColumnType("timestamp with time zone");
+        self.ToView("snapshot", "osm")
+            .HasNoKey();
+
+        self.Property(static row => row.SnapshotId)
+            .HasColumnName("snapshot_id")
+            .HasColumnType("text");
+
+        self.Property(static row => row.ImportedAt)
+            .HasColumnName("imported_at")
+            .HasColumnType("timestamp with time zone");
     }
 }

@@ -2,7 +2,8 @@
 
 namespace GeoSearch.Web.Shared.GeoJson;
 
-public sealed record GeoJsonProperties(
+public sealed record GeoJsonProperties
+(
     [property: JsonPropertyName("id")] string Id,
     [property: JsonPropertyName("name")] string Name,
     [property: JsonPropertyName("label")] string Label,
@@ -11,4 +12,5 @@ public sealed record GeoJsonProperties(
     [property: JsonPropertyName("score")]
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] float? Score,
     [property: JsonPropertyName("distance_m")]
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] double? DistanceM);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] double? DistanceM
+);

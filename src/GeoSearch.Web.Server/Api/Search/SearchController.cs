@@ -17,10 +17,9 @@ public sealed class SearchController(IGeoSearchService search) : ControllerBase
     [HttpGet("api/search")]
     [ProducesResponseType<GeoJsonFeatureCollection>(StatusCodes.Status200OK)]
     [ProducesResponseType<ApiError>(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<GeoJsonFeatureCollection>> SearchAsync(
-        [FromQuery, Required] string? q, [FromQuery] int? limit, CancellationToken cancellationToken)
+    public async Task<ActionResult<GeoJsonFeatureCollection>> SearchAsync([FromQuery, Required] string? q, [FromQuery] int? limit, CancellationToken cancellationToken)
     {
-        if (q is null || q.Length is < 1 or > 200 || string.IsNullOrWhiteSpace(q))
+        if (q is null or { Length: < 1 or > 200 } || string.IsNullOrWhiteSpace(q))
         {
             return BadRequest(new ApiError("q must contain between 1 and 200 characters."));
         }
@@ -28,15 +27,14 @@ public sealed class SearchController(IGeoSearchService search) : ControllerBase
         {
             return BadRequest(new ApiError("limit must be between 1 and 20."));
         }
-
-        return Ok(await search.SearchAsync(q.Trim(), limit ?? 10, cancellationToken));
+        GeoJsonFeatureCollection results = await search.SearchAsync(q.Trim(), limit ?? 10, cancellationToken);
+        return Ok(results);
     }
 
     [HttpGet("api/reverse")]
     [ProducesResponseType<GeoJsonFeatureCollection>(StatusCodes.Status200OK)]
     [ProducesResponseType<ApiError>(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<GeoJsonFeatureCollection>> ReverseAsync(
-        [FromQuery, Required] double? lat, [FromQuery, Required] double? lon, [FromQuery] double? radius, CancellationToken cancellationToken)
+    public async Task<ActionResult<GeoJsonFeatureCollection>> ReverseAsync([FromQuery, Required] double? lat, [FromQuery, Required] double? lon, [FromQuery] double? radius, CancellationToken cancellationToken)
     {
         if (!ValidPosition(lat, lon))
         {

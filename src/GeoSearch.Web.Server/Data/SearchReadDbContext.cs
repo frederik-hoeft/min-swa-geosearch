@@ -11,8 +11,7 @@ namespace GeoSearch.Web.Server.Data;
 /// Read-only projection model for instructor-owned PostGIS data. Contains no migrations or
 /// tracked entities; the database role independently enforces read-only access.
 /// </summary>
-public sealed class SearchReadDbContext(DbContextOptions<SearchReadDbContext> options, SearchReadModelLoader modelLoader)
-    : DbContext(options)
+public sealed class SearchReadDbContext(DbContextOptions<SearchReadDbContext> options, SearchReadModelLoader modelLoader) : DbContext(options)
 {
     /// <summary>Calls the full-text/fuzzy search function through a composable EF query root.</summary>
     [DbFunction("api_search", "search")]

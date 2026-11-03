@@ -5,5 +5,6 @@
 internal sealed partial class OsmSnapshotRow
 {
     public string SnapshotId { get; set; } = null!;
+
     public DateTimeOffset ImportedAt { get; set; }
 }
