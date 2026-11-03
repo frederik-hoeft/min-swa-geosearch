@@ -1,6 +1,6 @@
 # Development guide
 
-The preferred environment is [the VS Code devcontainer](../.devcontainer/README.md). It supplies .NET 10, `just`, GDAL, PostgreSQL tools, and a Compose-managed PostGIS instance. Windows Visual Studio can optionally run and debug the web applications against the same database. The external GIS datasets are needed for imports but **not** for the authentication and UI-shell smoke test.
+The preferred environment is [the VS Code devcontainer](../.devcontainer/README.md). It supplies .NET 10, `just`, GDAL, PostgreSQL tools, and a Compose-managed PostGIS instance. Windows Visual Studio can optionally run and debug the web applications against the same database. The external GIS datasets are needed to exercise the search endpoints but **not** to compile the backend or run unit tests.
 
 ## Start the devcontainer and prepare the databases
 
@@ -43,7 +43,20 @@ Copy `src/GeoSearch.Web.Server/appsettings.example.json` to `src/GeoSearch.Web.S
 | `Auth:RefreshToken:*` | Secure refresh cookie name and lifetime |
 | `Auth:RefreshTokenCleanup:*` | Expired-token retention (30 days by default) and cleanup interval (one day by default) |
 
-Use `Host=postgis;Port=5432` in connection strings when the **API runs inside the devcontainer**, or `Host=localhost;Port=5432` when it runs **on Windows**. The Identity database name is `geosearch_auth`; the search database name is `lab1`. The local `appsettings.json` is not shared between separately configured Windows and Linux user-secret stores. The initial `Search` connection may use the privileged `lab1` development account while GIS endpoints do not exist; provision a restricted application login before implementing those endpoints (see [database ownership](architecture.md#database-ownership)).
+Use `Host=postgis;Port=5432` in connection strings when the **API runs inside the devcontainer**, or `Host=localhost;Port=5432` when it runs **on Windows**. The Identity database name is `geosearch_auth`; the search database name is `lab1`. The local `appsettings.json` is not shared between separately configured Windows and Linux user-secret stores. The lab import role (`lab1`) can create and refresh the materialized index and must **not** be used by the read-only API. After `just s05-search-index` and while connected as the administrative role to `lab1`, provision a dedicated login (choose a strong, locally managed password):
+
+```sql
+CREATE ROLE geosearch_reader LOGIN PASSWORD 'REPLACE_WITH_LONG_RANDOM_VALUE';
+GRANT CONNECT ON DATABASE lab1 TO geosearch_reader;
+GRANT USAGE ON SCHEMA search, osm TO geosearch_reader;
+GRANT SELECT ON search.search_index, osm.snapshot TO geosearch_reader;
+GRANT EXECUTE ON FUNCTION search.search(text, integer) TO geosearch_reader;
+GRANT EXECUTE ON FUNCTION search.reverse(double precision, double precision, double precision, integer) TO geosearch_reader;
+GRANT EXECUTE ON FUNCTION search.label(text, text, text, text) TO geosearch_reader;
+GRANT EXECUTE ON FUNCTION search.normalize(text) TO geosearch_reader;
+```
+
+Set `ConnectionStrings:Search` to that account, retaining the `lab1` database. PostgreSQL enforces the actual read-only boundary; the EF context also rejects `SaveChanges`. Test the account by running a search and then attempting a write to `search.search_index` or `osm.snapshot`, which must be refused. The instructor's import recipes continue using the separate administrative `lab1` login.
 
 The bootstrap account is only created when absent. Changing `Bootstrap:Password` does not reset an existing password. Public registration is disabled, and the lab's GIS read operations do not depend on Identity.
 
@@ -81,7 +94,7 @@ Run these commands in separate terminals. In a single-origin deployment, the cli
 
 ## Verify the application shell
 
-With the Identity database available and a Development bootstrap account configured, open `https://localhost:5100/api/health`, `https://localhost:5100/swagger`, and `https://localhost:5200/login` (for Windows host debugging). Log in, reload the client, and verify that the session is restored. The authenticated map screen is currently a noninteractive placeholder.
+With the Identity database available and a Development bootstrap account configured, open `https://localhost:5100/api/health`, `https://localhost:5100/swagger`, and `https://localhost:5200/login` (for Windows host debugging). Log in, reload the client, and verify that the session is restored. The map screen remains a noninteractive placeholder. The GIS API is anonymous and can be queried without logging in, for example `https://localhost:5100/api/search?q=Limmerstr%2012%20Hannover&limit=5` or `https://localhost:5100/api/nearby?lat=52.3759&lon=9.7320&radius=500`. Its four routes are described in [architecture](architecture.md#gis-http-contract).
 
 The server issues a two-minute bearer access JWT and a rotating, HttpOnly, Secure refresh cookie. Refresh/logout operations use the antiforgery request-token header `X-CSRF-TOKEN`, and session rotation/revocation use the Identity database. An access JWT remains valid until expiry even after logout or password change. The API does not apply application-level rate limiting; Identity retains per-account lockout. See [architecture](architecture.md#authentication-and-session-lifecycle) for the security model and [validation](validation.md#runtime-verification) for the integration checks still required.
 
@@ -95,6 +108,8 @@ dotnet format src/GeoSearch.slnx --no-restore --verify-no-changes
 dotnet build src/GeoSearch.slnx --no-restore -warnaserror
 dotnet test src/GeoSearch.slnx --no-restore --no-build
 ```
+
+The Moq-based GIS service/controller test project (`src/GeoSearch.Web.Search.Tests`) is deliberately **not included** in `GeoSearch.slnx` while its offline package is unavailable. After providing `Moq` 4.21.0 and its dependencies in the offline NuGet feed, restore and run that project separately, then add it to the solution and CI. Existing GIS serialization/model/OpenAPI tests remain part of the normal solution build.
 
 SCSS is compiled as part of the .NET build. Editing generated CSS directly is unsupported; source styling conventions are in [the UI guide](ui-design.md).
 

@@ -1,6 +1,6 @@
 # Validation and integration boundaries
 
-The initial GeoSearch implementation is an application foundation. Authentication, separate database contexts, and the browser shell are implemented; the GeoJSON search endpoints, interactive map, and geolocation features are pending. Validation therefore distinguishes automated scaffold checks from tests requiring a live browser and PostGIS instance.
+GeoSearch has authentication, separate database contexts, the GeoJSON GIS endpoints, and a browser shell; interactive map and geolocation features remain pending. Validation therefore distinguishes compilation and in-memory contract checks from spatial tests requiring a populated PostGIS instance.
 
 ## Automated validation
 
@@ -15,7 +15,9 @@ dotnet test src/GeoSearch.slnx --no-restore --no-build
 
 GitHub Actions restores dependencies, checks formatting, builds in Release with warnings treated as errors, and runs tests. The build also compiles the client SCSS through SassCompiler.
 
-The automated tests exercise Identity/JWT configuration, refresh-token mapping and EF migration metadata, browser session request contracts, record-constructor validation, API-only antiforgery middleware, and refresh-token cleanup boundaries. These tests do not require PostgreSQL or a browser, and do not prove database concurrency or cross-origin cookie behavior.
+The automated tests exercise Identity/JWT behavior and model metadata, browser session contracts, antiforgery behavior, refresh-token boundaries, GeoJSON field/coordinate serialization, the keyless read-only GIS model, simultaneous registration of the two WKG transaction contexts, and generation of OpenAPI paths. They do not require PostgreSQL or a browser, and do not prove GIS SQL, database concurrency, or cross-origin cookie behavior.
+
+`src/GeoSearch.Web.Search.Tests` contains additional Moq-based controller validation and application-service mapping tests. It is excluded from the solution until `Moq` 4.21.0 and transitive dependencies are supplied for offline restore; those tests have **not** been compiled or run in this workspace.
 
 ## Runtime verification
 
@@ -28,10 +30,10 @@ Use the [devcontainer database](../.devcontainer/README.md) for the following ch
 
 These are integration checks to perform on the running development stack; automated unit tests are not substitutes for them.
 
-## GIS acceptance criteria (future implementation)
+## GIS runtime acceptance checks
 
-Before wiring the spatial API, configure a database login restricted to read-only query privileges and verify that it cannot modify `osm` or `search` objects. The current development `lab1` account is privileged and does not enforce the architectural read-only boundary.
+Use a restricted `geosearch_reader` login with only the permissions described in [development](development.md#configure-the-server). Attempt an administrative write to prove that the database rejects it; the application's EF read-only guard alone is insufficient. Run `just s05-search-index` after the data imports to create both the indexed view and the search/reverse SQL functions.
 
-After the spatial API and client have been implemented, load the dated Geofabrik snapshot through the instructor's `just` recipes. Validate `/api/search`, `/api/reverse`, `/api/nearby`, and `/api/categories` against the lab's fixtures, including GeoJSON structure, longitude/latitude order, category and distance behavior, and failure responses. Measure the required median search latency below 300 ms over ten fixture queries on real PostGIS data.
+Verify `/api/search`, `/api/reverse`, `/api/nearby`, and `/api/categories` against the populated database. Cover required/malformed query parameters, boundary coordinate values and radius/limit values, empty results with snapshot metadata, longitude/latitude axis order, category labels, nearest-result behavior, and distance-in-metres ordering. Confirm that a refresh changes the exposed snapshot only as the materialized view changes and that coordinates are not present in API logs. Verify the API is usable without Identity tokens.
 
-Browser tests should exercise map updates, geolocation permission denial, cancellation of obsolete requests, and the absence of third-party geocoding. The initial styled map workspace is explicitly not evidence of these capabilities.
+Collect the instructor's ten fixture queries with their actual top result and measured latency, including the three known ranking errors described in [the lab specification](../lab/lab-2.md#test-your-search-with-ten-fixture-queries). The target is a search response under 300 ms on the Hannover extract; offline unit tests cannot establish this. Keep the future frontend acceptance checks separate: map markers, attribution, permission denial, stale-request cancellation, location accuracy circle, map-centre fallback, and a screenshot of nearby search using the device position.

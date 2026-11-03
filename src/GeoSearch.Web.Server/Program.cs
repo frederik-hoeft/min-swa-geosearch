@@ -1,9 +1,13 @@
 ﻿using GeoSearch.Web.Server.Data;
 using GeoSearch.Web.Server.Data.RefreshTokens;
+using GeoSearch.Web.Server.Data.Search;
+using GeoSearch.Web.Server.Search;
 using GeoSearch.Web.Server.Security;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Data;
@@ -52,7 +56,10 @@ builder.Services.AddDbContext<IdentityDbContext>(options => options.UseNpgsql(id
 // The imported database is queried read-only. It is never migrated by EF.
 string searchConnectionString = builder.Configuration.GetConnectionString("Search")
     ?? throw new InvalidOperationException("ConnectionStrings:Search is required. See docs/development.md.");
-builder.Services.AddDbContext<SearchReadDbContext>(options => options.UseNpgsql(searchConnectionString));
+builder.Services.AddDbContext<SearchReadDbContext>(options =>
+    options.UseNpgsql(searchConnectionString).UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking));
+builder.Services.AddScoped<ISearchReadRepository, SearchReadRepository>();
+builder.Services.AddScoped<IGeoSearchService, GeoSearchService>();
 
 builder.Services.AddIdentityCore<GeoSearchUser>(options =>
     {
@@ -93,9 +100,26 @@ builder.Services.AddAuthorization();
 // Normal API requests remain stateless JWT bearer authenticated.
 builder.Services.AddProblemDetails();
 builder.Services.AddControllers();
+// Match the lab error envelope for malformed GIS query parameters while retaining
+// ASP.NET Core's existing validation-problem response for the Identity endpoints.
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        if (context.ActionDescriptor.RouteValues.TryGetValue("controller", out string? controllerName)
+            && controllerName == "Search")
+        {
+            return new BadRequestObjectResult(new GeoSearch.Web.Shared.Auth.ApiError("Invalid request parameters."));
+        }
+
+        ProblemDetailsFactory factory = context.HttpContext.RequestServices.GetRequiredService<ProblemDetailsFactory>();
+        ValidationProblemDetails problem = factory.CreateValidationProblemDetails(context.HttpContext, context.ModelState);
+        return new BadRequestObjectResult(problem) { ContentTypes = { "application/problem+json" } };
+    });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddTransactionManagement<IdentityDbContext>(options =>
+    options.UseIsolationLevel(IsolationLevel.ReadCommitted));
+builder.Services.AddTransactionManagement<SearchReadDbContext>(options =>
     options.UseIsolationLevel(IsolationLevel.ReadCommitted));
 
 if (builder.Environment.IsDevelopment())
