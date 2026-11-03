@@ -1,6 +1,7 @@
 ﻿using GeoSearch.Web.Server.Data;
 using GeoSearch.Web.Server.Data.Search;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Wkg.EntityFrameworkCore.Configuration;
 
 namespace GeoSearch.Web.Server.Tests.Security;
@@ -22,8 +23,8 @@ public sealed class IdentityModelTests
         string[] migrations = [.. dbContext.Database.GetMigrations()];
 
         Assert.HasCount(2, migrations);
-        StringAssert.Contains(migrations[0], "InitialIdentity", StringComparison.Ordinal);
-        StringAssert.Contains(migrations[1], "AddRefreshTokenSessions", StringComparison.Ordinal);
+        Assert.Contains("InitialIdentity", migrations[0], StringComparison.Ordinal);
+        Assert.Contains("AddRefreshTokenSessions", migrations[1], StringComparison.Ordinal);
         Assert.IsFalse(dbContext.Database.HasPendingModelChanges());
     }
 
@@ -38,7 +39,7 @@ public sealed class IdentityModelTests
             .Options;
 
         using IdentityDbContext dbContext = new(options, modelLoader);
-        Microsoft.EntityFrameworkCore.Metadata.IEntityType? userModel = dbContext.Model.FindEntityType(typeof(GeoSearchUser));
+        IEntityType? userModel = dbContext.Model.FindEntityType(typeof(GeoSearchUser));
 
         Assert.IsNotNull(userModel);
         Assert.AreEqual("app_auth", userModel.GetSchema());

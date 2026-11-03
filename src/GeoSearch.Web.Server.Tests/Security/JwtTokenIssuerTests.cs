@@ -38,6 +38,6 @@ public sealed class JwtTokenIssuerTests
 
         Assert.IsNotNull(principal);
         Assert.IsInstanceOfType<JwtSecurityToken>(validated);
-        Assert.IsTrue(result.ExpiresUtc > DateTimeOffset.UtcNow);
+        Assert.IsGreaterThan(DateTimeOffset.UtcNow, result.ExpiresUtc);
     }
 }

@@ -23,7 +23,6 @@ public sealed class RefreshTokenModelTests
         Assert.AreEqual("app_auth", token.GetSchema());
         Assert.AreEqual("RefreshTokens", token.GetTableName());
         Assert.IsTrue(token.FindProperty("ConcurrencyToken")!.IsConcurrencyToken);
-        Assert.IsTrue(token.GetIndexes().Any(static index => index.IsUnique
-            && index.Properties.Count == 1 && index.Properties[0].Name == "TokenHash"));
+        Assert.Contains(static index => index is { IsUnique: true, Properties: [{ Name: "TokenHash" }] }, token.GetIndexes());
     }
 }
