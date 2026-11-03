@@ -22,6 +22,18 @@ jobs:
         run: bash -n scripts/*.sh
       - name: Test lab automation without downloading datasets
         run: python3 -m unittest discover -s scripts/tests -v
+      - name: Validate devcontainer Compose credentials
+        run: |
+          set -eu
+          # The devcontainer requires this ignored file. A missing file must fail.
+          if docker compose -f lab/compose.yaml -f .devcontainer/docker-compose.yml config --quiet 2>/dev/null; then
+            echo 'Expected Compose to reject a missing .devcontainer/.env file' >&2
+            exit 1
+          fi
+          printf '%s\n' 'GEOSEARCH_READER_PASSWORD=ci-only-placeholder-not-a-secret' > .devcontainer/.env
+          trap 'rm -f .devcontainer/.env' EXIT
+          docker compose -f lab/compose.yaml -f .devcontainer/docker-compose.yml config --format json |
+            python3 -c 'import json, sys; config = json.load(sys.stdin); assert config["services"]["dev"]["environment"]["GEOSEARCH_READER_PASSWORD"] == "ci-only-placeholder-not-a-secret"'
 
   build:
     name: .NET build and formatting
