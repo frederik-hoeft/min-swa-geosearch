@@ -35,7 +35,7 @@ Nginx and ASP share the `frontend` Docker network. ASP and PostGIS share the sep
    ./deploy/scripts/provision.sh
    ```
 
-   This uses the one-off `gis-tools` image, stores downloaded inputs under `lab/data/`, and preserves the PostGIS named volume on reruns. It is safe to retry after failure but **rebuilds the index and replaces imported data**; it is not an online database migration. Run it only when initializing or intentionally refreshing the local dataset.
+   This uses the one-off `gis-tools` image and a separate Docker-managed `gis-data` volume for downloaded inputs. It does **not** write into the checkout's `lab/data/` directory and therefore does not depend on the development container's or host's file ownership. The image runs as non-root UID/GID `10001:10001`. Provisioning first assigns ownership on **only the Docker-managed GIS volume**, then verifies that the non-root process can write to its download cache before the first recipe. The `gis-data` and PostGIS volumes persist across reruns. It is safe to retry after failure but **rebuilds the index and replaces imported data**; it is not an online database migration. Run it only when initializing or intentionally refreshing the local dataset.
 
 4. Build and start the runtime services:
 
@@ -48,7 +48,7 @@ Nginx and ASP share the `frontend` Docker network. ASP and PostGIS share the sep
 
 ## Where configuration belongs
 
-- **`deploy/.env`** (Git-ignored): deployment-specific PostgreSQL admin/reader passwords, published HTTPS port/bind address, GIS download ownership, and ASP environment/build mode. Values are interpolated into `compose.yaml`; only the services that need each secret receive it.
+- **`deploy/.env`** (Git-ignored): deployment-specific PostgreSQL admin/reader passwords, published HTTPS port/bind address, and ASP environment/build mode. Values are interpolated into `compose.yaml`; only the services that need each secret receive it.
 - **`deploy/compose.yaml`**: image builds, private service DNS names, networks, volumes and non-secret application settings. The database/admin secret is passed to PostGIS and `gis-tools`; the API receives **only the read-only login**.
 - **`deploy/nginx/nginx.conf`**: TLS termination, static file routing, `/api/*` and `/swagger*` reverse proxy. Do not put PostgreSQL or application secrets here.
 - **ASP runtime**: ASP.NET Core consumes `ConnectionStrings__Search` from its environment. The frontend uses its existing same-origin fallback (`Api:BaseUrl` unset). No runtime frontend configuration rewrite is needed.
@@ -68,7 +68,11 @@ docker compose down                # Stop containers; keep data
 docker compose config --quiet      # Validate the merged deployment configuration
 ```
 
-**Do not use `docker compose down -v`** unless you explicitly want to delete the imported PostGIS database. The ".env" file, local TLS keys, and downloaded data are outside the named database volume and must be backed up separately if needed.
+**Do not use `docker compose down -v`** unless you explicitly want to delete **both** the PostGIS database and cached GIS datasets. The database is stored in `geosearch_postgis-data`; the datasets (including incomplete/resumable downloads) are stored in `geosearch_gis-data`. Both are Docker-managed named volumes; the Git-ignored `.env` file and local TLS keys live outside these volumes and also need separate backup where applicable.
+
+The development container's `lab/data/` and the deployment's `gis-data` are intentionally independent, so a first deployment may download the snapshot again even if development data already exists. This avoids coupling production provisioning to a Docker-daemon-host path that might not match `/workspace` inside the development container. Docker owns the dataset volume; **do not `chown` the repository to match container UID 10001**.
+
+If the non-root writeability check still reports an error, inspect `geosearch_gis-data` with `docker volume inspect geosearch_gis-data` and verify that the Docker daemon has sufficient disk space. The provisioning script already attempts to correct volume ownership; **do not change ownership of the repository checkout**. The preflight does not touch the database or import tables.
 
 ASP is built in `Release` by default. To enable Swagger locally, set `ASPNETCORE_ENVIRONMENT=Development` in `deploy/.env` and recreate the API container with `docker compose up -d --force-recreate api`; Swagger UI is then at `https://localhost:8443/swagger` and JSON at `/swagger/v1/swagger.json`. `DOTNET_BUILD_CONFIGURATION=Debug` changes the ASP build configuration but **does not** enable Swagger by itself. Do not publish Development behavior to untrusted users.
 

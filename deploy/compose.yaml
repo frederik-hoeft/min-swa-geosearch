@@ -73,9 +73,9 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile.tools
-    user: "${GEOSEARCH_DATA_UID:-1000}:${GEOSEARCH_DATA_GID:-1000}"
+    # Docker-managed storage avoids host UID/GID and devcontainer bind-mount mismatches.
     volumes:
-      - ../lab/data:/workspace/lab/data
+      - gis-data:/workspace/lab/data
     environment:
       PGHOST: postgis
       PGPORT: "5432"
@@ -98,3 +98,4 @@ networks:
 
 volumes:
   postgis-data:
+  gis-data:

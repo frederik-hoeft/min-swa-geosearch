@@ -42,6 +42,15 @@ class DeploymentTests(unittest.TestCase):
         text = (DEPLOY / "compose.yaml").read_text()
         self.assertIn("internal: true", text)
         self.assertIn("profiles: [setup]", text)
+        self.assertIn("- gis-data:/workspace/lab/data", text)
+        self.assertNotIn("../lab/data:/workspace/lab/data", text)
+        self.assertNotIn("GEOSEARCH_DATA_UID", text)
+        tools = (DEPLOY / "Dockerfile.tools").read_text()
+        self.assertIn("install -d -o 10001 -g 10001 -m 0755 /workspace/lab/data", tools)
+        self.assertIn("USER 10001:10001", tools)
+        env_example = (DEPLOY / ".env.example").read_text()
+        self.assertNotIn("GEOSEARCH_DATA_UID", env_example)
+        self.assertNotIn("GEOSEARCH_DATA_GID", env_example)
         self.assertIn("- frontend # One-off downloader needs Internet access", text)
         self.assertIn("GEOSEARCH_READER_PASSWORD", text)
         self.assertIn("POSTGIS_PASSWORD", text)
@@ -65,6 +74,8 @@ class DeploymentTests(unittest.TestCase):
             docker.write_text('''#!/bin/sh
 printf '%s\\n' "$*" >> "$DOCKER_TEST_LOG"
 case "$*" in
+  *--user\\ 0:0*) if [ "${FAIL_VOLUME_PREP:-0}" = 1 ]; then exit 41; fi ;;
+  *--entrypoint\\ sh\\ gis-tools\\ -ec*) if [ "${FAIL_PERMISSION:-0}" = 1 ] && [ "${FAIL_VOLUME_PREP:-0}" != 1 ]; then exit 43; fi ;;
   *s04-import-addresses*) if [ "${FAIL_IMPORT:-0}" = 1 ]; then exit 42; fi ;;
 esac
 ''')
@@ -78,7 +89,26 @@ esac
                         "s05-search-index", "s10-reader-setup", "s06-search", "s07-reverse"]
             actual = [word for line in lines for word in expected if (" " + word) in line]
             self.assertEqual(expected, actual)
+            volume_init = [line for line in lines if "--user 0:0 --entrypoint sh gis-tools -ec" in line]
+            self.assertEqual(1, len(volume_init), lines)
+            permission_test = [line for line in lines if "--entrypoint sh gis-tools -ec" in line and "--user 0:0" not in line]
+            self.assertEqual(1, len(permission_test), lines)
+            self.assertLess(lines.index(volume_init[0]), lines.index(permission_test[0]))
+            self.assertLess(lines.index(permission_test[0]), next(i for i, line in enumerate(lines) if " s00-download-data" in line))
             log.unlink()
+            env["FAIL_VOLUME_PREP"] = "1"
+            result = subprocess.run(cmd, env=env, text=True, capture_output=True, check=False)
+            self.assertNotEqual(0, result.returncode)
+            self.assertNotIn(" s00-download-data", log.read_text())
+            log.unlink()
+            env.pop("FAIL_VOLUME_PREP")
+            env["FAIL_PERMISSION"] = "1"
+            result = subprocess.run(cmd, env=env, text=True, capture_output=True, check=False)
+            self.assertNotEqual(0, result.returncode)
+            self.assertIn("GIS data volume is not writable", result.stderr)
+            self.assertNotIn(" s00-download-data", log.read_text())
+            log.unlink()
+            env.pop("FAIL_PERMISSION")
             env["FAIL_IMPORT"] = "1"
             result = subprocess.run(cmd, env=env, text=True, capture_output=True, check=False)
             self.assertNotEqual(0, result.returncode)
