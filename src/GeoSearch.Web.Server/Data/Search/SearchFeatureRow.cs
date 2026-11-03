@@ -1,7 +1,8 @@
 ﻿namespace GeoSearch.Web.Server.Data.Search;
 
-/// <summary>Keyless EF projection shared by the three geospatial read queries.</summary>
-internal sealed class SearchFeatureRow
+/// <summary>Keyless projection returned by the three PostGIS API read functions.</summary>
+[SearchReadModel]
+internal sealed partial class SearchFeatureRow
 {
     public string Id { get; set; } = null!;
     public string Name { get; set; } = null!;

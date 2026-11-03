@@ -3,7 +3,7 @@ using GeoSearch.Web.Server.Search;
 using GeoSearch.Web.Shared.GeoJson;
 using Moq;
 
-namespace GeoSearch.Web.Search.Tests;
+namespace GeoSearch.Web.Server.Tests.Search;
 
 [TestClass]
 public sealed class GeoSearchServiceTests

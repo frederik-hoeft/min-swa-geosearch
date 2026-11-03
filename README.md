@@ -18,10 +18,11 @@ GeoSearch is a .NET 10 / Blazor WebAssembly application for [Software Architectu
    just s03-import-gpkg
    just s04-import-addresses
    just s05-search-index
+   just s10-reader-setup
    just s06-search "Limmerstr 12 Hannover"
    ```
 
-   `s01-stack-up` is disabled inside the devcontainer: PostGIS is already running as its Compose dependency. The GIS API needs the imported dataset and search index to return results; authentication and API compilation do not.
+   `s01-stack-up` is disabled inside the devcontainer: PostGIS is already running as its Compose dependency. The `s10-reader-setup` recipe provisions an independent, restricted login and stores a generated password in an ignored local file unless `GEOSEARCH_READER_PASSWORD` is supplied. The GIS API needs the imported dataset and search index to return results; authentication and API compilation do not.
 4. Configure the server and start the web projects following the [development guide](docs/development.md). To initialize the separate Identity database, run `./scripts/setup-identity-db.sh` from `/workspace`.
 
 The devcontainer forwards PostgreSQL to Windows at `localhost:5432`. Its web app ports are kept separate from Visual Studio's ports; see the [container and host debugging guide](.devcontainer/README.md).
@@ -45,7 +46,7 @@ dotnet test src/GeoSearch.slnx --no-restore --no-build
 | `src/GeoSearch.Web.Server/` | ASP.NET Core API, GIS query adapter, Identity persistence, and authentication |
 | `src/GeoSearch.Web.Client/` | Blazor WASM client and UI theme |
 | `src/GeoSearch.Web.Shared/` | Client/server API contracts, including point-only GeoJSON DTOs |
-| `src/*Tests/` | Unit, contract, and middleware tests; the deferred Moq project is described in [validation](docs/validation.md) |
+| `src/*Tests/` | Unit, contract, and middleware tests, including GIS tests in the server test project |
 | `.devcontainer/` | Preferred development environment |
 | `.agents/skills/` | Engineering-quality and documentation conventions |
 

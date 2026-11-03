@@ -1,4 +1,5 @@
 ﻿using GeoSearch.Web.Server.Data;
+using GeoSearch.Web.Server.Data.Search;
 using Microsoft.EntityFrameworkCore;
 using Wkg.EntityFrameworkCore.Configuration;
 
@@ -42,5 +43,6 @@ public sealed class IdentityModelTests
         Assert.IsNotNull(userModel);
         Assert.AreEqual("app_auth", userModel.GetSchema());
         Assert.AreEqual("AspNetUsers", userModel.GetTableName());
+        Assert.IsNull(dbContext.Model.FindEntityType(typeof(SearchFeatureRow)));
     }
 }

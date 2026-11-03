@@ -106,3 +106,5 @@ src/GeoSearch.Web.Client/**/*.razor.css
 
 # development configs
 appsettings.json
+# Private local PostgreSQL reader credentials
+lab/.secrets/

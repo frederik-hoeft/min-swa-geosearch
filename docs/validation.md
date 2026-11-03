@@ -17,7 +17,7 @@ GitHub Actions restores dependencies, checks formatting, builds in Release with 
 
 The automated tests exercise Identity/JWT behavior and model metadata, browser session contracts, antiforgery behavior, refresh-token boundaries, GeoJSON field/coordinate serialization, the keyless read-only GIS model, simultaneous registration of the two WKG transaction contexts, and generation of OpenAPI paths. They do not require PostgreSQL or a browser, and do not prove GIS SQL, database concurrency, or cross-origin cookie behavior.
 
-`src/GeoSearch.Web.Search.Tests` contains additional Moq-based controller validation and application-service mapping tests. It is excluded from the solution until `Moq` 4.21.0 and transitive dependencies are supplied for offline restore; those tests have **not** been compiled or run in this workspace.
+`src/GeoSearch.Web.Server.Tests/Search` includes Moq-based controller validation and application-service mapping tests. They share the existing server test project and run with the normal solution once the NuGet source includes `Moq` 4.21.0 and its transitive dependencies. EF model tests independently verify that WKG's discovery filters isolate the GIS projections and that EF translates the three table-valued query functions without a live database.
 
 ## Runtime verification
 
@@ -32,7 +32,7 @@ These are integration checks to perform on the running development stack; automa
 
 ## GIS runtime acceptance checks
 
-Use a restricted `geosearch_reader` login with only the permissions described in [development](development.md#configure-the-server). Attempt an administrative write to prove that the database rejects it; the application's EF read-only guard alone is insufficient. Run `just s05-search-index` after the data imports to create both the indexed view and the search/reverse SQL functions.
+Use `just s10-reader-setup` to provision the restricted `geosearch_reader` login after `s05-search-index` and the imports. Confirm that the role can execute the three API read functions and read categories and snapshots, but cannot write to `osm.snapshot`; the EF read-only guard alone is insufficient. `s05-search-index` installs the instructor's materialized view and search/reverse functions, then the API's additive read functions.
 
 Verify `/api/search`, `/api/reverse`, `/api/nearby`, and `/api/categories` against the populated database. Cover required/malformed query parameters, boundary coordinate values and radius/limit values, empty results with snapshot metadata, longitude/latitude axis order, category labels, nearest-result behavior, and distance-in-metres ordering. Confirm that a refresh changes the exposed snapshot only as the materialized view changes and that coordinates are not present in API logs. Verify the API is usable without Identity tokens.
 

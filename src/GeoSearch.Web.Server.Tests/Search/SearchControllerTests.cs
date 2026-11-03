@@ -5,7 +5,7 @@ using GeoSearch.Web.Shared.GeoJson;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 
-namespace GeoSearch.Web.Search.Tests;
+namespace GeoSearch.Web.Server.Tests.Search;
 
 [TestClass]
 public sealed class SearchControllerTests

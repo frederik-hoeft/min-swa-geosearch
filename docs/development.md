@@ -14,11 +14,12 @@ just s02-db-setup
 just s03-import-gpkg
 just s04-import-addresses
 just s05-search-index
+just s10-reader-setup
 just s06-search 'Limmerstr 12 Hannover'
 just s07-reverse 9.7320 52.3759
 ```
 
-The import defaults to the Hannover bounding box, and the SQL and search functions are owned by the instructor's lab scripts. `just` lists other available recipes; `just s09-refresh-index` refreshes the materialized search index after a subsequent import. The imported `osm` and `search` schemas are never migrated by EF Core.
+The import defaults to the Hannover bounding box. `s05-search-index` applies the instructor's index and search/reverse functions, then the API's additive read functions (`lab/sql/07-api-reads.sql`). `s10-reader-setup` provisions the restricted login for the API and is safe to rerun. `just` lists other available recipes; `just s09-refresh-index` refreshes the materialized search index after a subsequent import. A full `s05` rebuild preserves an existing reader's view grant. Neither `osm` nor `search` is migrated by EF Core.
 
 Create the separate application-owned Identity database from the repository root:
 
@@ -43,20 +44,15 @@ Copy `src/GeoSearch.Web.Server/appsettings.example.json` to `src/GeoSearch.Web.S
 | `Auth:RefreshToken:*` | Secure refresh cookie name and lifetime |
 | `Auth:RefreshTokenCleanup:*` | Expired-token retention (30 days by default) and cleanup interval (one day by default) |
 
-Use `Host=postgis;Port=5432` in connection strings when the **API runs inside the devcontainer**, or `Host=localhost;Port=5432` when it runs **on Windows**. The Identity database name is `geosearch_auth`; the search database name is `lab1`. The local `appsettings.json` is not shared between separately configured Windows and Linux user-secret stores. The lab import role (`lab1`) can create and refresh the materialized index and must **not** be used by the read-only API. After `just s05-search-index` and while connected as the administrative role to `lab1`, provision a dedicated login (choose a strong, locally managed password):
+Use `Host=postgis;Port=5432` in connection strings when the **API runs inside the devcontainer**, or `Host=localhost;Port=5432` when it runs **on Windows**. The Identity database name is `geosearch_auth`; the search database name is `lab1`. The local `appsettings.json` is not shared between separately configured Windows and Linux user-secret stores. The lab import role (`lab1`) can create and refresh the materialized index and must **not** be used by the read-only API. Provision the restricted login from inside `lab/`, after `s05-search-index`:
 
-```sql
-CREATE ROLE geosearch_reader LOGIN PASSWORD 'REPLACE_WITH_LONG_RANDOM_VALUE';
-GRANT CONNECT ON DATABASE lab1 TO geosearch_reader;
-GRANT USAGE ON SCHEMA search, osm TO geosearch_reader;
-GRANT SELECT ON search.search_index, osm.snapshot TO geosearch_reader;
-GRANT EXECUTE ON FUNCTION search.search(text, integer) TO geosearch_reader;
-GRANT EXECUTE ON FUNCTION search.reverse(double precision, double precision, double precision, integer) TO geosearch_reader;
-GRANT EXECUTE ON FUNCTION search.label(text, text, text, text) TO geosearch_reader;
-GRANT EXECUTE ON FUNCTION search.normalize(text) TO geosearch_reader;
+```bash
+just s10-reader-setup
 ```
 
-Set `ConnectionStrings:Search` to that account, retaining the `lab1` database. PostgreSQL enforces the actual read-only boundary; the EF context also rejects `SaveChanges`. Test the account by running a search and then attempting a write to `search.search_index` or `osm.snapshot`, which must be refused. The instructor's import recipes continue using the separate administrative `lab1` login.
+The recipe calls `scripts/setup-search-reader.sh` as the administrative `lab1` role. By default it generates a cryptographically random password and keeps it in `lab/.secrets/search-reader-password` (ignored by Git, permissions `0600`); subsequent runs reuse it. Alternatively set `GEOSEARCH_READER_PASSWORD` to a locally managed secret of at least 24 characters before invoking the recipe. The password is passed to `psql` through its environment, not the command-line arguments, and is never printed by the script. Keep it out of shell history and version control.
+
+Set `ConnectionStrings:Search` to `Host=postgis;Database=lab1;Username=geosearch_reader;Password=<locally managed secret>` when running in the devcontainer (replace the host when running outside). The role receives only the required schema access, read permissions and function execution permissions, with read-only transactions as its session default. PostgreSQL enforces the actual read-only boundary; the EF context also rejects `SaveChanges`. Test the account by running a search and then attempting an `INSERT` into `osm.snapshot`, which must be refused. The instructor's imports and refreshes continue as `lab1`; `s05-search-index` regrants view access after a full materialized-view rebuild.
 
 The bootstrap account is only created when absent. Changing `Bootstrap:Password` does not reset an existing password. Public registration is disabled, and the lab's GIS read operations do not depend on Identity.
 
@@ -109,7 +105,7 @@ dotnet build src/GeoSearch.slnx --no-restore -warnaserror
 dotnet test src/GeoSearch.slnx --no-restore --no-build
 ```
 
-The Moq-based GIS service/controller test project (`src/GeoSearch.Web.Search.Tests`) is deliberately **not included** in `GeoSearch.slnx` while its offline package is unavailable. After providing `Moq` 4.21.0 and its dependencies in the offline NuGet feed, restore and run that project separately, then add it to the solution and CI. Existing GIS serialization/model/OpenAPI tests remain part of the normal solution build.
+GIS service/controller tests are kept alongside the other server tests in `src/GeoSearch.Web.Server.Tests`, with `Moq` 4.21.0 as a test-only package dependency. The offline package archive must include Moq and its transitive dependencies to restore and execute the full solution test suite.
 
 SCSS is compiled as part of the .NET build. Editing generated CSS directly is unsupported; source styling conventions are in [the UI guide](ui-design.md).
 

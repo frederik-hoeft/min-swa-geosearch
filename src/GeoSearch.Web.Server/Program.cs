@@ -51,6 +51,7 @@ builder.Services.AddAntiforgery(options =>
     options.Cookie.SameSite = SameSiteMode.Strict;
 });
 builder.Services.AddSingleton<IModelLoader, GeoSearchModelLoader>();
+builder.Services.AddSingleton<SearchReadModelLoader>();
 builder.Services.AddDbContext<IdentityDbContext>(options => options.UseNpgsql(identityConnectionString));
 
 // The imported database is queried read-only. It is never migrated by EF.

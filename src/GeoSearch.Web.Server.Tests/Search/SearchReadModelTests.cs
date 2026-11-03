@@ -15,7 +15,7 @@ public sealed class SearchReadModelTests
             .UseNpgsql("Host=localhost;Database=not_connected;Username=test;Password=test")
             .Options;
 
-        using SearchReadDbContext context = new(options);
+        using SearchReadDbContext context = new(options, new SearchReadModelLoader());
         IEntityType? entity = context.Model.FindEntityType(typeof(SearchFeatureRow));
 
         Assert.IsNotNull(entity);
@@ -24,6 +24,14 @@ public sealed class SearchReadModelTests
         Assert.AreEqual("lat", entity.FindProperty(nameof(SearchFeatureRow.Latitude))?.GetColumnName());
         Assert.AreEqual("snapshot_id", entity.FindProperty(nameof(SearchFeatureRow.SnapshotId))?.GetColumnName());
         Assert.AreEqual("distance_m", entity.FindProperty(nameof(SearchFeatureRow.DistanceM))?.GetColumnName());
+        Assert.IsNotNull(context.Model.FindEntityType(typeof(SearchIndexMetadataRow)));
+        Assert.IsNotNull(context.Model.FindEntityType(typeof(OsmSnapshotRow)));
+        Assert.IsNull(context.Model.FindEntityType(typeof(GeoSearchUser)));
+
+        // The query roots must translate to database functions, not client-side invocation.
+        Assert.Contains("search.api_search", context.SearchFeatures("Linden", 5).ToQueryString());
+        Assert.Contains("search.api_reverse", context.ReverseFeatures(9.73, 52.37, 250).ToQueryString());
+        Assert.Contains("search.api_nearby", context.NearbyFeatures(9.73, 52.37, 500, null, 20).ToQueryString());
     }
 
     [TestMethod]
@@ -33,7 +41,7 @@ public sealed class SearchReadModelTests
             .UseNpgsql("Host=localhost;Database=not_connected;Username=test;Password=test")
             .Options;
 
-        using SearchReadDbContext context = new(options);
+        using SearchReadDbContext context = new(options, new SearchReadModelLoader());
         Assert.ThrowsExactly<NotSupportedException>(() => context.SaveChanges());
     }
 }
