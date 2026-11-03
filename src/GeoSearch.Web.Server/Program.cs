@@ -108,7 +108,7 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
         if (context.ActionDescriptor.RouteValues.TryGetValue("controller", out string? controllerName)
             && controllerName == "Search")
         {
-            return new BadRequestObjectResult(new GeoSearch.Web.Shared.Auth.ApiError("Invalid request parameters."));
+            return new BadRequestObjectResult(new GeoSearch.Web.Shared.Api.ApiError("Invalid request parameters."));
         }
 
         ProblemDetailsFactory factory = context.HttpContext.RequestServices.GetRequiredService<ProblemDetailsFactory>();

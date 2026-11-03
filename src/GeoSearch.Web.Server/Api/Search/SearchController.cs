@@ -1,5 +1,5 @@
 ﻿using GeoSearch.Web.Server.Search;
-using GeoSearch.Web.Shared.Auth;
+using GeoSearch.Web.Shared.Api;
 using GeoSearch.Web.Shared.GeoJson;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

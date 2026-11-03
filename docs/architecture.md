@@ -62,6 +62,20 @@ Public registration is disabled. A development bootstrap account can be provisio
 
 ## Quality and deployment boundaries
 
+### Possible nearby-search spatial index (not implemented)
+
+`search.api_nearby` restricts results with `ST_DWithin(s.display_pt::geography, ..., search_radius)`. The existing GiST index `search_index_pt` covers the `geometry` column `display_pt`, not the cast to `geography` used for metre-based filtering. Consequently, the existing index does not directly support this predicate, which may become expensive on larger POI datasets.
+
+**Only if the lab permits modifications to the instructor-managed search schema**, and profiling against the actual Hannover extract shows a bottleneck, consider a matching partial expression index on the materialized view:
+
+```sql
+CREATE INDEX search_index_poi_geog
+    ON search.search_index USING gist ((display_pt::geography))
+    WHERE type = 'poi';
+```
+
+Compare execution plans and timings for representative nearby queries using `EXPLAIN (ANALYZE, BUFFERS)` before and after the change; measure index size and refresh overhead as well. If approved, the index must be created by the `s05-search-index` rebuild recipe because that recipe drops and recreates the materialized view. **No such index is created by this implementation.**
+
 The lab requires search latency below 300 ms for the Hannover extract. The provided SQL handles full-text/fuzzy ranking, but this threshold has not been measured here because the imported PostGIS dataset is unavailable in the offline workspace. Contract and model unit tests do not establish spatial SQL correctness, execution latency, database privilege enforcement, or transaction behavior against PostgreSQL. Those require the real database, and browser geolocation/cancellation tests require the frontend.
 
 The intended application deployment is a single browser origin with `/api/*` routed to ASP.NET Core over HTTPS. The repository currently uses separate development origins for the API and client. Production TLS termination, key management, forwarded-header trust, monitoring, and any reverse-proxy traffic limits are not supplied by this initial scaffold.
