@@ -2,7 +2,7 @@
 
 GeoSearch is a .NET 10 / Blazor WebAssembly application for [Software Architectures Lab 2](lab/lab-2.md). It exposes address, place, reverse-geocoding, and nearby search over the instructor's OpenStreetMap-derived Hannover dataset through a PostGIS-backed API. A MapLibre map is planned for the Blazor client.
 
-**Current scope:** the solution, development environment, Identity integration, browser shell, and four read-only GIS API endpoints are implemented. Interactive search/map/geolocation UI remains a placeholder. Identity is included but is not required by the lab's GIS API.
+**Current scope:** the solution, development environment, public read-only GIS API, and browser shell are implemented. Interactive search, map, and geolocation UI features remain placeholders.
 
 ## Getting started
 
@@ -22,10 +22,10 @@ GeoSearch is a .NET 10 / Blazor WebAssembly application for [Software Architectu
    just s06-search "Limmerstr 12 Hannover"
    ```
 
-   To discard and rebuild the local GIS database later, run `just reset-lab RESET-LAB1` from `lab/`. This deletes **only** `lab1`, not the Identity database or downloaded data. See [lab reset instructions](lab/README.md#rebuild-the-disposable-gis-database).
+   To discard and rebuild the local GIS database later, run `just reset-lab RESET-LAB1` from `lab/`. This deletes **only** `lab1`, not the downloaded data. See [lab reset instructions](lab/README.md#rebuild-the-disposable-gis-database).
 
-   `s01-stack-up` is disabled inside the devcontainer: PostGIS is already running as its Compose dependency. The `s10-reader-setup` recipe provisions an independent, restricted login using the required `GEOSEARCH_READER_PASSWORD` from the devcontainer environment; it never generates or stores credentials itself. The GIS API needs the imported dataset and search index to return results; authentication and API compilation do not.
-4. Configure the server and start the web projects following the [development guide](docs/development.md). To initialize the separate Identity database, run `./scripts/setup-identity-db.sh` from `/workspace`.
+   `s01-stack-up` is disabled inside the devcontainer: PostGIS is already running as its Compose dependency. The `s10-reader-setup` recipe provisions an independent, restricted login using the required `GEOSEARCH_READER_PASSWORD` from the devcontainer environment; it never generates or stores credentials itself. The GIS API needs the imported dataset and search index to return results; compiling and testing the solution do not.
+4. Configure the server and start the web projects following the [development guide](docs/development.md).
 
 The devcontainer forwards PostgreSQL to Windows at `localhost:5432`. Its web app ports are kept separate from Visual Studio's ports; see the [container and host debugging guide](.devcontainer/README.md).
 
@@ -45,10 +45,10 @@ dotnet test src/GeoSearch.slnx --no-restore --no-build
 | Path | Purpose |
 | --- | --- |
 | `lab/` | Instructor lab specification, SQL, Compose, and `just` recipes |
-| `src/GeoSearch.Web.Server/` | ASP.NET Core API, GIS query adapter, Identity persistence, and authentication |
+| `src/GeoSearch.Web.Server/` | ASP.NET Core API and read-only GIS query adapter |
 | `src/GeoSearch.Web.Client/` | Blazor WASM client and UI theme |
-| `src/GeoSearch.Web.Shared/` | Client/server API contracts, including point-only GeoJSON DTOs |
-| `src/*Tests/` | Unit, contract, and middleware tests, including GIS tests in the server test project |
+| `src/GeoSearch.Web.Shared/` | Client/server GIS API contracts, including point-only GeoJSON DTOs |
+| `src/GeoSearch.Web.Server.Tests/` | GIS unit, contract, model, and controller tests |
 | `.devcontainer/` | Preferred development environment |
 | `.agents/skills/` | Engineering-quality and documentation conventions |
 

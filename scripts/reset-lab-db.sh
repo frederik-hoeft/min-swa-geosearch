@@ -115,7 +115,7 @@ if [[ "$publish_geoserver" != 'no' ]]; then
 fi
 
 printf '%s\n' 'WARNING: This permanently deletes all data and schema objects in database lab1.' \
-    'The geosearch_auth database, Compose volumes, and downloaded source datasets are preserved.'
+    'Compose volumes and downloaded source datasets are preserved.'
 
 # DROP DATABASE cannot run inside a transaction. WITH (FORCE) disconnects API and
 # GeoServer sessions still using lab1. Both commands target literal names only.

@@ -1,7 +1,4 @@
-﻿@inherits LayoutComponentBase
-@implements IDisposable
-@inject AuthenticationService Authentication
-@inject NavigationManager Navigation
+@inherits LayoutComponentBase
 
 <a href="#main-content" class="gs-skip-link">Skip to main content</a>
 
@@ -11,23 +8,9 @@
         <nav class="gs-primary-nav" aria-label="Primary navigation">
             <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Map">Explore</MudNavLink>
         </nav>
-        <MudSpacer />
-        <AuthorizeView>
-            <Authorized Context="authContext">
-                <div class="gs-account-actions">
-                    <span class="gs-account-name">@(authContext.User.Identity?.Name ?? "Account")</span>
-                    <MudButton Href="/password" Variant="Variant.Text" Color="Color.Inherit" StartIcon="@Icons.Material.Filled.Lock">Password</MudButton>
-                    <MudButton Variant="Variant.Outlined" Color="Color.Inherit" Disabled="_logoutBusy" OnClick="LogoutAsync">Sign out</MudButton>
-                </div>
-            </Authorized>
-        </AuthorizeView>
     </MudAppBar>
     <MudMainContent Class="gs-main-content">
         <main id="main-content" tabindex="-1" class="gs-main">
-            @if (_logoutError is not null)
-            {
-                <MudAlert Severity="Severity.Error" Class="gs-shell-alert" role="alert">@_logoutError</MudAlert>
-            }
             @Body
         </main>
     </MudMainContent>

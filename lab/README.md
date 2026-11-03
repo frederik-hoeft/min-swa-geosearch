@@ -14,8 +14,8 @@ To discard **only** the `lab1` database and replay the numbered lab setup and sm
 just reset-lab RESET-LAB1
 ```
 
-This command is destructive: it disconnects users of `lab1`, drops and recreates that database, and reruns `s02`–`s10` in order (plus `s01-stack-up` outside the devcontainer). The database `geosearch_auth`, Compose volumes, and downloaded source datasets are not deleted. The input GeoPackage/PBF files (download with `just s00-download-data`) and `GEOSEARCH_READER_PASSWORD` must be present **before** starting. The command checks those prerequisites, database ownership/privileges, and optional GeoServer availability before dropping anything. A failure *after* the drop may leave the database incomplete; rerun the recipe after correcting the problem.
+This command is destructive: it disconnects users of `lab1`, drops and recreates that database, and reruns `s02`–`s10` in order (plus `s01-stack-up` outside the devcontainer). Compose volumes and downloaded source datasets are not deleted. The input GeoPackage/PBF files (download with `just s00-download-data`) and `GEOSEARCH_READER_PASSWORD` must be present **before** starting. The command checks those prerequisites, database ownership/privileges, and optional GeoServer availability before dropping anything. A failure *after* the drop may leave the database incomplete; rerun the recipe after correcting the problem.
 
 `reset-lab` detects GeoServer and runs `s08-geoserver-publish` if it is reachable. Use `just reset-lab RESET-LAB1 yes` to **require** publication, or `just reset-lab RESET-LAB1 no` to skip it regardless of availability. The `s09-refresh-index` step runs even after rebuilding in `s05`, intentionally exercising the refresh operation. Recipe variable overrides (such as `bbox`, `gpkg`, `pbf`, and `snapshot`) are forwarded to each step.
 
-This is a **development-only, destructive rebuild**, not an idempotent migration or a production reset procedure. It does not reset the separate Identity database.
+This is a **development-only, destructive rebuild**, not an idempotent migration or a production reset procedure.
