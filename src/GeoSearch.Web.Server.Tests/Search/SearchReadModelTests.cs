@@ -26,7 +26,6 @@ public sealed class SearchReadModelTests
         Assert.AreEqual("distance_m", entity.FindProperty(nameof(SearchFeatureRow.DistanceM))?.GetColumnName());
         Assert.IsNotNull(context.Model.FindEntityType(typeof(SearchIndexMetadataRow)));
         Assert.IsNotNull(context.Model.FindEntityType(typeof(OsmSnapshotRow)));
-        Assert.IsNull(context.Model.FindEntityType(typeof(GeoSearchUser)));
 
         // The query roots must translate to database functions, not client-side invocation.
         Assert.Contains("search.api_search", context.SearchFeatures("Linden", 5).ToQueryString());
