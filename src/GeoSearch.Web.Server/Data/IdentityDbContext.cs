@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Wkg.EntityFrameworkCore.Configuration;
 using Wkg.EntityFrameworkCore.Configuration.Policies.Defaults.EntityNamingPolicies;

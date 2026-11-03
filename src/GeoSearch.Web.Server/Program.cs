@@ -3,7 +3,6 @@ using GeoSearch.Web.Server.Data.RefreshTokens;
 using GeoSearch.Web.Server.Data.Search;
 using GeoSearch.Web.Server.Search;
 using GeoSearch.Web.Server.Security;
-using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;

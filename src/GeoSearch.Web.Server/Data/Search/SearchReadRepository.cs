@@ -1,6 +1,4 @@
-﻿using GeoSearch.Web.Server.Data;
-using Microsoft.EntityFrameworkCore;
-using System.Security.Cryptography.X509Certificates;
+﻿using Microsoft.EntityFrameworkCore;
 using Wkg.AspNetCore.Abstractions.Services;
 using Wkg.AspNetCore.Transactions;
 

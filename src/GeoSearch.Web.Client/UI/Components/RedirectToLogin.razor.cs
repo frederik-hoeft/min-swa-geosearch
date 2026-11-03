@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Components;
-
-namespace GeoSearch.Web.Client.UI.Components;
+﻿namespace GeoSearch.Web.Client.UI.Components;
 
 public sealed partial class RedirectToLogin
 {

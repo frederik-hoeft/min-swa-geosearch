@@ -1,6 +1,4 @@
-﻿using GeoSearch.Web.Server.Data;
-using GeoSearch.Web.Server.Data.RefreshTokens;
-using GeoSearch.Web.Server.Security;
+﻿using GeoSearch.Web.Server.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;

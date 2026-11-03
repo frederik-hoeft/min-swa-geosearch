@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Components;
-
-namespace GeoSearch.Web.Client.UI.Layout;
+﻿namespace GeoSearch.Web.Client.UI.Layout;
 
 public sealed partial class MainLayout
 {

@@ -1,6 +1,4 @@
-﻿using GeoSearch.Web.Shared.Auth;
-
-namespace GeoSearch.Web.Server.Security;
+﻿namespace GeoSearch.Web.Server.Security;
 
 /// <summary>Transactional authentication, refresh rotation, and revocation operations.</summary>
 public interface IAuthenticationFlowService
