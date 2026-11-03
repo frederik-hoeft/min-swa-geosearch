@@ -19,7 +19,11 @@ just s06-search 'Limmerstr 12 Hannover'
 just s07-reverse 9.7320 52.3759
 ```
 
-The import defaults to the Hannover bounding box. `s05-search-index` applies the instructor's index and search/reverse functions, then the API's additive read functions (`lab/sql/07-api-reads.sql`). `s10-reader-setup` provisions the restricted login for the API and is safe to rerun. `just` lists other available recipes; `just s09-refresh-index` refreshes the materialized search index after a subsequent import. A full `s05` rebuild preserves an existing reader's view grant. Neither `osm` nor `search` is migrated by EF Core.
+The import defaults to the Hannover bounding box. `s03-import-gpkg` and `s04-import-addresses` replace their destination tables rather than append duplicates, making completed imports repeatable for the same inputs. **Imports are not atomic across layers**: if interrupted, rerun the affected import before refreshing the index. Avoid imports against a database that must remain continuously available; a staged snapshot/swap workflow belongs in production deployment.
+
+`just s05-search-index` rebuilds the instructor's index and search/reverse functions, then installs the API's read functions (`lab/sql/07-api-reads.sql`). The SQL files execute as a single database transaction: on failure, the previous index and function state remain intact. The rebuild may block readers while replacing the materialized view. `s10-reader-setup` provisions the restricted login and is safe to rerun. A full `s05` rebuild reapplies an existing reader's view grant.
+
+After importing a new snapshot, use `just snapshot=YYYY-MM-DD s09-refresh-index` instead of rebuilding the index, when its schema and definitions are unchanged. This updates the snapshot identifier and concurrently refreshes the view in one transaction so queries can keep reading the previous index during the refresh. Use the date matching the imported source files, not merely the current date. Repeating a refresh recalculates `refreshed_at`, even if document contents are unchanged. `just` lists the other available recipes. Neither `osm` nor `search` is migrated by EF Core.
 
 Create the separate application-owned Identity database from the repository root:
 

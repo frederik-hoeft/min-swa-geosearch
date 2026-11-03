@@ -29,5 +29,5 @@ export PGUSER="${PGUSER:-lab1}"
 export PGPASSWORD="${PGPASSWORD:-${POSTGIS_PASSWORD:-lab1-local-only}}"
 export PGDATABASE=lab1
 
-psql -X -v ON_ERROR_STOP=1 -f "$repo_dir/lab/sql/08-search-reader.sql"
+psql -X -v ON_ERROR_STOP=1 --single-transaction -f "$repo_dir/lab/sql/08-search-reader.sql"
 echo 'geosearch_reader is provisioned; configure ConnectionStrings:Search to use this login.'

@@ -1,6 +1,6 @@
 # Instructor-provided GIS lab
 
-This directory contains the Lab 2 specification, Docker Compose services, PostgreSQL SQL scripts, GDAL import configuration, and the instructor's `justfile`. The SQL and recipe semantics are retained; the GeoServer URL can also be provided through `GEOSERVER_URL` when the recipes run inside the devcontainer.
+This directory contains the Lab 2 specification, Docker Compose services, PostgreSQL SQL scripts, GDAL import configuration, and the instructor's `justfile`. The instructor's search/index logic is retained, with transactional, repeatable setup and refresh recipes. The GeoServer URL can also be provided through `GEOSERVER_URL` when the recipes run inside the devcontainer.
 
 The **devcontainer is the preferred execution environment**. It installs `just`, `psql`, and `ogr2ogr` and starts PostGIS. From `/workspace/lab`, run `just` to list the available recipes and begin with `just s02-db-setup`. `s01-stack-up` refuses to run inside the devcontainer, where its Compose project already provides PostGIS.
 
