@@ -12,17 +12,13 @@ namespace GeoSearch.Web.Server.Tests.Search;
 public sealed class SearchDependencyTests
 {
     [TestMethod]
-    public async Task IdentityAndSearchTransactionsResolveSideBySideAsync()
+    public async Task SearchServicesResolveWithReadOnlyDbContextAsync()
     {
         ServiceCollection services = new();
         services.AddLogging();
-        services.AddDbContext<IdentityDbContext>(options =>
-            options.UseNpgsql("Host=localhost;Database=not_connected_identity;Username=test;Password=test"));
         services.AddSingleton<SearchReadModelLoader>();
         services.AddDbContext<SearchReadDbContext>(options =>
             options.UseNpgsql("Host=localhost;Database=not_connected_search;Username=test;Password=test"));
-        services.AddTransactionManagement<IdentityDbContext>(options =>
-            options.UseIsolationLevel(IsolationLevel.ReadCommitted));
         services.AddTransactionManagement<SearchReadDbContext>(options =>
             options.UseIsolationLevel(IsolationLevel.ReadCommitted));
         services.AddScoped<ISearchReadRepository, SearchReadRepository>();

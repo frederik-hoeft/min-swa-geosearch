@@ -21,25 +21,6 @@
     }
 }
 
-.gs-account-actions {
-    display: flex;
-    align-items: center;
-    gap: 0.65rem;
-
-    .mud-button-outlined {
-        border-color: var(--gs-border);
-    }
-}
-
-.gs-account-name {
-    max-width: 16rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: var(--gs-muted);
-    font-size: 0.8rem;
-}
-
 .gs-main-content {
     min-height: 100vh;
 }
@@ -50,15 +31,7 @@
     padding: clamp(1.5rem, 4vw, 3.5rem);
 }
 
-.gs-shell-alert {
-    margin-bottom: 1rem;
-}
-
 @media (max-width: 760px) {
-    .gs-account-name {
-        display: none;
-    }
-
     .gs-appbar.mud-appbar .mud-toolbar {
         gap: 0.75rem;
     }
@@ -67,15 +40,6 @@
 @media (max-width: 540px) {
     .gs-appbar.mud-appbar .mud-toolbar {
         padding-inline: 0.75rem;
-    }
-
-    .gs-account-actions .mud-button-root {
-        min-width: auto;
-        padding-inline: 0.5rem;
-    }
-
-    .gs-account-actions .mud-button-label {
-        font-size: 0.75rem;
     }
 
     .gs-primary-nav {

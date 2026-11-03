@@ -1,7 +1,6 @@
 ﻿using GeoSearch.Web.Server.Search;
 using GeoSearch.Web.Shared.Api;
 using GeoSearch.Web.Shared.GeoJson;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 
@@ -9,7 +8,6 @@ namespace GeoSearch.Web.Server.Api.Search;
 
 /// <summary>The lab's anonymous, read-only search API. Location input is never persisted.</summary>
 [ApiController]
-[AllowAnonymous]
 [ResponseCache(Location = ResponseCacheLocation.None, NoStore = true)]
 [Produces("application/json")]
 public sealed class SearchController(IGeoSearchService search) : ControllerBase
