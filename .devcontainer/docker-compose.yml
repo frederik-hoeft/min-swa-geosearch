@@ -3,6 +3,10 @@ services:
     build:
       context: ..
       dockerfile: .devcontainer/Dockerfile
+    # All relative paths use lab/compose.yaml (the first Compose file) as their base.
+    # Require locally configured credentials rather than silently starting without them.
+    env_file:
+      - ../.devcontainer/.env
     volumes:
       - ..:/workspace:cached
       - nuget-cache:/home/vscode/.nuget/packages

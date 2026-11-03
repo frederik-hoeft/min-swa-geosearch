@@ -1,7 +1,4 @@
-﻿using GeoSearch.Web.Client.Auth;
-using Microsoft.AspNetCore.Components;
-
-namespace GeoSearch.Web.Client.UI;
+﻿namespace GeoSearch.Web.Client.UI;
 
 public sealed partial class App
 {

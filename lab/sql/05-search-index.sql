@@ -19,10 +19,11 @@ CREATE TABLE IF NOT EXISTS osm.snapshot (snapshot_id text NOT NULL, imported_at 
 TRUNCATE osm.snapshot;
 INSERT INTO osm.snapshot (snapshot_id) VALUES (:'snapshot');
 
--- Category mapping: which fclass values become searchable, with type and German label
-DROP TABLE IF EXISTS search.category_map CASCADE;
-CREATE TABLE search.category_map (layer text, fclass text, type text, label_de text, importance real,
-                                  PRIMARY KEY (layer, fclass));
+-- Keep the category map's identity and dependent objects across repeatable rebuilds.
+-- The full s05 recipe runs in one transaction, so a failed refresh restores the old rows.
+CREATE TABLE IF NOT EXISTS search.category_map (layer text, fclass text, type text, label_de text, importance real,
+                                                PRIMARY KEY (layer, fclass));
+TRUNCATE search.category_map;
 INSERT INTO search.category_map VALUES
   ('places', 'city', 'place', 'Stadt', 1.0),
   ('places', 'town', 'place', 'Stadt', 0.9),

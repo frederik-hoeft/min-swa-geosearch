@@ -1,6 +1,4 @@
-﻿using GeoSearch.Web.Client.Api;
-using GeoSearch.Web.Client.Auth;
-using GeoSearch.Web.Shared.Auth;
+﻿using GeoSearch.Web.Shared.Auth;
 
 namespace GeoSearch.Web.Client.UI.Pages;
 

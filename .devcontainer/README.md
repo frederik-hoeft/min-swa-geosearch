@@ -7,8 +7,9 @@ Visual Studio on Windows can be used for host-side debugging without replacing t
 ## Start the environment
 
 1. Install Docker with Compose, VS Code, and the Dev Containers extension.
-2. Open the repository in VS Code and choose **Dev Containers: Reopen in Container**.
-3. In the container terminal, verify the tools and database:
+2. Copy `.devcontainer/.env.example` to `.devcontainer/.env` and set `GEOSEARCH_READER_PASSWORD` to a strong, locally managed value of at least 24 characters. The `.env` file is ignored by Git; restrict its permissions because it contains a secret.
+3. Open the repository in VS Code and choose **Dev Containers: Reopen in Container**.
+4. In the container terminal, verify the tools and database:
 
    ```bash
    dotnet --version
@@ -28,15 +29,21 @@ The instructor's recipes live in `lab/justfile`. The container includes `just`, 
 ```bash
 cd /workspace/lab
 just                       # List available recipes
+just s00-download-data  # One-time download; skips verified existing files
 just s02-db-setup
 just s03-import-gpkg
 just s04-import-addresses
 just s05-search-index
+just s10-reader-setup
 just s06-search 'Limmerstr 12 Hannover'
 just s07-reverse 9.7320 52.3759
 ```
 
-Download the [external Geofabrik data](../lab/data/README.md) before running the import recipes. `s01-stack-up` is guarded and refuses to run in the devcontainer, where its Compose project has already started PostGIS. It remains available for standalone lab setups.
+To start over with an empty GIS database and replay the entire pipeline, use `just reset-lab RESET-LAB1` from `/workspace/lab`. This intentionally destroys **only** `lab1`; it preserves the separate Identity database. The GeoServer step runs when GeoServer is reachable. See [the reset procedure](../lab/README.md#rebuild-the-disposable-gis-database) for prerequisites and optional controls.
+
+The `s00-download-data` recipe downloads and verifies the [external Geofabrik data](../lab/data/README.md) before import; it does not require PostgreSQL or run in CI. `s01-stack-up` is guarded and refuses to run in the devcontainer, where its Compose project has already started PostGIS. It remains available for standalone lab setups.
+
+The dev service requires `.devcontainer/.env` through Compose's `env_file` setting; this makes `GEOSEARCH_READER_PASSWORD` available to `just` **inside** the devcontainer after it is recreated. Because `lab/compose.yaml` is the first Compose file, relative paths in both Compose files are resolved from `lab/`, so the entry is `../.devcontainer/.env`. If the file is missing, Compose fails rather than silently omitting the variable. Verify the value is present without printing it: `test -n "${GEOSEARCH_READER_PASSWORD:-}" && echo 'Reader credentials available'`. A Compose `.env` file by itself does not export variables into a host shell, and the `env_file` injection does not automatically configure the API's `ConnectionStrings:Search`. See [development configuration](../docs/development.md#configure-the-server). Do not assume this dev-service `env_file` supplies `POSTGIS_PASSWORD` to the separate PostGIS service; that service uses Compose interpolation configured separately.
 
 The optional GeoServer service uses the same internal Docker network. If it is started through the devcontainer's Compose project, `GEOSERVER_URL=http://geoserver:8080/geoserver` directs the `s08-geoserver-publish` recipe to it. GeoServer is not needed for application search or the initial imports.
 

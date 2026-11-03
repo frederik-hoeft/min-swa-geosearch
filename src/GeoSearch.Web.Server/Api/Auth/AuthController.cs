@@ -1,4 +1,5 @@
 ﻿using GeoSearch.Web.Server.Security;
+using GeoSearch.Web.Shared.Api;
 using GeoSearch.Web.Shared.Auth;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;

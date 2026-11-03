@@ -21,7 +21,7 @@ public sealed class JwtTokenIssuerTests
         JwtTokenIssuer issuer = new(options, TimeProvider.System);
         GeoSearchUser user = new() { Id = "user-123", Email = "student@example.test" };
 
-        GeoSearch.Web.Shared.Auth.LoginResponse result = issuer.Issue(user);
+        Shared.Auth.LoginResponse result = issuer.Issue(user);
         TokenValidationParameters validation = new()
         {
             ValidateIssuer = true,
@@ -38,6 +38,6 @@ public sealed class JwtTokenIssuerTests
 
         Assert.IsNotNull(principal);
         Assert.IsInstanceOfType<JwtSecurityToken>(validated);
-        Assert.IsTrue(result.ExpiresUtc > DateTimeOffset.UtcNow);
+        Assert.IsGreaterThan(DateTimeOffset.UtcNow, result.ExpiresUtc);
     }
 }

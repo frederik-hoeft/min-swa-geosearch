@@ -1,7 +1,6 @@
-﻿using GeoSearch.Web.Server.Data;
+﻿namespace GeoSearch.Web.Server.Data.RefreshTokens;
 
-namespace GeoSearch.Web.Server.Data.RefreshTokens;
-
+[IdentityModel]
 internal sealed partial class RefreshToken
 {
     public long Id { get; set; }

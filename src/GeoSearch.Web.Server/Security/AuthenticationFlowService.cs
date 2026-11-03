@@ -18,7 +18,7 @@ internal sealed class AuthenticationFlowService(
     : DatabaseService<IdentityDbContext>(transactionService), IAuthenticationFlowService
 {
     public Task<AuthenticationTokenResult?> LoginAsync(string email, string password, CancellationToken cancellationToken = default) =>
-        Transaction.Scoped.RunAsync<AuthenticationTokenResult?>(async (context, transaction, ct) =>
+        Transaction.Scoped.RunAsync(async (context, transaction, ct) =>
         {
             GeoSearchUser? user = await users.FindByEmailAsync(email);
             if (user is null)
@@ -45,7 +45,7 @@ internal sealed class AuthenticationFlowService(
         }, cancellationToken);
 
     public Task<AuthenticationTokenResult?> RefreshAsync(string refreshToken, CancellationToken cancellationToken = default) =>
-        Transaction.Scoped.RunAsync<AuthenticationTokenResult?>(async (context, transaction, ct) =>
+        Transaction.Scoped.RunAsync(async (context, transaction, ct) =>
         {
             RefreshTokenRotationResult? rotation = await refreshTokens.RotateAsync(context, refreshToken, ct);
             if (rotation is null)
@@ -83,7 +83,7 @@ internal sealed class AuthenticationFlowService(
     }
 
     public Task<PasswordChangeResult?> ChangePasswordAsync(string userId, string currentPassword, string newPassword, CancellationToken cancellationToken = default) =>
-        Transaction.Scoped.RunAsync<PasswordChangeResult?>(async (context, transaction, ct) =>
+        Transaction.Scoped.RunAsync(async (context, transaction, ct) =>
         {
             GeoSearchUser? user = await users.FindByIdAsync(userId);
             if (user is null)

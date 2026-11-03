@@ -1,6 +1,12 @@
 # External OSM datasets
 
-The lab uses the **October 28, 2026** Niedersachsen snapshot from [Geofabrik](https://download.geofabrik.de/europe/germany/niedersachsen.html). The instructor's archive contains links to the files, not the datasets themselves. Download and unpack the two inputs into these paths relative to `lab/`:
+Lab 2 uses the **October 28, 2026** Niedersachsen snapshot from [Geofabrik](https://download.geofabrik.de/europe/germany/niedersachsen.html), matching the search index's default `snapshot` value. From `lab/`, run:
+
+```bash
+just s00-download-data
+```
+
+This retrieves the dated `niedersachsen-261028.osm.pbf` and `niedersachsen-261028-free.gpkg.zip` files, extracts the single GeoPackage member, and installs them at the locations expected by the import recipes:
 
 ```text
 data/
@@ -9,15 +15,10 @@ data/
 └── niedersachsen-261028.osm.pbf
 ```
 
-The GeoPackage provides features such as places and roads; the PBF provides address data. Check the file paths before starting the imports.
+The PBF supplies address tags; the GeoPackage supplies places, POIs, roads, and administrative boundaries. The downloads total approximately **1.3 GB**; the GeoPackage additionally requires space for extraction. The input files and temporary downloads are excluded from Git. CI does not download either dataset.
 
-Run the corresponding `just` recipes from inside `/workspace/lab` in the devcontainer:
+The downloader is repeatable: it verifies the existing PBF against the published Geofabrik `.md5` file and recognizes an existing GeoPackage, so a successful rerun does not download the large files again. Interrupted transfers can resume, downloaded PBFs are checked before replacement, and GeoPackage extraction checks the ZIP CRC and SQLite GeoPackage metadata. The ZIP archive is removed after successful extraction to save disk space. An invalid ZIP is discarded so the next run can retry. The cached checksum in `data/.downloads/` allows subsequent runs to work without network access.
 
-```bash
-just s03-import-gpkg
-just s04-import-addresses
-```
+Next run `just s02-db-setup`, `just s03-import-gpkg`, and `just s04-import-addresses` (or use [the full reset recipe](../README.md#rebuild-the-disposable-gis-database) after provisioning the reader password). The import recipes default to the Hannover bounding box. To supply pre-existing datasets instead, override their paths, e.g. `just pbf=/path/to/input.osm.pbf s04-import-addresses`. To import all of Niedersachsen rather than the default regional subset, use `just bbox='' s03-import-gpkg`.
 
-The recipes use the Hannover bounding box by default. To select files stored elsewhere, override the recipe variables, for example `just pbf=/path/to/niedersachsen.osm.pbf s04-import-addresses`. To import the entire Niedersachsen dataset instead, use `just bbox='' s03-import-gpkg` (this takes substantially more space and time).
-
-These large datasets are excluded from version control. Respect the source's OpenStreetMap/ODbL licensing and provide OpenStreetMap attribution in any published results.
+The Geofabrik archives are date-pinned for reproducibility. If that snapshot is no longer hosted, provide a matching local dataset and update the recipe paths/snapshot metadata deliberately, rather than silently substituting `latest`. Respect OpenStreetMap's ODbL licensing and include attribution in published results.

@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Wkg.EntityFrameworkCore.Configuration;
 using Wkg.EntityFrameworkCore.Configuration.Policies.Defaults.EntityNamingPolicies;
@@ -12,8 +11,7 @@ namespace GeoSearch.Web.Server.Data;
 /// Identity-only EF model. Uses a separate, application-owned PostgreSQL database.
 /// The default schema prevents collisions if additional application entities are introduced.
 /// </summary>
-public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> options, IModelLoader modelLoader)
-    : IdentityDbContext<GeoSearchUser>(options)
+public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> options, IModelLoader modelLoader) : IdentityDbContext<GeoSearchUser>(options)
 {
     protected override void OnModelCreating(ModelBuilder builder)
     {

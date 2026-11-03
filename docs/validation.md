@@ -1,6 +1,6 @@
 # Validation and integration boundaries
 
-The initial GeoSearch implementation is an application foundation. Authentication, separate database contexts, and the browser shell are implemented; the GeoJSON search endpoints, interactive map, and geolocation features are pending. Validation therefore distinguishes automated scaffold checks from tests requiring a live browser and PostGIS instance.
+GeoSearch has authentication, separate database contexts, the GeoJSON GIS endpoints, and a browser shell; interactive map and geolocation features remain pending. Validation therefore distinguishes compilation and in-memory contract checks from spatial tests requiring a populated PostGIS instance.
 
 ## Automated validation
 
@@ -13,9 +13,13 @@ dotnet build src/GeoSearch.slnx --no-restore -warnaserror
 dotnet test src/GeoSearch.slnx --no-restore --no-build
 ```
 
-GitHub Actions restores dependencies, checks formatting, builds in Release with warnings treated as errors, and runs tests. The build also compiles the client SCSS through SassCompiler.
+GitHub Actions runs three separate jobs: **lab-scripts** (parses the real Justfile, checks shell syntax, and executes Python automation tests), **build** (.NET restore, format verification, warnings-as-errors Release build), and **test** (a fresh restore and Release test run, after a successful build job). The build also compiles the client SCSS through SassCompiler.
 
-The automated tests exercise Identity/JWT configuration, refresh-token mapping and EF migration metadata, browser session request contracts, record-constructor validation, API-only antiforgery middleware, and refresh-token cleanup boundaries. These tests do not require PostgreSQL or a browser, and do not prove database concurrency or cross-origin cookie behavior.
+The lab automation tests use a local HTTP fixture server to verify initial dataset download, no-network reruns, HTTP-range resume, and corruption recovery. They also mock the reset recipe's preflight rejection, ordering, and fail-fast behavior. These checks fetch no real Geofabrik data and cannot prove PostgreSQL/GDAL runtime semantics or production-scale download performance.
+
+The automated tests exercise Identity/JWT behavior and model metadata, browser session contracts, antiforgery behavior, refresh-token boundaries, GeoJSON field/coordinate serialization, the keyless read-only GIS model, simultaneous registration of the two WKG transaction contexts, and generation of OpenAPI paths. They do not require PostgreSQL or a browser, and do not prove GIS SQL, database concurrency, or cross-origin cookie behavior.
+
+`src/GeoSearch.Web.Server.Tests/Search` includes Moq-based controller validation and application-service mapping tests. They share the existing server test project and run with the normal solution once the NuGet source includes `Moq` 4.21.0 and its transitive dependencies. EF model tests independently verify that WKG's discovery filters isolate the GIS projections and that EF translates the three table-valued query functions without a live database.
 
 ## Runtime verification
 
@@ -28,10 +32,10 @@ Use the [devcontainer database](../.devcontainer/README.md) for the following ch
 
 These are integration checks to perform on the running development stack; automated unit tests are not substitutes for them.
 
-## GIS acceptance criteria (future implementation)
+## GIS runtime acceptance checks
 
-Before wiring the spatial API, configure a database login restricted to read-only query privileges and verify that it cannot modify `osm` or `search` objects. The current development `lab1` account is privileged and does not enforce the architectural read-only boundary.
+Use `just s10-reader-setup` to provision the restricted `geosearch_reader` login after `s05-search-index` and the imports. Confirm that the role can execute the three API read functions and read categories and snapshots, but cannot write to `osm.snapshot`; the EF read-only guard alone is insufficient. `s05-search-index` installs the instructor's materialized view and search/reverse functions, then the API's additive read functions.
 
-After the spatial API and client have been implemented, load the dated Geofabrik snapshot through the instructor's `just` recipes. Validate `/api/search`, `/api/reverse`, `/api/nearby`, and `/api/categories` against the lab's fixtures, including GeoJSON structure, longitude/latitude order, category and distance behavior, and failure responses. Measure the required median search latency below 300 ms over ten fixture queries on real PostGIS data.
+Verify `/api/search`, `/api/reverse`, `/api/nearby`, and `/api/categories` against the populated database. Cover required/malformed query parameters, boundary coordinate values and radius/limit values, empty results with snapshot metadata, longitude/latitude axis order, category labels, nearest-result behavior, and distance-in-metres ordering. Confirm that a refresh changes the exposed snapshot only as the materialized view changes and that coordinates are not present in API logs. Verify the API is usable without Identity tokens.
 
-Browser tests should exercise map updates, geolocation permission denial, cancellation of obsolete requests, and the absence of third-party geocoding. The initial styled map workspace is explicitly not evidence of these capabilities.
+Collect the instructor's ten fixture queries with their actual top result and measured latency, including the three known ranking errors described in [the lab specification](../lab/lab-2.md#test-your-search-with-ten-fixture-queries). The target is a search response under 300 ms on the Hannover extract; offline unit tests cannot establish this. For nearby-search performance, capture `EXPLAIN (ANALYZE, BUFFERS)` on representative radii and categories before considering the [optional geography expression index](architecture.md#possible-nearby-search-spatial-index-not-implemented); do not modify the instructor-managed schema without permission. Keep the future frontend acceptance checks separate: map markers, attribution, permission denial, stale-request cancellation, location accuracy circle, map-centre fallback, and a screenshot of nearby search using the device position.

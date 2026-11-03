@@ -1,7 +1,7 @@
 # Software Architectures 2026 — runnable steps for Lecture 2 / Lab 2.
 # Run `just` in this folder to list recipes. Outside the devcontainer, start at s01-stack-up; inside, start at s02-db-setup.
 # just runs every recipe in the folder of this justfile, so all paths below are relative to it.
-# Put the Geofabrik downloads into data/ (see lab-2.md), or point gpkg/pbf elsewhere: just pbf=/path/x.osm.pbf s04-import-addresses
+# Fetch the fixed Geofabrik snapshot with `just s00-download-data`, or point gpkg/pbf to existing files.
 # Imports are restricted to Hannover by default; import all of Lower Saxony with: just bbox="" s03-import-gpkg
 
 set shell := ["bash", "-euo", "pipefail", "-c"]
@@ -30,6 +30,10 @@ gs_db_host := "postgis"
 default:
     @just --list --unsorted
 
+# Fetch and verify the pinned Geofabrik PBF + GeoPackage (safe to rerun; ~1.3 GB download).
+s00-download-data:
+    python3 ../scripts/download-lab-data.py
+
 # Start PostGIS and GeoServer and wait until the database accepts connections
 s01-stack-up:
     if [[ "${GEOSEARCH_DEVCONTAINER:-}" == "1" || -d /workspace/.devcontainer ]]; then echo "Refusing s01-stack-up inside the GeoSearch devcontainer: PostGIS is already managed by its Compose project. Start with 'just s02-db-setup'." >&2; exit 1; fi
@@ -42,7 +46,7 @@ s02-db-setup:
 
 # Import the search-relevant GeoPackage layers into schema osm (ogr2ogr; truncate + append keeps dependent views)
 s03-import-gpkg:
-    ogr2ogr -f PostgreSQL "{{pg}}" {{gpkg}} \
+    ogr2ogr -f PostgreSQL "{{pg}}" "{{gpkg}}" \
       -a_srs EPSG:4326 \
       -doo ACTIVE_SCHEMA=osm -lco GEOMETRY_NAME=geom \
       -append --config OGR_TRUNCATE YES -progress {{spat}} \
@@ -53,57 +57,71 @@ s03-import-gpkg:
 s04-import-addresses:
     export OSM_CONFIG_FILE=osmconf-addresses.ini; \
     for layer in points multipolygons; do \
-      ogr2ogr -f PostgreSQL "{{pg}}" {{pbf}} "$layer" \
+      ogr2ogr -f PostgreSQL "{{pg}}" "{{pbf}}" "$layer" \
         -where "addr_housenumber IS NOT NULL" \
         -nln "osm.address_$layer" -lco GEOMETRY_NAME=geom -append --config OGR_TRUNCATE YES -progress {{spat}}; \
     done
 
-# Create the materialized view search.search_index and the search/reverse functions
+# Rebuild the search index and functions atomically; a failed rebuild retains the previous schema.
 s05-search-index:
-    psql -v ON_ERROR_STOP=1 -v snapshot={{snapshot}} -f sql/05-search-index.sql
-    psql -v ON_ERROR_STOP=1 -f sql/06-search-functions.sql
+    psql -X -v ON_ERROR_STOP=1 -v snapshot="{{snapshot}}" --single-transaction \
+      -f sql/05-search-index.sql -f sql/06-search-functions.sql \
+      -f sql/07-api-reads.sql -f sql/09-reapply-reader-grants.sql
 
 # Free-text search, e.g. just s06-search "Apotheke Linden"
-[positional-arguments]
-s06-search q limit="10":
-    psql -v q="$1" -v lim="$2" <<< "SELECT name, label, type, category, round(score::numeric, 3) AS score, round(lon::numeric, 5) AS lon, round(lat::numeric, 5) AS lat FROM search.search(:'q', :lim);"
+s06-search $q $limit="10":
+    psql -X -v ON_ERROR_STOP=1 -v q="$q" -v lim="$limit" <<< "SELECT name, label, type, category, round(score::numeric, 3) AS score, round(lon::numeric, 5) AS lon, round(lat::numeric, 5) AS lat FROM search.search(:'q', :'lim'::integer);"
 
 # Reverse geocoding, e.g. just s07-reverse 9.7320 52.3759
-[positional-arguments]
-s07-reverse lon lat radius="250":
-    psql -v lon="$1" -v lat="$2" -v r="$3" <<< "SELECT label, type, round(distance_m::numeric, 1) AS distance_m FROM search.reverse(:lon, :lat, :r);"
+s07-reverse $lon $lat $radius="250":
+    psql -X -v ON_ERROR_STOP=1 -v lon="$lon" -v lat="$lat" -v r="$radius" <<< "SELECT label, type, round(distance_m::numeric, 1) AS distance_m FROM search.reverse(:'lon'::double precision, :'lat'::double precision, :'r'::double precision);"
 
 # Publish the raw layers (workspace osm) and the search index (workspace search) in GeoServer
 s08-geoserver-publish:
     for ws in osm search; do \
       store="{\"dataStore\":{\"name\":\"lab1\",\"type\":\"PostGIS\",\"connectionParameters\":{\"entry\":[{\"@key\":\"dbtype\",\"\$\":\"postgis\"},{\"@key\":\"host\",\"\$\":\"{{gs_db_host}}\"},{\"@key\":\"port\",\"\$\":\"5432\"},{\"@key\":\"database\",\"\$\":\"$PGDATABASE\"},{\"@key\":\"user\",\"\$\":\"$PGUSER\"},{\"@key\":\"passwd\",\"\$\":\"$PGPASSWORD\"},{\"@key\":\"schema\",\"\$\":\"$ws\"},{\"@key\":\"Expose primary keys\",\"\$\":\"true\"}]}}}"; \
-      code=$(curl -s -o /dev/null -w '%{http_code}' -u "{{gs_auth}}" "{{geoserver}}/rest/workspaces/$ws.json"); \
-      if [ "$code" = 404 ]; then \
-        curl -sf -u "{{gs_auth}}" -H 'Content-Type: application/json' -X POST "{{geoserver}}/rest/workspaces" \
-          -d "{\"workspace\":{\"name\":\"$ws\"}}"; \
-      fi; \
-      code=$(curl -s -o /dev/null -w '%{http_code}' -u "{{gs_auth}}" "{{geoserver}}/rest/workspaces/$ws/datastores/lab1.json"); \
-      if [ "$code" = 404 ]; then \
-        curl -sf -u "{{gs_auth}}" -H 'Content-Type: application/json' -X POST "{{geoserver}}/rest/workspaces/$ws/datastores" -d "$store"; \
-      else \
-        curl -sf -u "{{gs_auth}}" -H 'Content-Type: application/json' -X PUT "{{geoserver}}/rest/workspaces/$ws/datastores/lab1" -d "$store"; \
-      fi; \
+      code=$(curl -sS -o /dev/null -w '%{http_code}' -u "{{gs_auth}}" "{{geoserver}}/rest/workspaces/$ws.json"); \
+      case "$code" in \
+        200) ;; \
+        404) curl -fsS -u "{{gs_auth}}" -H 'Content-Type: application/json' -X POST "{{geoserver}}/rest/workspaces" \
+          -d "{\"workspace\":{\"name\":\"$ws\"}}" ;; \
+        *) echo "GeoServer workspace $ws lookup failed: HTTP $code" >&2; exit 1 ;; \
+      esac; \
+      code=$(curl -sS -o /dev/null -w '%{http_code}' -u "{{gs_auth}}" "{{geoserver}}/rest/workspaces/$ws/datastores/lab1.json"); \
+      case "$code" in \
+        200) curl -fsS -u "{{gs_auth}}" -H 'Content-Type: application/json' -X PUT "{{geoserver}}/rest/workspaces/$ws/datastores/lab1" -d "$store" ;; \
+        404) curl -fsS -u "{{gs_auth}}" -H 'Content-Type: application/json' -X POST "{{geoserver}}/rest/workspaces/$ws/datastores" -d "$store" ;; \
+        *) echo "GeoServer datastore $ws/lab1 lookup failed: HTTP $code" >&2; exit 1 ;; \
+      esac; \
     done
     for ft in osm:gis_osm_places_free osm:gis_osm_pois_free osm:gis_osm_roads_free osm:gis_osm_adminareas_a_free search:search_index; do \
       ws=${ft%%:*}; name=${ft#*:}; \
-      code=$(curl -s -o /dev/null -w '%{http_code}' -u "{{gs_auth}}" "{{geoserver}}/rest/workspaces/$ws/datastores/lab1/featuretypes/$name.json"); \
-      if [ "$code" = 404 ]; then \
-        curl -sf -u "{{gs_auth}}" -H 'Content-Type: application/json' -X POST "{{geoserver}}/rest/workspaces/$ws/datastores/lab1/featuretypes" \
-          -d "{\"featureType\":{\"name\":\"$name\",\"srs\":\"EPSG:4326\",\"projectionPolicy\":\"FORCE_DECLARED\"}}"; \
-      fi; \
+      code=$(curl -sS -o /dev/null -w '%{http_code}' -u "{{gs_auth}}" "{{geoserver}}/rest/workspaces/$ws/datastores/lab1/featuretypes/$name.json"); \
+      case "$code" in \
+        200) ;; \
+        404) curl -fsS -u "{{gs_auth}}" -H 'Content-Type: application/json' -X POST "{{geoserver}}/rest/workspaces/$ws/datastores/lab1/featuretypes" \
+          -d "{\"featureType\":{\"name\":\"$name\",\"srs\":\"EPSG:4326\",\"projectionPolicy\":\"FORCE_DECLARED\"}}" ;; \
+        *) echo "GeoServer feature type $ft lookup failed: HTTP $code" >&2; exit 1 ;; \
+      esac; \
       echo "published $ft"; \
     done
-    curl -sf "{{geoserver}}/ows?service=WFS&version=2.0.0&request=GetFeature&typeNames=search:search_index&count=1&outputFormat=application/json" | head -c 400; echo
+    response=$(curl -fsS "{{geoserver}}/ows?service=WFS&version=2.0.0&request=GetFeature&typeNames=search:search_index&count=1&outputFormat=application/json"); printf '%.400s\n' "$response"
 
-# Recompute the materialized view search.search_index after a new import; readers keep the old version until it finishes
+# Refresh an existing index after a new import. Pass snapshot=YYYY-MM-DD when updating the source data.
+# Snapshot metadata and the concurrent refresh commit together; readers retain the previous index on failure.
 s09-refresh-index:
-    psql -v ON_ERROR_STOP=1 -c "\timing on" -c "REFRESH MATERIALIZED VIEW CONCURRENTLY search.search_index;" \
-      -c "SELECT snapshot_id, refreshed_at, count(*) AS documents FROM search.search_index GROUP BY 1, 2;"
+    psql -X -v ON_ERROR_STOP=1 -v snapshot="{{snapshot}}" --single-transaction -f sql/10-refresh-index.sql
+
+# Create/rotate the dedicated read-only PostGIS login after the search functions exist.
+# Requires GEOSEARCH_READER_PASSWORD in the calling process environment (e.g. the devcontainer).
+s10-reader-setup:
+    ../scripts/setup-search-reader.sh
+
+# Destructively recreate only lab1, then run s01 (outside the devcontainer) and
+# s02-s10 in order. GeoServer is optional: auto publishes only if reachable;
+# use yes to require it or no to skip it. Requires explicit confirmation.
+reset-lab confirmation publish="auto":
+    ../scripts/reset-lab-db.sh "{{confirmation}}" "{{gpkg}}" "{{pbf}}" "{{bbox}}" "{{snapshot}}" "{{publish}}"
 
 # Open an interactive psql session on the lab database
 db:
