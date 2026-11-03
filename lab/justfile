@@ -65,14 +65,12 @@ s05-search-index:
       -f sql/07-api-reads.sql -f sql/09-reapply-reader-grants.sql
 
 # Free-text search, e.g. just s06-search "Apotheke Linden"
-[positional-arguments]
-s06-search q limit="10":
-    psql -X -v ON_ERROR_STOP=1 -v q="$1" -v lim="$2" <<< "SELECT name, label, type, category, round(score::numeric, 3) AS score, round(lon::numeric, 5) AS lon, round(lat::numeric, 5) AS lat FROM search.search(:'q', :'lim'::integer);"
+s06-search $q $limit="10":
+    psql -X -v ON_ERROR_STOP=1 -v q="$q" -v lim="$limit" <<< "SELECT name, label, type, category, round(score::numeric, 3) AS score, round(lon::numeric, 5) AS lon, round(lat::numeric, 5) AS lat FROM search.search(:'q', :'lim'::integer);"
 
 # Reverse geocoding, e.g. just s07-reverse 9.7320 52.3759
-[positional-arguments]
-s07-reverse lon lat radius="250":
-    psql -X -v ON_ERROR_STOP=1 -v lon="$1" -v lat="$2" -v r="$3" <<< "SELECT label, type, round(distance_m::numeric, 1) AS distance_m FROM search.reverse(:'lon'::double precision, :'lat'::double precision, :'r'::double precision);"
+s07-reverse $lon $lat $radius="250":
+    psql -X -v ON_ERROR_STOP=1 -v lon="$lon" -v lat="$lat" -v r="$radius" <<< "SELECT label, type, round(distance_m::numeric, 1) AS distance_m FROM search.reverse(:'lon'::double precision, :'lat'::double precision, :'r'::double precision);"
 
 # Publish the raw layers (workspace osm) and the search index (workspace search) in GeoServer
 s08-geoserver-publish:
