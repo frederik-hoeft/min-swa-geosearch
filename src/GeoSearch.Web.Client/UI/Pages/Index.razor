@@ -1,10 +1,4 @@
 @page "/"
-@attribute [Authorize]
-@implements IDisposable
-@inject AuthenticationService Authentication
-@inject AuthApiClient AuthApi
-@inject SessionAuthenticationStateProvider AuthenticationState
-@inject NavigationManager Navigation
 
 <PageTitle>Explore | GeoSearch</PageTitle>
 <section class="gs-explore-page">
@@ -13,10 +7,6 @@
         <h1>Explore the map</h1>
         <p>One workspace for places, addresses, and nearby features.</p>
     </header>
-    @if (_connectionError is not null)
-    {
-        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mb-4" role="alert">@_connectionError</MudAlert>
-    }
     <div class="gs-explore-grid">
         <aside class="gs-search-panel" aria-label="Search workspace">
             <div class="gs-panel-heading">

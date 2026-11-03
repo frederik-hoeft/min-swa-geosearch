@@ -6,7 +6,7 @@ The client uses MudBlazor for accessible controls and a restrained cartographic 
 
 Razor views declare the layout, component bindings, accessibility metadata, and routes. Behavior, mutable state, asynchronous workflows, lifecycle management, and navigation belong in matching `.razor.cs` partial classes. Markup-only components do not need code-behind files until they acquire behavior.
 
-Reusable markup lives in `UI/Components`. A component owns one meaningful unit of UI behavior and styling; avoid splitting an ordinary page into incidental helper files. Keep authentication and API interactions in dedicated services, with code-behind orchestrating the view instead of duplicating business logic.
+Reusable markup lives in `UI/Components`. A component owns one meaningful unit of UI behavior and styling; avoid splitting an ordinary page into incidental helper files. Keep API interactions in dedicated services when the search UI is implemented, with code-behind orchestrating the view instead of duplicating business logic.
 
 ## Styles and theme
 
@@ -34,7 +34,7 @@ The client uses a local system sans-serif stack and monospace typography for coo
 
 ## Layouts and feature boundaries
 
-`LoginLayout` presents a responsive authentication experience. `MainLayout` supplies branding, common navigation, account actions, and a keyboard skip link. The map workspace uses a two-column arrangement that collapses on smaller viewports. App-wide MudBlazor providers appear once in `UI/App.razor`.
+`MainLayout` supplies branding, common navigation, and a keyboard skip link. The map workspace uses a two-column arrangement that collapses on smaller viewports. App-wide MudBlazor providers appear once in `UI/App.razor`.
 
 The map surface remains a **noninteractive placeholder** until the GIS API and MapLibre integration exist. Search controls and status labels must not imply working map or search functionality. The future MapLibre component will consume GeoJSON-facing view models and keep map-library types out of the rest of the UI.
 

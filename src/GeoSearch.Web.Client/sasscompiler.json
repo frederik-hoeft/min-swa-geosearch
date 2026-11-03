@@ -10,14 +10,6 @@
     {
       "Source": "UI/Pages/Index.razor.scss",
       "Target": "UI/Pages/Index.razor.css"
-    },
-    {
-      "Source": "UI/Pages/Login.razor.scss",
-      "Target": "UI/Pages/Login.razor.css"
-    },
-    {
-      "Source": "UI/Pages/ChangePassword.razor.scss",
-      "Target": "UI/Pages/ChangePassword.razor.css"
     }
   ],
   "Configurations": {
