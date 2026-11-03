@@ -111,7 +111,7 @@ s09-refresh-index:
     psql -X -v ON_ERROR_STOP=1 -v snapshot="{{snapshot}}" --single-transaction -f sql/10-refresh-index.sql
 
 # Create/rotate the dedicated read-only PostGIS login after the search functions exist.
-# Password is taken from GEOSEARCH_READER_PASSWORD or kept in an ignored local file.
+# Requires GEOSEARCH_READER_PASSWORD in the calling process environment (e.g. the devcontainer).
 s10-reader-setup:
     ../scripts/setup-search-reader.sh
 

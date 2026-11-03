@@ -8,7 +8,7 @@ GeoSearch is a .NET 10 / Blazor WebAssembly application for [Software Architectu
 
 **Use the VS Code Dev Containers environment.** It includes .NET 10, PostgreSQL client tools, GDAL, `just`, and the Docker tooling. The devcontainer also starts PostGIS. Visual Studio 2026 is an optional debugging environment using the same database.
 
-1. Open this repository in VS Code and select **Dev Containers: Reopen in Container**.
+1. Copy `.devcontainer/.env.example` to `.devcontainer/.env` and set a strong `GEOSEARCH_READER_PASSWORD` (at least 24 characters). The file is ignored by Git. Then open the repository in VS Code and select **Dev Containers: Reopen in Container**.
 2. Download the required datasets following [the geodata instructions](lab/data/README.md), or skip the imports if you only want to test authentication.
 3. From a terminal **inside the devcontainer**, initialize the GIS database:
 
@@ -22,7 +22,7 @@ GeoSearch is a .NET 10 / Blazor WebAssembly application for [Software Architectu
    just s06-search "Limmerstr 12 Hannover"
    ```
 
-   `s01-stack-up` is disabled inside the devcontainer: PostGIS is already running as its Compose dependency. The `s10-reader-setup` recipe provisions an independent, restricted login and stores a generated password in an ignored local file unless `GEOSEARCH_READER_PASSWORD` is supplied. The GIS API needs the imported dataset and search index to return results; authentication and API compilation do not.
+   `s01-stack-up` is disabled inside the devcontainer: PostGIS is already running as its Compose dependency. The `s10-reader-setup` recipe provisions an independent, restricted login using the required `GEOSEARCH_READER_PASSWORD` from the devcontainer environment; it never generates or stores credentials itself. The GIS API needs the imported dataset and search index to return results; authentication and API compilation do not.
 4. Configure the server and start the web projects following the [development guide](docs/development.md). To initialize the separate Identity database, run `./scripts/setup-identity-db.sh` from `/workspace`.
 
 The devcontainer forwards PostgreSQL to Windows at `localhost:5432`. Its web app ports are kept separate from Visual Studio's ports; see the [container and host debugging guide](.devcontainer/README.md).

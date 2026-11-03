@@ -3,6 +3,10 @@ services:
     build:
       context: ..
       dockerfile: .devcontainer/Dockerfile
+    # Optional, Git-ignored local credentials. Exposed to `just` run inside the devcontainer.
+    env_file:
+      - path: .env
+        required: false
     volumes:
       - ..:/workspace:cached
       - nuget-cache:/home/vscode/.nuget/packages
