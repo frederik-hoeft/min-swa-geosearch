@@ -3,9 +3,7 @@
 
 import argparse
 import hashlib
-import os
 import re
-import shutil
 import sqlite3
 import sys
 import time
@@ -20,6 +18,53 @@ PBF_NAME = f"niedersachsen-{SNAPSHOT}.osm.pbf"
 GPKG_ARCHIVE_NAME = f"niedersachsen-{SNAPSHOT}-free.gpkg.zip"
 GPKG_RELATIVE_PATH = Path(f"niedersachsen-{SNAPSHOT}-free/niedersachsen.gpkg")
 CHUNK_SIZE = 1024 * 1024
+PROGRESS_INTERVAL_SECONDS = 5.0
+
+
+def human_size(size: float) -> str:
+    """Format byte counts and transfer rates for human-readable progress logs."""
+    for unit in ("B", "KiB", "MiB", "GiB"):
+        if size < 1024 or unit == "GiB":
+            return f"{size:.0f} {unit}" if unit == "B" else f"{size:.1f} {unit}"
+        size /= 1024
+    raise AssertionError("Unreachable")
+
+
+class TransferProgress:
+    """Emit periodic, newline-delimited progress suitable for Docker Compose logs."""
+
+    def __init__(self, label: str, total: int | None, initial: int = 0):
+        self.label = label
+        self.total = total
+        self.initial = initial
+        self.completed = initial
+        self.started = time.monotonic()
+        self.last_reported = self.started
+        self._report(self.started)
+
+    def advance(self, count: int) -> None:
+        self.completed += count
+        now = time.monotonic()
+        if now - self.last_reported >= PROGRESS_INTERVAL_SECONDS:
+            self._report(now)
+
+    def finish(self) -> None:
+        self._report(time.monotonic())
+
+    def _report(self, now: float) -> None:
+        amount = human_size(self.completed)
+        if self.total is None:
+            status = amount
+        else:
+            percent = 100 * self.completed / self.total if self.total else 100
+            status = f"{percent:.1f}% ({amount} / {human_size(self.total)})"
+
+        elapsed = now - self.started
+        transferred = self.completed - self.initial
+        if transferred and elapsed > 0:
+            status += f", {human_size(transferred / elapsed)}/s"
+        print(f"{self.label}: {status}", flush=True)
+        self.last_reported = now
 
 
 class DownloadError(Exception):
@@ -47,21 +92,29 @@ def download(url: str, destination: Path) -> None:
                 status = response.status
                 if status not in (200, 206):
                     raise DownloadError(f"Unexpected HTTP {status} for {url}")
+                total = None
                 if status == 206:
                     content_range = response.headers.get("Content-Range", "")
-                    if not re.match(rf"^bytes {offset}-\d+/\d+$", content_range):
+                    match = re.fullmatch(rf"bytes {offset}-(\d+)/(\d+)", content_range)
+                    if match is None:
                         raise DownloadError(f"Unexpected Content-Range for {url}: {content_range}")
+                    total = int(match.group(2))
                 mode = "ab" if status == 206 and offset else "wb"
                 expected = response.headers.get("Content-Length")
+                if status == 200 and expected is not None:
+                    total = int(expected)
+                progress = TransferProgress(destination.name, total, offset if mode == "ab" else 0)
                 received = 0
                 with part.open(mode) as output:
                     while chunk := response.read(CHUNK_SIZE):
                         output.write(chunk)
                         received += len(chunk)
+                        progress.advance(len(chunk))
                 if expected is not None and received != int(expected):
                     raise DownloadError(f"Incomplete response for {url} ({received} of {expected} bytes)")
                 if received == 0 and offset == 0:
                     raise DownloadError(f"Empty download: {url}")
+                progress.finish()
             part.replace(destination)
             return
         except urllib.error.HTTPError as exc:
@@ -148,7 +201,11 @@ def ensure_gpkg(base_url: str, data: Path, cache: Path) -> None:
                 raise DownloadError(f"Expected one .gpkg entry in {GPKG_ARCHIVE_NAME}, got {len(members)}")
             # Extract only the expected data member, never untrusted archive paths.
             with archive.open(members[0]) as source, staging_gpkg.open("wb") as output:
-                shutil.copyfileobj(source, output, CHUNK_SIZE)  # ZipFile checks CRC while reading.
+                progress = TransferProgress(f"Extracting {target.name}", members[0].file_size)
+                while chunk := source.read(CHUNK_SIZE):
+                    output.write(chunk)
+                    progress.advance(len(chunk))
+                progress.finish()  # ZipFile checks CRC while reading.
         if not is_geopackage(staging_gpkg):
             raise DownloadError(f"Extracted file is not a valid GeoPackage: {GPKG_ARCHIVE_NAME}")
         staging_gpkg.replace(target)
