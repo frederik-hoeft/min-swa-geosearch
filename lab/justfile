@@ -115,6 +115,12 @@ s09-refresh-index:
 s10-reader-setup:
     ../scripts/setup-search-reader.sh
 
+# Destructively recreate only lab1, then run s01 (outside the devcontainer) and
+# s02-s10 in order. GeoServer is optional: auto publishes only if reachable;
+# use yes to require it or no to skip it. Requires explicit confirmation.
+reset-lab confirmation publish="auto":
+    ../scripts/reset-lab-db.sh "{{confirmation}}" "{{gpkg}}" "{{pbf}}" "{{bbox}}" "{{snapshot}}" "{{publish}}"
+
 # Open an interactive psql session on the lab database
 db:
     psql

@@ -22,6 +22,8 @@ GeoSearch is a .NET 10 / Blazor WebAssembly application for [Software Architectu
    just s06-search "Limmerstr 12 Hannover"
    ```
 
+   To discard and rebuild the local GIS database later, run `just reset-lab RESET-LAB1` from `lab/`. This deletes **only** `lab1`, not the Identity database or downloaded data. See [lab reset instructions](lab/README.md#rebuild-the-disposable-gis-database).
+
    `s01-stack-up` is disabled inside the devcontainer: PostGIS is already running as its Compose dependency. The `s10-reader-setup` recipe provisions an independent, restricted login using the required `GEOSEARCH_READER_PASSWORD` from the devcontainer environment; it never generates or stores credentials itself. The GIS API needs the imported dataset and search index to return results; authentication and API compilation do not.
 4. Configure the server and start the web projects following the [development guide](docs/development.md). To initialize the separate Identity database, run `./scripts/setup-identity-db.sh` from `/workspace`.
 
