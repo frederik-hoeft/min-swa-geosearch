@@ -4,7 +4,7 @@ GeoSearch has a read-only PostGIS data context, the public GeoJSON GIS endpoints
 
 ## Automated validation
 
-From the repository root in the [preferred devcontainer](development.md#start-the-devcontainer-and-prepare-the-databases):
+From the repository root in the [preferred devcontainer](development.md#start-the-devcontainer-and-prepare-the-gis-database):
 
 ```bash
 dotnet restore src/GeoSearch.slnx

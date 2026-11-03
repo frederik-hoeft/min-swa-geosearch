@@ -51,15 +51,24 @@ Set `ConnectionStrings:Search` to `Host=postgis;Database=lab1;Username=geosearch
 
 The server and Blazor projects have separate HTTPS launch profiles. HTTPS is recommended for browser debugging and will be required by the Geolocation API except on `http://localhost`.
 
+For separate client and API origins in development, copy the tracked Blazor configuration example to its Git-ignored location under `wwwroot`:
+
+```bash
+cp src/GeoSearch.Web.Client/appsettings.Development.example.json \
+  src/GeoSearch.Web.Client/wwwroot/appsettings.Development.json
+```
+
+The example sets `Api:BaseUrl` to `https://localhost:5100/` for Windows host debugging. The client uses this setting for its `HttpClient` base address, falling back to its own origin when unset. The fallback is intended for single-origin deployments that route `/api/*` to the backend; do not deploy the development override there. This browser-accessible configuration must not contain database credentials or other secrets.
+
 **Optional Windows Visual Studio debugging (the simplest browser setup):** keep the devcontainer running for PostGIS and imports, configure server connection strings for `localhost`, and trust the Windows SDK development certificate:
 
 ```powershell
 dotnet dev-certs https --trust
 ```
 
-Start `GeoSearch.Web.Server` and `GeoSearch.Web.Client` as multiple startup projects in Visual Studio. The API uses `https://localhost:5100`, and the client uses `https://localhost:5200`. The browser shell currently makes no API calls; the future search UI will use `Cors:ClientOrigin=https://localhost:5200` for cross-origin requests.
+Start `GeoSearch.Web.Server` and `GeoSearch.Web.Client` as multiple startup projects in Visual Studio. The API uses `https://localhost:5100`, and the client uses `https://localhost:5200`. The copied client configuration targets the API at that address; configure the server's Development `Cors:ClientOrigin=https://localhost:5200` for cross-origin requests when the search UI is implemented. The browser shell currently makes no API calls.
 
-**Running within the devcontainer:** .NET builds and tests work without HTTPS certificates. Browser debugging additionally requires a trusted certificate and Kestrel binding to the container network interfaces. Docker publishes the in-container API/client ports as host ports 15100/15200. Configure Kestrel to listen securely on the container's ports 5100/5200. When the search UI is implemented, configure the client's API origin and the server's Development CORS origin (`https://localhost:15200`) consistently. If Docker host ports were customized, use the actual published ports. The [devcontainer port guide](../.devcontainer/README.md#application-ports-and-host-debugging) describes the mapping and certificate boundary.
+**Running within the devcontainer:** .NET builds and tests work without HTTPS certificates. Browser debugging additionally requires a trusted certificate and Kestrel binding to the container network interfaces. Docker publishes the in-container API/client ports as host ports 15100/15200. Configure Kestrel to listen securely on the container's ports 5100/5200. Set `Api:BaseUrl` in the copied `wwwroot/appsettings.Development.json` to the browser-accessible API origin (`https://localhost:15100/` by default), and the server's Development `Cors:ClientOrigin` to `https://localhost:15200` for future cross-origin API requests. If Docker host ports were customized, use the actual published ports. The [devcontainer port guide](../.devcontainer/README.md#application-ports-and-host-debugging) describes the mapping and certificate boundary.
 
 When using the configured launch profiles in a suitable HTTPS environment, the projects can also be started independently from the repository root:
 
