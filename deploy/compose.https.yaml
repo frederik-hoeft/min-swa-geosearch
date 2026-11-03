@@ -1,0 +1,8 @@
+# Optional HTTPS overlay: supply deploy/certs/fullchain.pem and privkey.pem.
+services:
+  web:
+    ports:
+      - "${GEOSEARCH_HTTPS_BIND_ADDRESS:-127.0.0.1}:${GEOSEARCH_HTTPS_PORT:-8443}:8443"
+    volumes:
+      - ./nginx/default.https.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certs:/etc/nginx/certs:ro

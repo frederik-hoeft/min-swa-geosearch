@@ -1,0 +1,22 @@
+# Publish the standalone Blazor WebAssembly app, then serve it from stock Nginx.
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS publish
+ARG BUILD_CONFIGURATION=Release
+WORKDIR /source
+COPY src/ ./src/
+RUN dotnet restore src/GeoSearch.Web.Client/GeoSearch.Web.Client.csproj
+RUN dotnet publish src/GeoSearch.Web.Client/GeoSearch.Web.Client.csproj \
+    --configuration "$BUILD_CONFIGURATION" --no-restore --output /published
+
+# ASP.NET Core handles fingerprinted asset aliases dynamically, but Nginx serves
+# files directly. Materialize aliases from the generated .NET asset manifest.
+FROM python:3.13-alpine AS assets
+COPY --from=publish /published/ /published/
+COPY deploy/scripts/materialize-static-assets.py /usr/local/bin/materialize-static-assets.py
+RUN python /usr/local/bin/materialize-static-assets.py /published
+
+FROM nginx:stable-alpine AS runtime
+COPY --from=assets /published/wwwroot/ /usr/share/nginx/html/
+COPY deploy/nginx/default.conf /etc/nginx/conf.d/default.conf
+COPY deploy/nginx/routes.conf /etc/nginx/routes.conf
+COPY deploy/nginx/proxy.conf /etc/nginx/proxy.conf
+EXPOSE 8080
