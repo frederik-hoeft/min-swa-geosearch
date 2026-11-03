@@ -21,11 +21,19 @@ Nginx and ASP share the `frontend` Docker network. ASP and PostGIS share the sep
    # Set POSTGIS_PASSWORD and GEOSEARCH_READER_PASSWORD to strong local secrets.
    ```
 
-2. Supply Nginx's TLS certificate and private key as `deploy/certs/fullchain.pem` and `deploy/certs/privkey.pem`. For a **localhost-only smoke test**, you can create a temporary self-signed certificate:
+2. Supply Nginx's TLS certificate and private key locally as `deploy/certs/fullchain.pem` and `deploy/certs/privkey.pem`. For a **localhost-only smoke test**, you can create a temporary self-signed certificate:
 
    ```sh
    ./deploy/scripts/local-cert.sh
    ```
+
+   Import the certificate and private key into Docker-managed TLS storage:
+
+   ```sh
+   ./deploy/scripts/load-cert.sh
+   ```
+
+   This step is required **before starting Nginx**, and again whenever the certificate changes (restart the frontend afterward). The import uses a temporary, network-isolated container to receive the files over Docker's standard input, sets owner-only permissions, and stores them in a named volume. It works when Docker is accessed from a devcontainer whose `/workspace` path is different from the Docker daemon host's filesystem. Neither the certificate nor the key is copied into the Nginx image. The importer requires `docker`, `tar`, and `openssl` in the calling environment.
 
    Browsers will **not trust this certificate automatically**; configure local trust before testing geolocation or use a trusted certificate for a real hostname. Avoid exposing the default setup over a public network.
 
@@ -51,6 +59,7 @@ Nginx and ASP share the `frontend` Docker network. ASP and PostGIS share the sep
 - **`deploy/.env`** (Git-ignored): deployment-specific PostgreSQL admin/reader passwords, published HTTPS port/bind address, and ASP environment/build mode. Values are interpolated into `compose.yaml`; only the services that need each secret receive it.
 - **`deploy/compose.yaml`**: image builds, private service DNS names, networks, volumes and non-secret application settings. The database/admin secret is passed to PostGIS and `gis-tools`; the API receives **only the read-only login**.
 - **`deploy/nginx/nginx.conf`**: TLS termination, static file routing, `/api/*` and `/swagger*` reverse proxy. Do not put PostgreSQL or application secrets here.
+- **`deploy/certs/` and the `tls-certs` volume**: keep the source certificate and private key on the Docker client host; run `./deploy/scripts/load-cert.sh` to stream them securely into the Docker-managed volume. The frontend mounts it read-only. Do not use a source-code bind mount for TLS files, because the Docker daemon may not see the devcontainer's `/workspace` path.
 - **ASP runtime**: ASP.NET Core consumes `ConnectionStrings__Search` from its environment. The frontend uses its existing same-origin fallback (`Api:BaseUrl` unset). No runtime frontend configuration rewrite is needed.
 - **`lab/` and `scripts/`**: Geofabrik download and PostGIS provisioning logic. The production containers do not run or modify these scripts on normal startup.
 
@@ -68,7 +77,7 @@ docker compose down                # Stop containers; keep data
 docker compose config --quiet      # Validate the merged deployment configuration
 ```
 
-**Do not use `docker compose down -v`** unless you explicitly want to delete **both** the PostGIS database and cached GIS datasets. The database is stored in `geosearch_postgis-data`; the datasets (including incomplete/resumable downloads) are stored in `geosearch_gis-data`. Both are Docker-managed named volumes; the Git-ignored `.env` file and local TLS keys live outside these volumes and also need separate backup where applicable.
+**Do not use `docker compose down -v`** unless you explicitly want to delete the PostGIS database, cached GIS datasets **and the imported TLS certificate/key**. These are stored in the named volumes `geosearch_postgis-data`, `geosearch_gis-data`, and `geosearch_tls-certs`, respectively. Back up the original files in Git-ignored `deploy/certs/` separately; the deployment `.env` file also remains outside Docker volumes.
 
 The development container's `lab/data/` and the deployment's `gis-data` are intentionally independent, so a first deployment may download the snapshot again even if development data already exists. This avoids coupling production provisioning to a Docker-daemon-host path that might not match `/workspace` inside the development container. Docker owns the dataset volume; **do not `chown` the repository to match container UID 10001**.
 

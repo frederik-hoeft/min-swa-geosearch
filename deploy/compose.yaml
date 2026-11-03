@@ -11,7 +11,9 @@ services:
     ports:
       - "${GEOSEARCH_HTTPS_BIND_ADDRESS:-127.0.0.1}:${GEOSEARCH_HTTPS_PORT:-8443}:8443"
     volumes:
-      - ./certs:/run/tls:ro
+      # TLS keys are imported into a Docker-managed volume by scripts/load-cert.sh.
+      # A host bind mount does not reliably work through devcontainer/remote Docker.
+      - tls-certs:/run/tls:ro
     networks:
       - frontend
     read_only: true
@@ -67,6 +69,19 @@ services:
     networks:
       - database
 
+  # One-off, network-isolated importer for TLS assets. Certificate bytes arrive
+  # over Docker stdin rather than through a host path or a container image layer.
+  tls-loader:
+    profiles: [setup]
+    image: nginx:stable-alpine
+    network_mode: none
+    volumes:
+      - tls-certs:/run/tls
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
   # Runs only when explicitly requested for initial imports/re-provisioning.
   gis-tools:
     profiles: [setup]
@@ -99,3 +114,4 @@ networks:
 volumes:
   postgis-data:
   gis-data:
+  tls-certs:

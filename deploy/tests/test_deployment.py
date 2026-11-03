@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 import shutil
+import stat
 import subprocess
 import tempfile
 import unittest
@@ -55,6 +56,10 @@ class DeploymentTests(unittest.TestCase):
         self.assertIn("GEOSEARCH_READER_PASSWORD", text)
         self.assertIn("POSTGIS_PASSWORD", text)
         self.assertNotIn("ConnectionStrings__Identity", text)
+        self.assertIn("tls-certs:/run/tls:ro", text)
+        self.assertIn("network_mode: none", text)
+        self.assertIn("tls-certs:/run/tls", text)
+        self.assertNotIn("./certs:/run/tls", text)
         self.assertFalse((DEPLOY / "compose.https.yaml").exists())
 
     def test_provisioning_rejects_missing_env_and_is_ordered_and_fail_fast(self) -> None:
@@ -114,6 +119,79 @@ esac
             self.assertNotEqual(0, result.returncode)
             self.assertIn("s04-import-addresses", log.read_text())
             self.assertNotIn("s05-search-index", log.read_text())
+
+    def test_tls_loader_streams_key_without_host_bind_mount(self) -> None:
+        # Emulate `docker compose run` by executing its BusyBox-compatible
+        # import command against a disposable volume. No Docker daemon needed.
+        if not shutil.which("openssl") or not shutil.which("busybox"):
+            self.skipTest("OpenSSL and BusyBox are required for the TLS fixture")
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "scripts").mkdir()
+            certs = root / "certs"
+            certs.mkdir()
+            shutil.copy2(DEPLOY / "scripts/load-cert.sh", root / "scripts/load-cert.sh")
+            volume = root / "volume"
+            volume.mkdir()
+            docker_log = root / "docker.log"
+            docker = root / "docker"
+            docker.write_text('''#!/usr/bin/env python3
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+args = sys.argv[1:]
+assert args[:4] == ["compose", "--profile", "setup", "run"], args
+assert "tls-loader" in args, args
+assert "--user" in args and "0:0" in args, args
+assert "--no-deps" in args, args
+script = args[-1].replace("/run/tls", os.environ["FAKE_TLS_VOLUME"])
+Path(os.environ["DOCKER_TEST_LOG"]).write_text("called")
+result = subprocess.run(["busybox", "sh", "-ec", script], stdin=sys.stdin.buffer)
+sys.exit(result.returncode)
+''')
+            docker.chmod(0o755)
+            env = os.environ.copy()
+            env.update(PATH=str(root) + os.pathsep + env["PATH"],
+                       FAKE_TLS_VOLUME=str(volume), DOCKER_TEST_LOG=str(docker_log))
+
+            def generate_certificate(common_name: str) -> None:
+                subprocess.run([
+                    "openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes",
+                    "-days", "1", "-subj", f"/CN={common_name}",
+                    "-keyout", str(certs / "privkey.pem"),
+                    "-out", str(certs / "fullchain.pem")
+                ], check=True, capture_output=True)
+
+            command = ["bash", str(root / "scripts/load-cert.sh")]
+            generate_certificate("localhost")
+            result = subprocess.run(command, env=env, capture_output=True, text=True)
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual("called", docker_log.read_text())
+            for name in ("fullchain.pem", "privkey.pem"):
+                installed = volume / name
+                self.assertEqual((certs / name).read_bytes(), installed.read_bytes())
+                self.assertEqual(0o600, stat.S_IMODE(installed.stat().st_mode))
+            self.assertEqual([], list(volume.glob(".import.*")))
+
+            # A repeat import replaces the cert without permission changes.
+            previous = (volume / "fullchain.pem").read_bytes()
+            generate_certificate("new-localhost")
+            result = subprocess.run(command, env=env, capture_output=True, text=True)
+            self.assertEqual(0, result.returncode, result.stderr)
+            updated = (volume / "fullchain.pem").read_bytes()
+            self.assertNotEqual(previous, updated)
+
+            # Invalid input must fail *before* calling Docker, preserving existing
+            # volume contents and avoiding partially installed key material.
+            docker_log.unlink()
+            (certs / "fullchain.pem").write_bytes(b"invalid certificate")
+            result = subprocess.run(command, env=env, capture_output=True, text=True)
+            self.assertNotEqual(0, result.returncode)
+            self.assertFalse(docker_log.exists())
+            self.assertEqual(updated, (volume / "fullchain.pem").read_bytes())
 
     def test_shell_syntax(self) -> None:
         scripts = sorted((DEPLOY / "scripts").glob("*.sh"))
