@@ -1,7 +1,6 @@
 .gs-map-workspace {
     position: relative;
-    display: grid;
-    grid-template-columns: clamp(17rem, 25vw, 22rem) minmax(0, 1fr);
+    isolation: isolate;
     width: 100%;
     height: 100%;
     min-width: 0;
@@ -9,66 +8,106 @@
     overflow: hidden;
 }
 
+.gs-map-surface {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #eaf3ee;
+}
+
+// The map always fills the workspace. The search pane is an independent overlay:
+// toggling it does not resize MapLibre's canvas or alter its camera/zoom.
 .gs-search-panel {
-    min-width: 0;
+    position: absolute;
+    z-index: 5;
+    top: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    width: clamp(17rem, 25vw, 22rem);
     min-height: 0;
-    overflow-x: hidden;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    padding: 1.5rem;
+    padding: 0.75rem 0.85rem 0.4rem;
+    overflow: hidden;
     border-right: 1px solid var(--gs-border);
+    border-bottom: 1px solid var(--gs-border);
+    border-radius: 0 0 14px 0;
     background: #fff;
+    box-shadow: 0 4px 18px rgba(20, 40, 36, 0.12);
+    transition: height 260ms cubic-bezier(0.2, 0.7, 0.2, 1);
+
+    &--expanded {
+        height: 100%;
+    }
+
+    &--collapsed {
+        height: 6.25rem;
+    }
 }
 
 .gs-search-bar {
-    position: sticky;
-    z-index: 2;
-    top: 0;
-    display: flex;
-    min-width: 0;
-    align-items: center;
-    gap: 0.5rem;
-    background: #fff;
-}
-
-.gs-search-input {
-    flex: 1 1 0;
+    flex: 0 0 auto;
     min-width: 0;
 }
 
+// A subtle handle rather than a second prominent button alongside the search.
+// Its wide, shallow chevron points in the direction the pane will move.
 .gs-search-toggle {
-    display: inline-flex;
-    flex: 0 0 2.75rem;
+    display: flex;
+    flex: 0 0 1.5rem;
     align-items: center;
     justify-content: center;
-    width: 2.75rem;
-    height: 2.75rem;
-    border: 1px solid var(--gs-border);
+    align-self: center;
+    width: 5rem;
+    height: 1.5rem;
+    padding: 0;
+    border: 0;
     border-radius: 8px;
-    background: #fff;
-    color: var(--gs-green-deep);
+    background: transparent;
+    color: #748b86;
     cursor: pointer;
 
     &:hover {
         background: #e6f3ee;
+        color: var(--gs-green-deep);
     }
 
     &:focus-visible {
         outline: 2px solid var(--gs-green);
         outline-offset: 2px;
     }
+
+    svg {
+        width: 2.75rem;
+        height: 0.75rem;
+    }
 }
 
-.gs-search-toggle-mobile {
-    display: none;
+// Expanded desktop pane collapses upwards; collapsed pane expands downwards.
+.gs-search-panel--collapsed .gs-search-toggle svg {
+    transform: rotate(180deg);
 }
 
 .gs-search-panel-content {
-    margin-top: 1.5rem;
+    flex: 1 1 auto;
+    min-height: 0;
+    margin-top: 0.65rem;
+    padding: 0.25rem 0.5rem 0.75rem;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 160ms ease-out, visibility 0s;
+}
 
-    &[hidden] {
-        display: none;
-    }
+.gs-search-panel--collapsed .gs-search-panel-content {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 120ms ease-out, visibility 0s 120ms;
 }
 
 .gs-search-panel-heading {
@@ -89,8 +128,8 @@
     display: inline-flex;
     align-items: center;
     flex-shrink: 0;
-    border-radius: 100px;
     padding: 0.35rem 0.6rem;
+    border-radius: 100px;
     background: #fbf3e4;
     color: #8b682d;
     font-size: 0.7rem;
@@ -104,100 +143,47 @@
     line-height: 1.6;
 }
 
-.gs-map-surface {
-    position: relative;
-    min-width: 0;
-    min-height: 0;
-    overflow: hidden;
-    background: #eaf3ee;
-}
-
-// The collapsed search bar floats over the map at the top left, rather than
-// reserving an entire empty column. Only the search field and toggle remain.
-.gs-map-workspace--collapsed {
-    display: block;
-
-    .gs-map-surface {
-        width: 100%;
-        height: 100%;
-    }
-
-    .gs-search-panel {
-        position: absolute;
-        z-index: 3;
-        top: 0;
-        left: 0;
-        width: clamp(17rem, 25vw, 22rem);
-        height: auto;
-        padding: 0.75rem;
-        overflow: visible;
-        border-right: 1px solid var(--gs-border);
-        border-bottom: 1px solid var(--gs-border);
-        border-radius: 0 0 12px 0;
-        box-shadow: 0 4px 18px rgba(20, 40, 36, 0.12);
-    }
-}
-
-// Tablet / small desktop: the expanded and collapsed sidebar widths match.
+// Small non-portrait screens have little space for a full-width left pane.
 @media (min-width: 600px) and (max-width: 959px) {
-    .gs-map-workspace {
-        grid-template-columns: clamp(15rem, 32vw, 19rem) minmax(0, 1fr);
-    }
-
-    .gs-map-workspace--collapsed .gs-search-panel {
+    .gs-search-panel {
         width: clamp(15rem, 32vw, 19rem);
     }
 }
 
-// Portrait phones: the search pane docks at the bottom. When expanded, it
-// gets most of the workspace; collapsed, only its search bar occupies space.
+// Portrait phones use a bottom sheet over the full-size map. The handle sits
+// above the search bar; the overlay must never resize the MapLibre canvas.
 @media (max-width: 599px) and (orientation: portrait) {
-    .gs-map-workspace:not(.gs-map-workspace--collapsed) {
-        grid-template-columns: minmax(0, 1fr);
-        grid-template-rows: minmax(9rem, 33%) minmax(0, 1fr);
-    }
-
-    .gs-map-surface {
-        grid-row: 1;
-        grid-column: 1;
-    }
-
     .gs-search-panel {
-        grid-row: 2;
-        grid-column: 1;
-        padding: 1rem 1.25rem;
-        border-right: 0;
-        border-top: 1px solid var(--gs-border);
-    }
-
-    .gs-search-toggle-desktop {
-        display: none;
-    }
-
-    .gs-search-toggle-mobile {
-        display: inline-flex;
-    }
-
-    // Keep the map and its mandatory OSM attribution above the search bar.
-    // A grid row (not a map overlay) ensures attribution is never covered.
-    .gs-map-workspace--collapsed {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr);
-        grid-template-rows: minmax(0, 1fr) auto;
-    }
-
-    .gs-map-workspace--collapsed .gs-search-panel {
-        position: relative;
         top: auto;
-        left: auto;
-        grid-row: 2;
-        grid-column: 1;
+        bottom: 0;
         width: 100%;
-        padding: 0.75rem 1.25rem;
+        padding: 0.15rem 1.25rem 0.65rem;
         border-right: 0;
         border-bottom: 0;
         border-top: 1px solid var(--gs-border);
-        border-radius: 12px 12px 0 0;
+        border-radius: 14px 14px 0 0;
+        box-shadow: 0 -4px 18px rgba(20, 40, 36, 0.12);
+
+        &--expanded {
+            height: 68%;
+        }
+
+        &--collapsed {
+            height: 5.8rem;
+        }
+    }
+
+    .gs-search-toggle {
+        order: -1;
+    }
+
+    // Expanded mobile pane collapses downwards; collapsed pane expands upwards.
+    .gs-search-panel--expanded .gs-search-toggle svg {
+        transform: rotate(180deg);
+    }
+
+    .gs-search-panel--collapsed .gs-search-toggle svg {
+        transform: none;
     }
 
     .gs-search-panel-heading h1 {
@@ -205,17 +191,16 @@
     }
 }
 
-// Landscape phones have little vertical space: retain a narrow left panel.
 @media (max-width: 599px) and (orientation: landscape) {
-    .gs-map-workspace {
-        grid-template-columns: clamp(11rem, 37vw, 14rem) minmax(0, 1fr);
-    }
-
     .gs-search-panel {
-        padding: 0.75rem;
-    }
-
-    .gs-map-workspace--collapsed .gs-search-panel {
         width: clamp(11rem, 37vw, 14rem);
+        padding-inline: 0.6rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .gs-search-panel,
+    .gs-search-panel-content {
+        transition: none;
     }
 }

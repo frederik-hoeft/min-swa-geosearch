@@ -50,3 +50,10 @@ pre {
 :focus-visible {
     outline-offset: 3px;
 }
+
+// Route-change focus is intentionally placed on the main landmark, not on a
+// heading. Suppress only the programmatic landmark outline; interactive controls
+// retain their normal visible keyboard focus indicators.
+#main-content:focus {
+    outline: none;
+}

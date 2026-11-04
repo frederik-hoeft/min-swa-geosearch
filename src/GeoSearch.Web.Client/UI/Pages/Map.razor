@@ -3,28 +3,28 @@
 
 <PageTitle>Explore | GeoSearch</PageTitle>
 
-<section class="gs-map-workspace @(_isSearchPanelExpanded ? "" : "gs-map-workspace--collapsed")"
-         aria-label="Map exploration workspace">
-    <aside class="gs-search-panel" aria-label="Search workspace">
+<section class="gs-map-workspace" aria-label="Map exploration workspace">
+    <div class="gs-map-surface">
+        <MapViewer />
+    </div>
+    <aside class="gs-search-panel @(_isSearchPanelExpanded ? "gs-search-panel--expanded" : "gs-search-panel--collapsed")"
+           aria-label="Search workspace">
         <div class="gs-search-bar">
-            <div class="gs-search-input">
-                <MudTextField T="string" Label="Search" Variant="Variant.Outlined"
-                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
-                              Disabled="true" />
-            </div>
-            <button type="button" class="gs-search-toggle" @onclick="ToggleSearchPanel"
-                    aria-controls="map-search-content" aria-expanded="@(_isSearchPanelExpanded ? "true" : "false")"
-                    aria-label="@(_isSearchPanelExpanded ? "Collapse search panel" : "Expand search panel")"
-                    title="@(_isSearchPanelExpanded ? "Collapse search panel" : "Expand search panel")">
-                <span class="gs-search-toggle-desktop" aria-hidden="true">
-                    <MudIcon Icon="@(_isSearchPanelExpanded ? Icons.Material.Filled.ChevronLeft : Icons.Material.Filled.ChevronRight)" />
-                </span>
-                <span class="gs-search-toggle-mobile" aria-hidden="true">
-                    <MudIcon Icon="@(_isSearchPanelExpanded ? Icons.Material.Filled.KeyboardArrowDown : Icons.Material.Filled.KeyboardArrowUp)" />
-                </span>
-            </button>
+            <MudTextField T="string" Label="Search" Variant="Variant.Outlined"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                          Disabled="true" />
         </div>
-        <div id="map-search-content" class="gs-search-panel-content" hidden="@(!_isSearchPanelExpanded)">
+        <button type="button" class="gs-search-toggle" @onclick="ToggleSearchPanel"
+                aria-controls="map-search-content" aria-expanded="@(_isSearchPanelExpanded ? "true" : "false")"
+                aria-label="@(_isSearchPanelExpanded ? "Collapse search panel" : "Expand search panel")"
+                title="@(_isSearchPanelExpanded ? "Collapse search panel" : "Expand search panel")">
+            <svg viewBox="0 0 48 12" width="48" height="12" aria-hidden="true" focusable="false">
+                <path d="M4 9 L24 3 L44 9" fill="none" stroke="currentColor" stroke-width="2.5"
+                      stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+        </button>
+        <div id="map-search-content" class="gs-search-panel-content"
+             aria-hidden="@(_isSearchPanelExpanded ? "false" : "true")" inert="@(!_isSearchPanelExpanded)">
             <div class="gs-search-panel-heading">
                 <div>
                     <span class="gs-section-label">DISCOVERY</span>
@@ -35,7 +35,4 @@
             <p class="gs-search-hint">Place, address, and nearby search will appear here.</p>
         </div>
     </aside>
-    <div class="gs-map-surface">
-        <MapViewer @ref="_mapViewer" />
-    </div>
 </section>

@@ -1,15 +1,15 @@
-using System.Text.Json;
-using Community.Blazor.MapLibre;
+﻿using Community.Blazor.MapLibre;
 using Community.Blazor.MapLibre.Models;
 using Community.Blazor.MapLibre.Models.Control;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
+using System.Text.Json;
 
 namespace GeoSearch.Web.Client.UI.Components;
 
 public partial class MapViewer : ComponentBase, IAsyncDisposable
 {
-    private const string DefaultStyleUrl = "map-styles/osm-standard.json";
+    private const string DEFAULT_STYLE_URL = "map-styles/osm-standard.json";
 
     private MapLibre? _map;
     private IJSObjectReference? _browserModule;
@@ -30,11 +30,11 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
     {
         _options = new MapOptions
         {
-            Style = Configuration["Map:StyleUrl"] ?? DefaultStyleUrl,
+            Style = Configuration["Map:StyleUrl"] ?? DEFAULT_STYLE_URL,
             Center = new LngLat(longitude: 9.7320, latitude: 52.3759),
             Zoom = 11.5,
             MaxZoom = 19,
-            AttributionControl = new { compact = false },
+            AttributionControl = false,
             TrackResize = true,
             DragRotate = false
         };
@@ -73,6 +73,9 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
         }
 
         await _map.AddControl(ControlType.NavigationControl, ControlPosition.TopRight, new { showCompass = false });
+
+        // Keep OSM attribution visible above the mobile bottom sheet.
+        await _map.AddControl(ControlType.AttributionControl, ControlPosition.TopRight, new { compact = false });
         _mapLoaded = true;
         StateHasChanged();
     }
@@ -81,16 +84,6 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
     {
         _hasTileError = true;
         return InvokeAsync(StateHasChanged);
-    }
-
-    // A change to the surrounding workspace grid is not a window resize.
-    // Notify MapLibre explicitly so its canvas and camera match the new bounds.
-    public async ValueTask ResizeAsync()
-    {
-        if (_mapLoaded && _map is not null)
-        {
-            await _map.Resize();
-        }
     }
 
     private void DismissError() => _hasTileError = false;
