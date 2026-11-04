@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Components;
+﻿using GeoSearch.Web.Client.Services.Search;
+using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 
 namespace GeoSearch.Web.Client.UI.Pages;
@@ -13,13 +14,15 @@ public partial class Map : ComponentBase, IAsyncDisposable
     private bool _temporaryInteractionExpanded;
     private bool _disposed;
 
-    // F2 will consume this value; typing alone does not send API requests yet.
-    private string? _searchQuery;
-
     private bool IsEffectivelyExpanded => _isSearchPanelExpanded || _temporaryInteractionExpanded;
 
     [Inject]
     private IJSRuntime JsRuntime { get; set; } = null!;
+
+    protected override void OnInitialized()
+    {
+        _searchSession = new SearchQuerySession(SearchApi);
+    }
 
     protected async override Task OnAfterRenderAsync(bool firstRender)
     {
@@ -98,6 +101,8 @@ public partial class Map : ComponentBase, IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         _disposed = true;
+        StopDebounce();
+        _searchSession?.Dispose();
         IJSObjectReference? observer = _observer;
         IJSObjectReference? module = _module;
         DotNetObjectReference<Map>? self = _self;

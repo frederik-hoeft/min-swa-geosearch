@@ -1,6 +1,6 @@
 # Frontend integration backlog
 
-**Status:** Backlog approved. F1 is implemented in PR #5 with real-browser acceptance still pending; F2–F6 are not yet implemented. Epics define outcomes and review gates rather than a fixed implementation plan.
+**Status:** Backlog approved. F1 is implemented in PR #5 with real-browser acceptance still pending; F2 is on its own review branch with acceptance pending; F3–F6 are pending. Epics define outcomes and review gates rather than a fixed implementation plan.
 
 GeoSearch has a Blazor WebAssembly frontend with an interactive MapLibre/OSM map, a separate landing page, and a responsive search overlay. The read-only ASP.NET Core API is implemented, but frontend search, reverse, and nearby integration remain pending. These epics track the remaining Lab 2 work without moving geospatial query logic into the client.
 
@@ -25,7 +25,7 @@ The [architecture](../../architecture.md) owns the backend/data-flow model, [UI 
 
 ### F1. Interactive map and OSM basemap
 
-**Implementation:** MapLibre map, configurable OSM Standard raster style, responsive search overlay, and landing-page separation implemented in PR #5. **Acceptance pending:** real-browser pan/zoom, attribution, initialization failures, and mobile keyboard behavior must still be verified. F2–F6 have not started.
+**Implementation:** MapLibre map, configurable OSM Standard raster style, responsive search overlay, and landing-page separation implemented in PR #5. **Acceptance pending:** real-browser pan/zoom, attribution, initialization failures, and mobile keyboard behavior must still be verified. F2 is implemented on the separate `feature/f2-unified-search` review branch (acceptance pending); F3–F6 are pending.
 
 **Goal:** Replace the placeholder with a usable, independently testable MapLibre map before coupling it to search.
 
@@ -42,11 +42,13 @@ The [architecture](../../architecture.md) owns the backend/data-flow model, [UI 
 
 ### F2. Unified autocomplete and committed forward results
 
+**Implementation:** One typed search combobox, debounced preview, literal query and known-place commits, reusable in-flight search snapshots, ranked result list, retry/show-more, Back/Escape/clear, and typed return targets are implemented on the F2 review branch. **Acceptance pending:** real API/browser/keyboard smoke tests. Nearby category actions are intentionally not exposed until F5 provides the editor.
+
 **Goal:** Establish the typed draft/commit interaction and a single owner for live `/api/search` requests, without tying result display to map markers yet. This is the foundation of the [interaction contract](f5-interaction-contract.md#2-interaction-surfaces), not a continuously updated full-search panel.
 
 **Scope**
 - Keep the existing one search field. Actual user edits open an autocomplete draft; plain focus does not change the committed view or send requests. Display typed suggestions with distinct identity and accessible labels: **Search for the literal text**, **Place**, **Category / Find nearby**, and **Explore nearby / All categories**. The last two must not be exposed as dead-end actions before the F5 nearby draft/editor is available; their intent types and catalog boundary can be established now, with the completed interaction activated in F5.
-- For **3–200 trimmed characters**, debounce actual user edits for **at least 300 ms**, then use `GET /api/search` for *suggestions only*. The API returns the full default snapshot (`limit=10`), while autocomplete previews just the first few, retaining server ranking. No request for shorter/overlong input; show actionable validation text. Load `/api/categories` to enable later local category matching; do not send separate autocomplete category searches or guess backend categories from translated labels.
+- For **3–200 trimmed characters**, debounce actual user edits for **at least 300 ms**, then use `GET /api/search` for *suggestions only*. The API returns the full default snapshot (`limit=10`), while autocomplete previews just the first few, retaining server ranking. No request for shorter/overlong input; show actionable validation text. Maintain the `/api/categories` HTTP boundary for later local category matching; activate catalog loading and category suggestions with the F5 editor, not as dead-end F2 actions. Never send separate forward-search requests for categories or guess backend category values from translated labels.
 - Make **literal-query selection** or unhighlighted Enter commit a forward query and its **matching** cached/in-flight result snapshot to the contextual panel. If none exists, start exactly one immediate request. Closing autocomplete must not cancel a committed query's adopted request; never relabel stale success/error as the current query. Optional **Show more** can request up to `limit=20`, but no persistent limit field is needed.
 - Make **known-place selection** show details using the selected GeoJSON feature ID and payload, without another forward/reverse request. Preserve a genuine typed return target for **Back to results** (or the previous committed context when selected directly from autocomplete); do not pretend the place belongs to a list it was never in. F3 adds corresponding map camera/highlight effects.
 - Distinguish actual text edits from programmatic display-label updates. Typing may refresh draft suggestions but must leave existing committed query/place/nearby state intact. Escape/outside click abandons the draft and restores the committed display text; explicit Clear resets committed discovery/selection without resetting viewport or device position. Enter on a highlighted suggestion chooses *that typed suggestion*, not the literal query.
@@ -108,7 +110,7 @@ The [architecture](../../architecture.md) owns the backend/data-flow model, [UI 
 
 ## Delivery and review rules
 
-Each epic is a separate local feature branch/patch against the last **approved** baseline and ends at its review gate. F1 is implemented in PR #5; complete its remaining browser acceptance checks before closing that gate. Do not merge or begin F2 implementation before approval. Later epics receive their own implementation plans, informed by the preceding review gate and the current Blazor.MapLibre API.
+Each epic is a separate local feature branch/patch against the last **approved** baseline and ends at its review gate. F1 was implemented in PR #5; complete its remaining browser acceptance checks before closing that gate. F2 is implemented in its own review branch and must pass its gate before F3 work begins. Later epics receive their own implementation plans, informed by the preceding review gate and the current Blazor.MapLibre API.
 
 Implement each phase as an independently reviewable subset of the **same** interaction contract. Foundations introduced in F2/F3 may have effects or controls completed in F4/F5, but must not expose misleading or inert user actions. The F5 contract is the source of truth if scope descriptions conflict; amendments to its behavioral invariants require explicit review. Document prototype-level presentation decisions in the contract/UI conventions when settled. Backlog acceptance criteria describe intended behavior, not functionality that already exists.
 
