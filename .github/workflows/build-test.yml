@@ -15,13 +15,15 @@ jobs:
       - name: Install Just
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y just
+          sudo apt-get install -y just busybox
       - name: Parse the lab Justfile
         run: just --justfile lab/justfile --list >/dev/null
       - name: Check shell script syntax
         run: bash -n scripts/*.sh
       - name: Test lab automation without downloading datasets
         run: python3 -m unittest discover -s scripts/tests -v
+      - name: Test deployment automation and executable script modes
+        run: python3 -m unittest discover -s deploy/tests -v
       - name: Validate devcontainer Compose credentials
         run: |
           set -eu
@@ -63,3 +65,35 @@ jobs:
         run: dotnet restore src/GeoSearch.slnx
       - name: Test
         run: dotnet test src/GeoSearch.slnx --no-restore --configuration Release /p:TreatWarningsAsErrors=true
+
+  deployment:
+    name: Docker image builds and Nginx configuration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate deployment Compose configuration
+        env:
+          POSTGIS_PASSWORD: ci-only-placeholder-not-a-secret
+          GEOSEARCH_READER_PASSWORD: ci-only-placeholder-not-a-secret
+        run: docker compose -f deploy/compose.yaml config --quiet
+      - name: Build deployment images
+        run: |
+          docker build -f deploy/Dockerfile.api -t geosearch-api:ci .
+          docker build -f deploy/Dockerfile.web -t geosearch-web:ci .
+          docker build -f deploy/Dockerfile.tools -t geosearch-tools:ci .
+      - name: Verify Nginx configuration as unprivileged user
+        run: |
+          set -euo pipefail
+          tls_dir="$(mktemp -d)"
+          trap 'sudo rm -rf -- "$tls_dir"' EXIT
+          openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 \
+            -subj '/CN=localhost' \
+            -addext 'subjectAltName=DNS:localhost,IP:127.0.0.1' \
+            -keyout "$tls_dir/privkey.pem" -out "$tls_dir/fullchain.pem"
+          sudo chown -R 101:101 "$tls_dir"
+          sudo chmod 0700 "$tls_dir"
+          sudo chmod 0600 "$tls_dir/privkey.pem" "$tls_dir/fullchain.pem"
+          docker run --rm --read-only \
+            --tmpfs /tmp:rw,nosuid,nodev,size=64m,mode=1777 \
+            --mount "type=bind,source=${tls_dir},target=/run/tls,readonly" \
+            --entrypoint nginx geosearch-web:ci -t

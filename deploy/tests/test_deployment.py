@@ -222,6 +222,32 @@ sys.exit(result.returncode)
             self.assertFalse(docker_log.exists())
             self.assertEqual(updated, (volume / "fullchain.pem").read_bytes())
 
+
+    def test_documented_shell_entrypoints_are_executable_in_git(self) -> None:
+        # Filesystem mode checks can be misleading on NTFS/WSL mounts. Verify the
+        # Git index, which determines executable bits in Linux/macOS checkouts.
+        paths = (
+            "deploy/scripts/local-cert.sh",
+            "deploy/scripts/load-cert.sh",
+            "deploy/scripts/provision.sh",
+            "scripts/setup-search-reader.sh",
+        )
+        try:
+            result = subprocess.run(
+                ["git", "ls-files", "--stage", "--", *paths],
+                cwd=ROOT, text=True, capture_output=True, check=False,
+            )
+        except FileNotFoundError:
+            self.skipTest("Git executable not available")
+        if result.returncode != 0 or not result.stdout.strip():
+            self.skipTest("Git index not available (e.g. archive without .git)")
+        modes = {}
+        for entry in result.stdout.splitlines():
+            metadata, path = entry.split("\t", 1)
+            modes[path] = metadata.split()[0]
+        for path in paths:
+            self.assertEqual("100755", modes.get(path), f"{path} must be executable in Git")
+
     def test_shell_syntax(self) -> None:
         scripts = sorted((DEPLOY / "scripts").glob("*.sh"))
         result = subprocess.run(["bash", "-n", *(str(p) for p in scripts)],
