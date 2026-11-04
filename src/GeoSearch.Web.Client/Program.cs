@@ -1,5 +1,5 @@
 ﻿using GeoSearch.Web.Client.Services.Search;
-﻿using GeoSearch.Web.Client.Services.Testing;
+using GeoSearch.Web.Client.Services.Testing;
 using GeoSearch.Web.Client.Services.Theming;
 using GeoSearch.Web.Client.UI;
 using Microsoft.AspNetCore.Components.Web;
