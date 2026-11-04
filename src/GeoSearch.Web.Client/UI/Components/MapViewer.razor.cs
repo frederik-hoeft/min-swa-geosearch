@@ -137,7 +137,7 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
         try
         {
             await Task.Delay(s_mapLoadTimeout, _lifetime.Token);
-            if (!_mapLoaded && !_hasTileError && _startupError is null && !_disposed)
+            if (!_mapLoaded && _startupError is null && !_disposed)
             {
                 await InvokeAsync(() =>
                 {

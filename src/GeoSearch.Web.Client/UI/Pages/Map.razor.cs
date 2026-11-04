@@ -23,14 +23,47 @@ public partial class Map : ComponentBase, IAsyncDisposable
 
     protected async override Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender)
+        if (!firstRender || _disposed)
         {
             return;
         }
 
-        _module = await JsRuntime.InvokeAsync<IJSObjectReference>("import", "./UI/Pages/Map.razor.js");
-        _self = DotNetObjectReference.Create(this);
-        _observer = await _module.InvokeAsync<IJSObjectReference>("observeSearchPanel", _searchPanel, _self);
+        // Own resources locally until initialization is complete. Navigation can
+        // dispose this component while either JS interop call is still pending.
+        IJSObjectReference? module = null;
+        IJSObjectReference? observer = null;
+        DotNetObjectReference<Map>? self = null;
+        try
+        {
+            module = await JsRuntime.InvokeAsync<IJSObjectReference>("import", "./UI/Pages/Map.razor.js");
+            if (_disposed)
+            {
+                return;
+            }
+
+            self = DotNetObjectReference.Create(this);
+            observer = await module.InvokeAsync<IJSObjectReference>("observeSearchPanel", _searchPanel, self);
+            if (_disposed)
+            {
+                return;
+            }
+
+            // There is no await between the disposal check and ownership transfer.
+            _module = module;
+            _observer = observer;
+            _self = self;
+            module = null;
+            observer = null;
+            self = null;
+        }
+        catch (JSDisconnectedException) when (_disposed)
+        {
+            // The browser disconnected while initialization was in flight.
+        }
+        finally
+        {
+            await ReleaseResourcesAsync(observer, module, self);
+        }
     }
 
     // This is an interaction state, not a second manual preference. JavaScript
@@ -65,28 +98,65 @@ public partial class Map : ComponentBase, IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         _disposed = true;
+        IJSObjectReference? observer = _observer;
+        IJSObjectReference? module = _module;
+        DotNetObjectReference<Map>? self = _self;
+        _observer = null;
+        _module = null;
+        _self = null;
+
+        await ReleaseResourcesAsync(observer, module, self);
+        GC.SuppressFinalize(this);
+    }
+
+    private static async ValueTask ReleaseResourcesAsync(
+        IJSObjectReference? observer, IJSObjectReference? module, DotNetObjectReference<Map>? self)
+    {
         try
         {
-            if (_observer is not null)
+            if (observer is not null)
             {
-                await _observer.InvokeVoidAsync("dispose");
-                await _observer.DisposeAsync();
+                try
+                {
+                    await observer.InvokeVoidAsync("dispose");
+                }
+                catch (JSDisconnectedException)
+                {
+                    // The observer's browser context has already gone away.
+                }
+                finally
+                {
+                    try
+                    {
+                        await observer.DisposeAsync();
+                    }
+                    catch (JSDisconnectedException)
+                    {
+                        // Nothing remains to release on the disconnected browser.
+                    }
+                }
             }
-
-            if (_module is not null)
-            {
-                await _module.DisposeAsync();
-            }
-        }
-        catch (JSDisconnectedException)
-        {
-            // Browser disconnected while navigating away.
         }
         finally
         {
-            _self?.Dispose();
+            try
+            {
+                if (module is not null)
+                {
+                    try
+                    {
+                        await module.DisposeAsync();
+                    }
+                    catch (JSDisconnectedException)
+                    {
+                        // The module was already discarded by the browser.
+                    }
+                }
+            }
+            finally
+            {
+                self?.Dispose();
+            }
         }
-
-        GC.SuppressFinalize(this);
     }
 }
