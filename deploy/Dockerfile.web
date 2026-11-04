@@ -1,0 +1,22 @@
+# A separate publish image keeps the browser-delivered client outside ASP's runtime image.
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS publish
+WORKDIR /source
+COPY src/ ./src/
+RUN dotnet restore src/GeoSearch.Web.Client/GeoSearch.Web.Client.csproj
+RUN dotnet publish src/GeoSearch.Web.Client/GeoSearch.Web.Client.csproj \
+        --configuration Release --no-restore --output /out/client \
+    && ! grep -Fq '#[.{fingerprint}]' /out/client/wwwroot/index.html \
+    && grep -Fq '<script type="importmap">' /out/client/wwwroot/index.html \
+    && grep -Eq '"[^"[:space:]]*dotnet\.js"[[:space:]]*:' /out/client/wwwroot/index.html \
+    && grep -Eq 'src="_framework/blazor\.webassembly\.[^"]+\.js"' /out/client/wwwroot/index.html
+
+FROM nginx:stable-alpine AS runtime
+RUN rm -f /etc/nginx/conf.d/default.conf && rm -rf /usr/share/nginx/html/*
+COPY deploy/nginx/nginx.conf /etc/nginx/nginx.conf
+COPY --from=publish /out/client/wwwroot/ /usr/share/nginx/html/
+RUN rm -f /usr/share/nginx/html/appsettings.Development.json* \
+    && chmod -R a-w /usr/share/nginx/html
+EXPOSE 8443
+# Start both master and workers as an unprivileged user: no startup chown/setuid.
+USER nginx
+ENTRYPOINT ["nginx", "-g", "daemon off;"]

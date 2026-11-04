@@ -2,7 +2,9 @@
 
 import hashlib
 import io
+import runpy
 import sqlite3
+from contextlib import redirect_stdout
 import subprocess
 import sys
 import tempfile
@@ -11,6 +13,7 @@ import unittest
 import zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from unittest.mock import patch
 
 REPOSITORY = Path(__file__).resolve().parents[2]
 SCRIPT = REPOSITORY / "scripts/download-lab-data.py"
@@ -98,7 +101,10 @@ class LabDatasetDownloadTests(unittest.TestCase):
         return result
 
     def test_download_extract_and_rerun_offline_without_network_requests(self):
-        self.run_downloader()
+        first = self.run_downloader()
+        self.assertIn(f"{PBF}: 100.0%", first.stdout)
+        self.assertIn(f"{ZIP}: 100.0%", first.stdout)
+        self.assertIn("Extracting niedersachsen.gpkg: 100.0%", first.stdout)
         self.assertEqual(self.pbf_bytes, (self.destination / PBF).read_bytes())
         gpkg = self.destination / "niedersachsen-261028-free/niedersachsen.gpkg"
         with sqlite3.connect(gpkg) as db:
@@ -123,9 +129,27 @@ class LabDatasetDownloadTests(unittest.TestCase):
         part = self.destination / ".downloads" / f"{PBF}.part"
         part.parent.mkdir(parents=True)
         part.write_bytes(self.pbf_bytes[:123])
-        self.run_downloader()
+        result = self.run_downloader()
+        self.assertIn(f"{PBF}: 3.4%", result.stdout)  # Resume begins at 123/3600 bytes.
         self.assertIn((PBF, "bytes=123-"), self.server.requests)
         self.assertEqual(self.pbf_bytes, (self.destination / PBF).read_bytes())
+
+    def test_progress_reports_periodically_even_when_download_is_not_complete(self):
+        progress_type = runpy.run_path(str(SCRIPT))["TransferProgress"]
+        output = io.StringIO()
+        with redirect_stdout(output), patch("time.monotonic", side_effect=[0, 1, 6, 7, 8]):
+            progress = progress_type("fixture", total=100, initial=20)
+            progress.advance(10)  # Too soon for another progress report.
+            progress.advance(40)  # Five seconds have passed; emit intermediate progress.
+            progress.advance(30)
+            progress.finish()
+
+        lines = output.getvalue().splitlines()
+        self.assertEqual(3, len(lines))
+        self.assertIn("20.0%", lines[0])
+        self.assertIn("70.0%", lines[1])
+        self.assertIn("100.0%", lines[2])
+        self.assertIn("/s", lines[1])
 
     def test_invalid_zip_is_rejected_and_does_not_poison_next_rerun(self):
         self.files[ZIP] = b"Not a zip file"

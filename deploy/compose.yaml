@@ -1,0 +1,122 @@
+name: geosearch
+
+services:
+  frontend:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "${GEOSEARCH_HTTPS_BIND_ADDRESS:-127.0.0.1}:${GEOSEARCH_HTTPS_PORT:-8443}:8443"
+    volumes:
+      # TLS keys are imported into a Docker-managed volume by scripts/load-cert.sh.
+      # A host bind mount does not reliably work through devcontainer/remote Docker.
+      - tls-certs:/run/tls:ro
+    networks:
+      - frontend
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=64m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.api
+      args:
+        BUILD_CONFIGURATION: ${DOTNET_BUILD_CONFIGURATION:-Release}
+    restart: unless-stopped
+    environment:
+      # Avoid inheriting ASPNETCORE_ENVIRONMENT=Development from the DooD devcontainer.
+      ASPNETCORE_ENVIRONMENT: ${GEOSEARCH_API_ENVIRONMENT:-Production}
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      ConnectionStrings__Search: "Host=postgis;Port=5432;Database=lab1;Username=geosearch_reader;Password=${GEOSEARCH_READER_PASSWORD:?Set GEOSEARCH_READER_PASSWORD in deploy/.env}"
+    depends_on:
+      postgis:
+        condition: service_healthy
+    networks:
+      - frontend
+      - database
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  postgis:
+    image: postgis/postgis:17-3.5
+    # Match the instructor's database image; currently only linux/amd64.
+    platform: linux/amd64
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: lab1
+      POSTGRES_USER: lab1
+      POSTGRES_PASSWORD: ${POSTGIS_PASSWORD:?Set POSTGIS_PASSWORD in deploy/.env}
+    volumes:
+      - postgis-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U lab1 -d lab1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - database
+
+  # One-off, network-isolated importer for TLS assets. Certificate bytes arrive
+  # over Docker stdin rather than through a host path or a container image layer.
+  # It alone needs CAP_CHOWN to transfer the private key to the unprivileged
+  # nginx runtime user (UID/GID 101), while retaining mode 0600.
+  tls-loader:
+    profiles: [setup]
+    image: nginx:stable-alpine
+    network_mode: none
+    volumes:
+      - tls-certs:/run/tls
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+    security_opt:
+      - no-new-privileges:true
+
+  # Runs only when explicitly requested for initial imports/re-provisioning.
+  gis-tools:
+    profiles: [setup]
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.tools
+    # Docker-managed storage avoids host UID/GID and devcontainer bind-mount mismatches.
+    volumes:
+      - gis-data:/workspace/lab/data
+    environment:
+      PGHOST: postgis
+      PGPORT: "5432"
+      PGUSER: lab1
+      PGDATABASE: lab1
+      PGPASSWORD: ${POSTGIS_PASSWORD:?Set POSTGIS_PASSWORD in deploy/.env}
+      GEOSEARCH_READER_PASSWORD: ${GEOSEARCH_READER_PASSWORD:?Set GEOSEARCH_READER_PASSWORD in deploy/.env}
+      GEOSEARCH_DEVCONTAINER: "1"
+    depends_on:
+      postgis:
+        condition: service_healthy
+    networks:
+      - frontend # One-off downloader needs Internet access for Geofabrik.
+      - database
+
+networks:
+  frontend:
+  database:
+    internal: true
+
+volumes:
+  postgis-data:
+  gis-data:
+  tls-certs:

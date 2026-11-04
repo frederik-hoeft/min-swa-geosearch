@@ -1,0 +1,15 @@
+# One-shot GIS provisioning image: no SDK or database tools in API/Nginx images.
+FROM debian:trixie-slim
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    bash ca-certificates curl gdal-bin just postgresql-client python3 unzip \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /workspace/lab
+COPY lab/ /workspace/lab/
+COPY scripts/ /workspace/scripts/
+# The instructor archive does not consistently preserve this script's executable bit.
+RUN chmod +x /workspace/scripts/setup-search-reader.sh \
+    && install -d -o 10001 -g 10001 -m 0755 /workspace/lab/data
+# A fresh named volume inherits the directory ownership from this image.
+USER 10001:10001
+ENTRYPOINT ["just"]

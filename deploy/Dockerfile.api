@@ -1,0 +1,18 @@
+# Build context: repository root. Build with docker compose -f deploy/compose.yaml build api.
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS publish
+ARG BUILD_CONFIGURATION=Release
+WORKDIR /source
+COPY src/ ./src/
+RUN dotnet restore src/GeoSearch.Web.Server/GeoSearch.Web.Server.csproj
+RUN dotnet publish src/GeoSearch.Web.Server/GeoSearch.Web.Server.csproj \
+    --configuration "$BUILD_CONFIGURATION" --no-restore \
+    --output /published /p:UseAppHost=false
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+WORKDIR /app
+COPY --from=publish /published/ ./
+ENV ASPNETCORE_HTTP_PORTS=8080 \
+    ASPNETCORE_ENVIRONMENT=Production
+EXPOSE 8080
+USER $APP_UID
+ENTRYPOINT ["dotnet", "GeoSearch.Web.Server.dll"]

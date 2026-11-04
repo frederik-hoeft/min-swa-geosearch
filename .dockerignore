@@ -1,0 +1,25 @@
+# Build from the repository root, but only copy src/ into the .NET images.
+.git
+.github
+.vs
+.vscode
+**/bin
+**/obj
+**/artifacts
+**/TestResults
+**/.nuget-cache
+**/nuget-packages
+**/nuget-packages.zip
+**/.env
+**/.env.*
+**/appsettings.Development.json
+**/appsettings.Production.json
+src/GeoSearch.Web.Server/appsettings.json
+src/GeoSearch.Web.Client/wwwroot/appsettings.Development.json
+lab/data
+**/*.pem
+**/*.pfx
+**/*.key
+**/*.p12
+**/*.zip
+**/*.tar.gz

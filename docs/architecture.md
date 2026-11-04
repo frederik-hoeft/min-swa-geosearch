@@ -1,55 +1,63 @@
 # GeoSearch architecture
 
-GeoSearch is a Blazor WebAssembly frontend and a thin ASP.NET Core API over the instructor's Hannover PostGIS dataset. The API exposes address, place, reverse-geocoding, and nearby search through GeoJSON. The Blazor client has a public application shell and a styled map placeholder; interactive MapLibre and geolocation behavior remain frontend work.
+GeoSearch provides address and place search, reverse geocoding, and nearby-point-of-interest queries over an OpenStreetMap-derived snapshot of Hannover. The Blazor WebAssembly client owns browser interactions; the ASP.NET Core API validates requests and defines the HTTP contract; PostGIS executes text search, spatial filtering, and ranking. The browser does not access the database or a third-party geocoder.
 
-## System boundaries
+## Search request lifecycle
 
-The following diagram shows the GIS read path:
+The diagram shows the logical read path, independent of how the client and API are hosted. GeoServer, when enabled for the lab, reads the same PostGIS database independently and does not participate in API requests.
 
 ```mermaid
 flowchart LR
-    Browser[Blazor WASM client]
-    Api[ASP.NET Core API]
-    Search[GIS application service]
-    Read[Keyless EF Core query adapter]
-    Spatial[(Lab PostGIS search schema)]
-    GeoServer[GeoServer optional]
-    Browser -->|HTTP API| Api
-    Api -->|GIS requests| Search
-    Search -->|read models| Read
-    Read -->|WKG read-only transactions| Spatial
-    GeoServer -.->|optional WMS / WFS| Spatial
+    Client[Blazor WebAssembly client]
+    subgraph Backend
+        Controller[ASP.NET Core API]
+        Service[GIS application service]
+        Adapter[Read-only EF Core adapter]
+    end
+    PostGIS[(PostGIS lab1)]
+
+    Client -->|HTTP request| Controller
+    Controller -->|validated query| Service
+    Service -->|search criteria| Adapter
+    Adapter -->|read-only SQL| PostGIS
 ```
 
-The client handles UI state, browser location permissions, and eventually MapLibre rendering. It communicates with the application API, never directly with PostGIS or a third-party geocoder. A future map adapter will own MapLibre-specific representations and translate GeoJSON into map sources and layers, keeping mapping-library types out of shared HTTP contracts.
+Controllers validate search terms, coordinates, radii, and result limits and return the lab's `{"error":"…"}` response for invalid requests. The GIS application service maps database rows into point-only GeoJSON. The read adapter queries three typed EF Core table-valued functions: `search.api_search`, `search.api_reverse`, and `search.api_nearby`. These application-owned SQL adapters expose a consistent row shape without duplicating geospatial algorithms in .NET.
 
-The API controller validates query parameters and maps expected failures to `{"error":"…"}` responses. Its application service maps read-model results into point-only GeoJSON. The database adapter queries three typed EF Core table-valued function roots: `search.api_search`, `search.api_reverse`, and `search.api_nearby`. These application-owned SQL adapters return the same keyless row shape. Search and reverse delegate to the unchanged instructor functions; reverse joins the nearest result back to the indexed document to recover its location, category, and snapshot. Nearby evaluates category filtering and geography-based distance selection/sorting inside PostGIS. Categories and empty-result snapshot metadata use LINQ over narrowly mapped read-only views. Full-text/fuzzy ranking remains in PostGIS, and distances use metres. GeoJSON coordinates are always `[longitude, latitude]` in EPSG:4326.
+`search.api_search` delegates to the instructor's search function for full-text/fuzzy ranking. `search.api_reverse` uses the instructor's reverse function and looks up the matching indexed document to recover location and category metadata. `search.api_nearby` filters indexed POIs by category and geographic radius, calculates distances in metres, and sorts by distance. Categories and snapshot metadata come from narrow read-only projections. All GeoJSON point coordinates are `[longitude, latitude]` in EPSG:4326.
 
-## Database ownership
+The client is responsible for search interactions, map state, displaying results, and requesting device coordinates only in response to user actions. MapLibre-specific representations belong to the frontend; the shared HTTP contract remains independent of the map renderer. The current client has a browser shell and map placeholder, while interactive search and geolocation remain to be implemented.
 
-GeoSearch reads the instructor-owned `lab1` PostGIS database through a restricted connection. It contains the imported `osm` schema, `search.search_index` materialized view, and supplied search/reverse functions. Additive application-owned SQL query functions provide a stable read projection without modifying the instructor's ranking logic. The `just` recipes in `lab/` own import and index lifecycle; EF Core does not migrate this database.
+## Data ownership and access
 
-GIS models are discovered by a WKG source-generated model loader restricted to explicitly marked read projections. They are keyless, have no EF migrations, disable change tracking, and reject `SaveChanges`. Each GIS query runs in a WKG read-only, auto-rollback, ReadCommitted transaction; this does not replace PostgreSQL access control. The privileged import role remains separate from the `geosearch_reader` login, provisioned with [the database recipe](development.md#configure-the-server). Imports, index refreshes, schema changes, and creation of the API read functions remain administrative operations.
+The `lab1` PostGIS database contains the imported `osm` schema, the `search.search_index` materialized view, and the search/reverse functions provided by the lab. The additional `search.api_*` functions provide the application-specific read surface. The `lab/` SQL and `just` recipes own importing, index creation, and refresh. **EF Core does not migrate the GIS schema.**
 
-All GIS endpoints are public and require no user account or session. The server connects to PostGIS using its own restricted database credentials, never credentials supplied by the browser.
+The server uses WKG source-generated discovery for explicitly marked, keyless GIS read projections. EF Core disables tracking and rejects `SaveChanges`; each query runs within a WKG read-only, auto-rollback `ReadCommitted` transaction. These are application-level safeguards. PostgreSQL enforces access through a separate `geosearch_reader` account with only the required read and execute privileges. The administrative `lab1` role is reserved for imports and index maintenance, not for normal API requests.
 
-GeoServer is an optional independent WMS/WFS publisher over the PostGIS dataset, not an intermediary for application search requests. A local basemap or tile server, if added, will be a separate deployment concern.
+Every GIS endpoint is public and read-only. The server obtains its database credentials from private runtime configuration; the browser never receives them. The optional GeoServer instance can publish WMS/WFS layers from PostGIS but is not an intermediary for search requests.
 
 ## GIS HTTP contract
 
-The four anonymous read-only endpoints are `/api/search`, `/api/reverse`, `/api/nearby`, and `/api/categories`. Search, reverse, and nearby use query-string parameters; categories takes none. `/api/search` accepts one free-text `q` (1–200 characters) and a limit of 1–20 (default 10). `/api/reverse` requires latitude/longitude and accepts a radius above zero and up to 1,000 m (default 250 m); it returns the nearest address, POI, or street. `/api/nearby` requires latitude/longitude and accepts a radius up to 2,000 m (default 500 m), optional exact German category label, and a limit of 1–20 (default 20); POIs are ordered by metre distance, then stable ID. `/api/categories` returns a sorted JSON array of category labels actually present among the indexed POIs.
+The API provides four endpoints. Search and spatial parameters are supplied in the query string; latitude and longitude use WGS84 degrees, and radii and reported distances are in metres.
 
-The three geospatial query endpoints return a GeoJSON `FeatureCollection` containing a snapshot ID, OSM attribution, and point features with `id`, `name`, `label`, `type`, `category`, nullable `score`, and nullable `distance_m`. Search sets the score; reverse and nearby set distance. Empty collections preserve the snapshot metadata. The snapshot comes from the materialized view and falls back to import metadata when the view contains no documents. Inputs must use WGS84 degrees (`lat` from −90 to 90, `lon` from −180 to 180); invalid requests return HTTP 400 with `{"error":"…"}`, including type conversion failures. The server exposes the OpenAPI document at `/swagger/v1/swagger.json` in Development.
+| Endpoint | Parameters | Response |
+| --- | --- | --- |
+| `GET /api/search` | Required free-text `q` (1–200 characters); `limit` 1–20, default 10 | Ranked address, place, street and POI matches |
+| `GET /api/reverse` | Required `lat`, `lon`; `radius` > 0 and ≤ 1000, default 250 | Nearest address, POI or street |
+| `GET /api/nearby` | Required `lat`, `lon`; `radius` > 0 and ≤ 2000, default 500; optional exact category; `limit` 1–20, default 20 | POIs ordered by distance, then stable ID |
+| `GET /api/categories` | None | Sorted JSON array of categories present in the index |
 
-The browser does not send device coordinates until the user requests a location-sensitive operation. To avoid accidental leakage, HTTP request-start logging is filtered and neither the read adapter nor the application service stores the coordinates. API responses are marked no-store. The UI must still implement location permissions, debounce, map-centre fallback, and results/markers.
+The first three endpoints return a GeoJSON `FeatureCollection`, with a dataset snapshot ID, OpenStreetMap attribution, and point features. Properties include `id`, `name`, `label`, `type`, `category`, nullable `score`, and nullable `distance_m`. Search provides the score; reverse and nearby provide distance. Empty collections preserve the dataset snapshot. Latitude must fall within −90..90 and longitude within −180..180. Invalid requests, including malformed parameter types, return HTTP 400 with `{"error":"…"}`.
 
-## Quality and deployment boundaries
+OpenAPI and Swagger UI are served in the API's `Development` runtime environment only. The [deployment guide](../deploy/README.md) explains how that environment is configured independently of the devcontainer.
 
-### Possible nearby-search spatial index (not implemented)
+## Privacy and quality boundaries
 
-`search.api_nearby` restricts results with `ST_DWithin(s.display_pt::geography, ..., search_radius)`. The existing GiST index `search_index_pt` covers the `geometry` column `display_pt`, not the cast to `geography` used for metre-based filtering. Consequently, the existing index does not directly support this predicate, which may become expensive on larger POI datasets.
+The browser sends device coordinates only for a user-initiated location-sensitive request. The API does not persist coordinates and suppresses request-start logging that would otherwise include coordinate-bearing query strings. GIS responses are marked non-cacheable. Browser location permission handling, the map-centre fallback, and visible attribution are frontend responsibilities.
 
-**Only if the lab permits modifications to the instructor-managed search schema**, and profiling against the actual Hannover extract shows a bottleneck, consider a matching partial expression index on the materialized view:
+The lab targets search responses below 300 ms on the Hannover dataset. Spatial SQL correctness, ranking quality, and latency must be measured against populated PostGIS; in-memory unit tests cannot establish them. See the [validation guide](validation.md) and [submission evidence record](lab-handoff.md).
+
+A potential performance boundary concerns nearby searches. `search.api_nearby` applies `ST_DWithin(s.display_pt::geography, ...)`, while the existing `search_index_pt` GiST index covers `display_pt` as a `geometry` column. That index does not directly support the geography expression used for metre-based filtering. If profiling shows a bottleneck **and** modifications to the instructor-owned schema are permitted, a partial geography expression index could be evaluated:
 
 ```sql
 CREATE INDEX search_index_poi_geog
@@ -57,10 +65,8 @@ CREATE INDEX search_index_poi_geog
     WHERE type = 'poi';
 ```
 
-Compare execution plans and timings for representative nearby queries using `EXPLAIN (ANALYZE, BUFFERS)` before and after the change; measure index size and refresh overhead as well. If approved, the index must be created by the `s05-search-index` rebuild recipe because that recipe drops and recreates the materialized view. **No such index is created by this implementation.**
+This index is **not installed**. Compare execution plans and timings with `EXPLAIN (ANALYZE, BUFFERS)`, including index size and refresh cost, before deciding whether it is worthwhile. Since `s05-search-index` recreates the materialized view, any approved index must be incorporated into that rebuild workflow.
 
-The lab requires search latency below 300 ms for the Hannover extract. The provided SQL handles full-text/fuzzy ranking, but this threshold has not been measured here because the imported PostGIS dataset is unavailable in the offline workspace. Contract and model unit tests do not establish spatial SQL correctness, execution latency, database privilege enforcement, or transaction behavior against PostgreSQL. Those require the real database, and browser geolocation/cancellation tests require the frontend.
+## Runtime deployment boundary
 
-The intended application deployment is a single browser origin with `/api/*` routed to ASP.NET Core over HTTPS. The repository currently uses separate development origins for the API and client. Production TLS termination, forwarded-header trust, monitoring, and any reverse-proxy traffic limits are not supplied by this initial scaffold.
-
-The modular monolith keeps a small deployment boundary around one authoritative spatial database. EF Core maps only keyless GIS query results; it never owns or migrates the instructor's schema. The MapLibre integration belongs in the client so the mapping library can evolve independently of the HTTP contract.
+A local Docker Compose deployment serves the published client and API behind one HTTPS origin. Nginx serves static Blazor files and forwards `/api/*` to an ASP.NET Core container over a private Docker network. The API uses a separate network to query PostGIS. Importing the geodata and maintaining the search index remain one-off operations, separate from normal application startup. See [deployment](../deploy/README.md) for concrete configuration and operations.
