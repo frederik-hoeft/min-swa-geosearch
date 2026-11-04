@@ -15,6 +15,9 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
     public EventCallback OnCommitted { get; set; }
 
     [Parameter]
+    public EventCallback<SearchMapState> OnMapStateChanged { get; set; }
+
+    [Parameter]
     public EventCallback OnToggle { get; set; }
 
     [Parameter]
@@ -175,7 +178,7 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
                 }
                 else if (_searchState.Panel is PlaceSearchPanel)
                 {
-                    BackToPrevious();
+                    await BackToPreviousAsync();
                 }
                 break;
         }
@@ -201,9 +204,11 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
         long revision = ++_committedRevision;
         _searchState = _searchState.CommitQuery(query);
         await OnCommitted.InvokeAsync();
+        await NotifyMapStateChangedAsync();
         if (_previewQuery == query && _preview is SearchSuccess cached)
         {
             _searchState = _searchState.WithForwardResult(query, new ReadySearch(cached.Collection));
+            await NotifyMapStateChangedAsync();
             return;
         }
 
@@ -230,6 +235,7 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
                 _ => throw new InvalidOperationException("Unexpected search outcome.")
             };
             _searchState = _searchState.WithForwardResult(query, status);
+            await NotifyMapStateChangedAsync();
             await InvokeAsync(StateHasChanged);
         }
         catch (OperationCanceledException) when (_disposed)
@@ -246,6 +252,7 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
         _previewLoading = false;
         _searchState = _searchState.CommitPlace(feature);
         await OnCommitted.InvokeAsync();
+        await NotifyMapStateChangedAsync();
     }
 
     public Task DismissDraftAsync()
@@ -272,13 +279,14 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
         _searchState = _searchState.AbandonDraft();
     }
 
-    private void BackToPrevious()
+    private async Task BackToPreviousAsync()
     {
         ++_committedRevision;
         _searchState = _searchState.Back();
+        await NotifyMapStateChangedAsync();
     }
 
-    private void ClearSearch()
+    private async Task ClearSearchAsync()
     {
         ++_draftRevision;
         ++_committedRevision;
@@ -287,6 +295,7 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
         _previewQuery = null;
         _previewLoading = false;
         _searchState = _searchState.Clear();
+        await NotifyMapStateChangedAsync();
     }
 
     private Task RetrySearchAsync() => _searchState.Panel is ForwardSearchPanel forward
@@ -301,8 +310,21 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
     {
         long revision = ++_committedRevision;
         _searchState = _searchState.RequestMore(query, limit);
+        await NotifyMapStateChangedAsync();
         await LoadCommittedAsync(query, limit, revision, refresh: true);
     }
+
+    // Map marker selection reuses the known feature; no new HTTP or reverse request.
+    public Task SelectMapFeatureAsync(GeoJsonFeature feature)
+    {
+        SearchMapState map = SearchMapState.FromPanel(_searchState.Panel);
+        string id = feature.Properties.Id;
+        return map.Results.Any(result => result.Properties.Id == id) || map.SelectedFeature?.Properties.Id == id
+            ? SelectPlaceAsync(feature)
+            : Task.CompletedTask;
+    }
+
+    private Task NotifyMapStateChangedAsync() => OnMapStateChanged.InvokeAsync(SearchMapState.FromPanel(_searchState.Panel));
 
     private void StopDebounce()
     {

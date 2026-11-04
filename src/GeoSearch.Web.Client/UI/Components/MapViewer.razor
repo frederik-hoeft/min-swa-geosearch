@@ -28,6 +28,10 @@
                 {
                     <div class="gs-map-loading" role="status">Loading map tiles...</div>
                 }
+                @if (_hasOverlayError)
+                {
+                    <div class="gs-map-tile-error" role="alert">Map results could not be displayed. Search results are still available in the panel.</div>
+                }
                 @if (_mapLoadTimedOut)
                 {
                     <div class="gs-map-tile-error" role="alert">

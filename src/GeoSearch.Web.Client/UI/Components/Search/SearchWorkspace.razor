@@ -10,7 +10,7 @@
                value="@_searchState.DisplayText" @oninput="OnSearchInput" @onkeydown="OnSearchKeyDownAsync" />
         @if (!string.IsNullOrEmpty(_searchState.DisplayText) || _searchState.Panel is not IdleSearchPanel)
         {
-            <button type="button" class="gs-search-clear" @onclick="ClearSearch" aria-label="Clear search and selection"
+            <button type="button" class="gs-search-clear" @onclick="ClearSearchAsync" aria-label="Clear search and selection"
                     title="Clear search and selection">
                 <MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" />
             </button>
@@ -33,5 +33,5 @@
 </button>
 <div id="map-search-content" class="gs-search-panel-content" aria-live="polite" aria-atomic="false">
     <SearchContextPanel Panel="_searchState.Panel" OnPlaceSelected="SelectPlaceAsync"
-                        OnBack="BackToPrevious" OnRetry="RetrySearchAsync" OnShowMore="ShowMoreAsync" />
+                        OnBack="BackToPreviousAsync" OnRetry="RetrySearchAsync" OnShowMore="ShowMoreAsync" />
 </div>

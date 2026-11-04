@@ -1,8 +1,8 @@
 # Frontend integration backlog
 
-**Status:** Backlog approved. F1 is implemented in PR #5 with real-browser acceptance still pending; F2 is on its own review branch with acceptance pending; F3–F6 are pending. Epics define outcomes and review gates rather than a fixed implementation plan.
+**Status:** Backlog approved. F1 is implemented in PR #5 with real-browser acceptance still pending; F2 is merged via PR #8; F3 is implemented on a separate review branch with browser acceptance pending; F4–F6 are pending. Epics define outcomes and review gates rather than a fixed implementation plan.
 
-GeoSearch has a Blazor WebAssembly frontend with an interactive MapLibre/OSM map, a separate landing page, and a responsive search overlay. The read-only ASP.NET Core API is implemented, but frontend search, reverse, and nearby integration remain pending. These epics track the remaining Lab 2 work without moving geospatial query logic into the client.
+GeoSearch has a Blazor WebAssembly frontend with an interactive MapLibre/OSM map, a separate landing page, and a responsive search overlay. The read-only ASP.NET Core API is implemented, F2 forward search is integrated, and F3 result visualization is in review; reverse and nearby integration remain pending. These epics track the remaining Lab 2 work without moving geospatial query logic into the client.
 
 The [F5 interaction contract](f5-interaction-contract.md) is **authoritative for cross-epic behavior in F2–F6**, even where an older backlog description differs. It describes the unified search field, suggestion semantics, committed contextual panel, nearby drafts, inspection, map overlays, and state transitions. This backlog divides that behavior into reviewable deliveries; it does not redefine it. The contract's section 10 presentation/prototype questions remain open without weakening its behavioral invariants.
 
@@ -25,7 +25,7 @@ The [architecture](../../architecture.md) owns the backend/data-flow model, [UI 
 
 ### F1. Interactive map and OSM basemap
 
-**Implementation:** MapLibre map, configurable OSM Standard raster style, responsive search overlay, and landing-page separation implemented in PR #5. **Acceptance pending:** real-browser pan/zoom, attribution, initialization failures, and mobile keyboard behavior must still be verified. F2 is implemented on the separate `feature/f2-unified-search` review branch (acceptance pending); F3–F6 are pending.
+**Implementation:** MapLibre map, configurable OSM Standard raster style, responsive search overlay, and landing-page separation implemented in PR #5. **Acceptance pending:** real-browser pan/zoom, attribution, initialization failures, and mobile keyboard behavior must still be verified. F2 has been merged via PR #8; F3 is implemented on a separate review branch (browser acceptance pending); F4–F6 are pending.
 
 **Goal:** Replace the placeholder with a usable, independently testable MapLibre map before coupling it to search.
 
@@ -42,7 +42,7 @@ The [architecture](../../architecture.md) owns the backend/data-flow model, [UI 
 
 ### F2. Unified autocomplete and committed forward results
 
-**Implementation:** One typed search combobox, debounced preview, literal query and known-place commits, reusable in-flight search snapshots, ranked result list, retry/show-more, Back/Escape/clear, and typed return targets are implemented on the F2 review branch. **Acceptance pending:** real API/browser/keyboard smoke tests. Nearby category actions are intentionally not exposed until F5 provides the editor.
+**Implementation:** One typed search combobox, debounced preview, literal query and known-place commits, reusable in-flight search snapshots, ranked result list, retry/show-more, Back/Escape/clear, and typed return targets are merged via PR #8. **Acceptance pending:** real API/browser/keyboard smoke tests. Nearby category actions are intentionally not exposed until F5 provides the editor.
 
 **Goal:** Establish the typed draft/commit interaction and a single owner for live `/api/search` requests, without tying result display to map markers yet. This is the foundation of the [interaction contract](f5-interaction-contract.md#2-interaction-surfaces), not a continuously updated full-search panel.
 
@@ -57,6 +57,8 @@ The [architecture](../../architecture.md) owns the backend/data-flow model, [UI 
 **Gate F2:** Typing updates only suggestions, not the prior committed panel; selecting a literal query displays a real ranked list with loading/empty/error feedback and **no duplicate request**; selecting a known feature shows its details without a requery. Tests cover snapshot adoption, Enter/Escape/clear, 3–200-character validation, selected-label editing, stale successes/failures, and the panel remaining usable when the API/map is unavailable. Category/nearby actions are activated only with their real F5 editor. See contract tests T01–T06, T09, T18–T22, and T24 for applicable phases.
 
 ### F3. Visualize committed results and inspected places on the map
+
+**Implementation:** MapLibre-managed GeoJSON result/selection sources and circle layers, identity-based marker selection, and camera navigation are implemented on the F3 review branch, documented in [F3 map integration](f3-map-integration.md). **Acceptance pending:** real-browser interaction and responsive selection placement. No additional custom JavaScript has been introduced.
 
 **Goal:** Synchronize the map with committed forward results and known-place inspections without making the map a second owner of search state.
 
@@ -110,7 +112,7 @@ The [architecture](../../architecture.md) owns the backend/data-flow model, [UI 
 
 ## Delivery and review rules
 
-Each epic is a separate local feature branch/patch against the last **approved** baseline and ends at its review gate. F1 was implemented in PR #5; complete its remaining browser acceptance checks before closing that gate. F2 is implemented in its own review branch and must pass its gate before F3 work begins. Later epics receive their own implementation plans, informed by the preceding review gate and the current Blazor.MapLibre API.
+Each epic is a separate local feature branch/patch against the last **approved** baseline and ends at its review gate. F1 was implemented in PR #5; complete its remaining browser acceptance checks before closing that gate. F2 is merged via PR #8; F3 remains unmerged pending its review gate. Later epics receive their own implementation plans, informed by the preceding review gate and the current Blazor.MapLibre API.
 
 Implement each phase as an independently reviewable subset of the **same** interaction contract. Foundations introduced in F2/F3 may have effects or controls completed in F4/F5, but must not expose misleading or inert user actions. The F5 contract is the source of truth if scope descriptions conflict; amendments to its behavioral invariants require explicit review. Document prototype-level presentation decisions in the contract/UI conventions when settled. Backlog acceptance criteria describe intended behavior, not functionality that already exists.
 

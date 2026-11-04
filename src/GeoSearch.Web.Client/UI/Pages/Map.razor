@@ -6,11 +6,12 @@
 
 <section class="gs-map-workspace" aria-label="Map exploration workspace">
     <div class="gs-map-surface" @onclick="DismissSearchDraftAsync">
-        <MapViewer />
+        <MapViewer SearchState="_searchMapState" SearchPanelExpanded="IsEffectivelyExpanded" OnFeatureSelected="OnMapFeatureSelectedAsync" />
     </div>
     <aside @ref="_searchPanel" class="gs-search-panel @(_isSearchPanelExpanded ? "gs-search-panel--expanded" : "gs-search-panel--collapsed") @(_temporaryInteractionExpanded ? "gs-search-panel--temporarily-expanded" : "")"
            aria-label="Search workspace">
         <SearchWorkspace @ref="_searchWorkspace" IsEffectivelyExpanded="IsEffectivelyExpanded"
-                         OnToggle="ToggleSearchPanelAsync" OnCommitted="ExpandOnCommit" />
+                         OnToggle="ToggleSearchPanelAsync" OnCommitted="ExpandOnCommit"
+                         OnMapStateChanged="UpdateSearchMapState" />
     </aside>
 </section>

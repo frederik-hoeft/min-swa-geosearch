@@ -1,4 +1,6 @@
-﻿using GeoSearch.Web.Client.UI.Components.Search;
+﻿using GeoSearch.Web.Client.Search.Model;
+using GeoSearch.Web.Client.UI.Components.Search;
+using GeoSearch.Web.Shared.GeoJson;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 
@@ -14,6 +16,7 @@ public partial class Map : ComponentBase, IAsyncDisposable
     private bool _isSearchPanelExpanded = true;
     private bool _temporaryInteractionExpanded;
     private bool _disposed;
+    private SearchMapState _searchMapState = SearchMapState.Empty;
 
     private bool IsEffectivelyExpanded => _isSearchPanelExpanded || _temporaryInteractionExpanded;
 
@@ -80,6 +83,15 @@ public partial class Map : ComponentBase, IAsyncDisposable
     }
 
     private Task DismissSearchDraftAsync() => _searchWorkspace?.DismissDraftAsync() ?? Task.CompletedTask;
+
+    private Task UpdateSearchMapState(SearchMapState state)
+    {
+        _searchMapState = state;
+        return Task.CompletedTask;
+    }
+
+    private Task OnMapFeatureSelectedAsync(GeoJsonFeature feature) =>
+        _searchWorkspace?.SelectMapFeatureAsync(feature) ?? Task.CompletedTask;
 
     private void ExpandOnCommit() => _isSearchPanelExpanded = true;
 
