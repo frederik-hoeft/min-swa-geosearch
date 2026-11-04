@@ -1,140 +1,132 @@
 # Local Docker deployment
 
-This deployment follows the same **separate frontend, ASP, and database** pattern as UFWeb, with ordinary TCP over Docker networks instead of Unix-domain sockets. Docker Compose builds both application images locally; no registry, CI deployment, host .NET SDK, or host GDAL is required.
+GeoSearch runs as a single-origin HTTPS application using Docker Compose. Nginx serves the published Blazor WebAssembly client and forwards API requests to ASP.NET Core. The API reads the imported OpenStreetMap dataset from PostGIS. Images are built locally; no image registry or host-side .NET/GDAL installation is required.
 
-| Service | Responsibility | Network exposure |
-| --- | --- | --- |
-| `frontend` | Nginx serves the published Blazor WASM app and terminates HTTPS | Only published port (`127.0.0.1:8443` by default) |
-| `api` | ASP.NET Core search endpoints (and Swagger in Development) | Private `api:8080`; no host port |
-| `postgis` | Persistent `lab1` search database | Private `postgis:5432`; no host port |
-| `gis-tools` | One-off dataset download, import and reader-role setup | `setup` profile only; not part of the running app |
+This deployment is intended for a single Docker host and local acceptance testing. For day-to-day development, use the [development environment](../docs/development.md) instead.
 
-Nginx and ASP share the `frontend` Docker network. ASP and PostGIS share the separate `database` network; Nginx cannot connect directly to PostGIS. All browser requests share the same HTTPS origin: `/api/*` and `/swagger` are proxied to ASP; everything else is served statically, with a fallback to `index.html` for client-side routes. No browser CORS setting or API base-URL override is needed.
+## Runtime topology
 
-## Recommended acceptance-test setup: Docker-outside-of-Docker (DooD)
+```mermaid
+flowchart LR
+    Browser[Browser]
+    Nginx[frontend: Nginx + Blazor WASM]
+    Api[api: ASP.NET Core]
+    PostGIS[(postgis: lab1)]
+    Tools[gis-tools: one-off provisioning]
+    Browser -->|HTTPS :8443| Nginx
+    Nginx -->|/api/* and /swagger*| Api
+    Api -->|read-only queries| PostGIS
+    Tools -.->|imports and index setup| PostGIS
+```
 
-**Supported and recommended for local acceptance testing:** open the repository in the VS Code devcontainer, then run the deployment commands **inside that devcontainer** using its Docker CLI and the **host's Docker daemon** (DooD). This is not Docker-in-Docker: the devcontainer does not run a second daemon. The host only needs Docker Engine/Compose, a working browser, and enough storage for the GIS data; the .NET SDK, GDAL, and build tooling are provided by the devcontainer and/or image build stages. Running the same commands directly on the Docker host is supported as well.
+Only `frontend` publishes a host port, bound to `127.0.0.1:8443` by default. The API listens on `api:8080` inside the Docker network; PostGIS is reachable only on the internal `database` network. Nginx serves client routes and static resources directly, forwarding `/api/*` and `/swagger*` without changing their paths. Swagger is available through that route only when the **API runtime** uses the `Development` environment.
 
-1. On the host, start Docker and the devcontainer. In the devcontainer terminal at `/workspace`, verify that the CLI can reach the host daemon:
+The `gis-tools` service runs only during provisioning. It downloads the pinned Geofabrik inputs, imports them into PostGIS, builds the search index, and configures the restricted `geosearch_reader` database login. The browser never connects directly to PostGIS or to a third-party geocoder. For the search request lifecycle and database ownership rules, see [architecture](../docs/architecture.md).
 
-   ```sh
-   docker info --format 'Docker server: {{.ServerVersion}}'
-   docker compose version
-   docker ps
-   ```
+## Deploy for local acceptance testing
 
-2. Follow [First-time setup](#first-time-setup) **from the devcontainer terminal** to create `deploy/.env`, generate or supply a TLS certificate, run `load-cert.sh`, and provision PostGIS using `provision.sh`. The two environment files have different purposes: `.devcontainer/.env` configures the *development* stack; `deploy/.env` configures this *acceptance/deployment* stack. Keep their secrets separate.
+The recommended environment is **Docker-outside-of-Docker (DooD)**: use the Docker CLI from the VS Code devcontainer to operate the Docker daemon on the host. Running the same commands directly on the Docker host is also supported. The daemon host needs Docker Engine with Compose, enough disk space for the imported GIS dataset, and a browser for testing. The invoking shell needs Bash, OpenSSL, and `tar` for TLS import; the build containers provide .NET and GDAL.
 
-3. Build and start the independent deployment project (Compose project name `geosearch`, distinct from the `geospatial-search` devcontainer stack):
+Start Docker and, if using DooD, open the [devcontainer](../.devcontainer/README.md). Verify that the Docker CLI can access the daemon:
 
-   ```sh
-   cd /workspace/deploy
-   docker compose config --quiet
-   docker compose up -d --build
-   docker compose ps
-   docker compose logs --tail=50 frontend api postgis
-   ```
+```sh
+docker info --format 'Docker server: {{.ServerVersion}}'
+docker compose version
+```
 
-4. **Open the application from a browser on the Docker daemon host**, normally at `https://localhost:8443/` (or the port specified by `GEOSEARCH_HTTPS_PORT`). Test that the Blazor app boots without missing `/_framework/` modules, and that `/api/health` and a real `/api/search` request work **through Nginx**, not via the API container directly. From a shell **on that host**, a quick smoke test is:
+From the **repository root**, perform the following setup. These commands create independent deployment storage and do not modify the devcontainer's PostGIS database.
 
-   ```sh
-   curl -kfsS https://localhost:8443/api/health
-   curl -kfsS 'https://localhost:8443/api/search?q=Limmerstr%2012%20Hannover&limit=5'
-   ```
-
-   `-k` bypasses certificate verification **for this curl smoke test only**. It does not establish browser trust. For actual browser/geolocation acceptance tests, trust the local certificate in the browser/OS or supply a trusted certificate. Check the search UI, result markers, nearby results, OSM attribution, and both granted and denied geolocation paths **once those frontend features are implemented**. Swagger is available at `/swagger` only when `GEOSEARCH_API_ENVIRONMENT=Development` in `deploy/.env`; a Debug image build alone does not enable it. This deployment-specific key avoids inheriting the devcontainer's `ASPNETCORE_ENVIRONMENT=Development` during Compose interpolation.
-
-### DooD boundaries and common pitfalls
-
-- **The Docker daemon owns volumes and resolves bind-mount paths.** `/workspace` inside the devcontainer is not necessarily a path on the host daemon's filesystem. Do not mount `deploy/certs/` or `lab/data/` directly into deployment containers; the existing `load-cert.sh` and `provision.sh` transfer TLS material and download GIS inputs into Docker-managed named volumes instead. Image build contexts are sent by the Docker client and do not need a corresponding host checkout path.
-- **`localhost` is relative to where the command runs.** The published HTTPS port binds to `127.0.0.1` on the **Docker daemon host** by default. `curl https://localhost:8443` *inside* the devcontainer may contact the wrong network namespace even while `docker compose ps` works. Use the host browser/terminal, or an explicitly configured secure host tunnel if using a remote daemon; do not expose the test port publicly merely to work around this.
-- **State is independent of the devcontainer stack.** The `geosearch_postgis-data`, `geosearch_gis-data`, and `geosearch_tls-certs` volumes belong to this deployment project. `docker compose down` stops this stack without deleting them. `docker compose down -v` **destroys** them, including the imported data and TLS material. Do not rerun provisioning for routine application rebuilds because it replaces imported GIS data and rebuilds the search index.
-- **DooD grants powerful host access.** Access to the Docker daemon socket effectively grants administrative control over the daemon host. Use this workflow only from a trusted, local devcontainer with trusted repository content, and do not expose the Docker API/socket over a public network. This recommendation is for **local acceptance tests**, not a hardened Internet-facing production deployment.
-
-## First-time setup
-
-1. Configure the one deployment environment file:
+1. Create the ignored deployment configuration and set distinct, strong values for `POSTGIS_PASSWORD` and `GEOSEARCH_READER_PASSWORD`:
 
    ```sh
    cp deploy/.env.example deploy/.env
    chmod 600 deploy/.env
-   # Set POSTGIS_PASSWORD and GEOSEARCH_READER_PASSWORD to strong local secrets.
+   # Edit deploy/.env to supply both passwords.
    ```
 
-2. Supply Nginx's TLS certificate and private key locally as `deploy/certs/fullchain.pem` and `deploy/certs/privkey.pem`. For a **localhost-only smoke test**, you can create a temporary self-signed certificate:
+2. Supply `deploy/certs/fullchain.pem` and `deploy/certs/privkey.pem`. For a temporary localhost certificate, run:
 
    ```sh
    ./deploy/scripts/local-cert.sh
-   ```
-
-   Import the certificate and private key into Docker-managed TLS storage:
-
-   ```sh
    ./deploy/scripts/load-cert.sh
    ```
 
-   This step is required **before starting Nginx**, and again whenever the certificate changes (restart the frontend afterward). **After updating from DEP2.3, run it once more:** it updates certificate ownership in the existing TLS volume to match the non-root frontend. The import uses a temporary, network-isolated container to receive the files over Docker's standard input, sets owner-only permissions (mode `0600`, owned by the non-root Nginx user), and stores them in a named volume. It works when Docker is accessed from a devcontainer whose `/workspace` path is different from the Docker daemon host's filesystem. Neither the certificate nor the key is copied into the Nginx image. The one-off importer has only the `CHOWN` capability and no network access; the frontend runs entirely as the unprivileged `nginx` user. The importer requires `docker`, `tar`, and `openssl` in the calling environment.
+   `local-cert.sh` refuses to overwrite existing certificates. If you provide an existing certificate and private key instead, run only `load-cert.sh`. The import checks that the files match and copies them into the Docker-managed `tls-certs` volume, readable by the unprivileged Nginx process. No private key is baked into an image. A self-signed certificate requires explicit browser/OS trust for acceptance testing.
 
-   Browsers will **not trust this certificate automatically**; configure local trust before testing geolocation or use a trusted certificate for a real hostname. Avoid exposing the default setup over a public network.
-
-3. Import the instructor's Geofabrik data, build the search index, and provision the read-only database role:
+3. Prepare the dataset and the restricted database login:
 
    ```sh
    ./deploy/scripts/provision.sh
    ```
 
-   This uses the one-off `gis-tools` image and a separate Docker-managed `gis-data` volume for downloaded inputs. It does **not** write into the checkout's `lab/data/` directory and therefore does not depend on the development container's or host's file ownership. The image runs as non-root UID/GID `10001:10001`. Provisioning first assigns ownership on **only the Docker-managed GIS volume**, then verifies that the non-root process can write to its download cache before the first recipe. The `gis-data` and PostGIS volumes persist across reruns. Downloads and GeoPackage extraction log byte counts, percentages, and transfer rates approximately every five seconds directly in the provisioning terminal. Partial downloads resume on the next run. It is safe to retry after failure but **rebuilds the index and replaces imported data**; it is not an online database migration. Run it only when initializing or intentionally refreshing the local dataset.
+   The script starts PostGIS, downloads and validates the pinned Niedersachsen datasets, imports the Hannover subset, builds the SQL search index, creates the reader login, and runs search/reverse smoke queries. GIS inputs are cached in a separate named volume; interrupted downloads can resume. Initial provisioning requires Internet access, several gigabytes of disk space, and additional time for download/import. **Rerunning provisioning replaces imported data and rebuilds the index**; do not run it for routine image updates.
 
-4. Build and start the runtime services:
+4. Build and start the application:
 
    ```sh
    cd deploy
+   docker compose config --quiet
    docker compose up -d --build
+   docker compose ps
    ```
 
-   Open **https://localhost:8443/** once your browser trusts the certificate. Check `https://localhost:8443/api/health` or `/api/search?q=Limmerstr%2012%20Hannover&limit=5`.
+Open **https://localhost:8443/** from a browser on the **Docker daemon host**. The published address uses the port configured by `GEOSEARCH_HTTPS_PORT` if changed. Check both static asset loading (including `/_framework/` files) and an actual search response through Nginx. From a shell on the Docker host:
 
-## Where configuration belongs
+```sh
+curl -kfsS https://127.0.0.1:8443/api/health
+curl -kfsS 'https://127.0.0.1:8443/api/search?q=Limmerstr%2012%20Hannover&limit=5'
+```
 
-- **`deploy/.env`** (Git-ignored): deployment-specific PostgreSQL admin/reader passwords, published HTTPS port/bind address, and `GEOSEARCH_API_ENVIRONMENT` (runtime) / `DOTNET_BUILD_CONFIGURATION` (build). The Compose service maps `GEOSEARCH_API_ENVIRONMENT` to the container's `ASPNETCORE_ENVIRONMENT`; the development container's own `ASPNETCORE_ENVIRONMENT` must not determine the deployed API mode. Values are interpolated into `compose.yaml`; only the services that need each secret receive it.
-- **`deploy/compose.yaml`**: image builds, private service DNS names, networks, volumes and non-secret application settings. The database/admin secret is passed to PostGIS and `gis-tools`; the API receives **only the read-only login**.
-- **`deploy/nginx/nginx.conf`**: TLS termination, static file routing, `/api/*` and `/swagger*` reverse proxy. Do not put PostgreSQL or application secrets here.
-- **`deploy/certs/` and the `tls-certs` volume**: keep the source certificate and private key on the Docker client host; run `./deploy/scripts/load-cert.sh` to stream them securely into the Docker-managed volume. The frontend mounts it read-only. Do not use a source-code bind mount for TLS files, because the Docker daemon may not see the devcontainer's `/workspace` path.
-- **ASP runtime**: ASP.NET Core consumes `ConnectionStrings__Search` from its environment. The frontend uses its existing same-origin fallback (`Api:BaseUrl` unset). No runtime frontend configuration rewrite is needed.
-- **`lab/` and `scripts/`**: Geofabrik download and PostGIS provisioning logic. The production containers do not run or modify these scripts on normal startup.
+The `-k` flag skips certificate validation for these **command-line smoke checks only**. A browser must trust the certificate to test location permissions reliably; the self-signed certificate is not automatically trusted. The complete [acceptance procedure](../docs/validation.md) covers search results, map behavior, geolocation, attribution, and the required evidence.
 
-The one-off provisioning setup is deliberately separate from ordinary application updates. Docker does not touch database data when you rebuild the API or Nginx images.
+## Configuration and storage
 
-## Operations
+The Git-ignored `deploy/.env` supplies Compose interpolation values. The environment file configures the **deployment project**, not the devcontainer's development stack. Its settings are:
 
-From `deploy/`:
+| Setting | Used for | Default |
+| --- | --- | --- |
+| `POSTGIS_PASSWORD` | PostGIS administrator and one-off GIS import tools | Required |
+| `GEOSEARCH_READER_PASSWORD` | Restricted GIS reader, supplied to the API | Required |
+| `GEOSEARCH_HTTPS_BIND_ADDRESS` | Host interface publishing Nginx | `127.0.0.1` |
+| `GEOSEARCH_HTTPS_PORT` | Host HTTPS port | `8443` |
+| `GEOSEARCH_API_ENVIRONMENT` | API runtime environment; `Development` enables Swagger | `Production` |
+| `DOTNET_BUILD_CONFIGURATION` | API image build configuration | `Release` |
+
+The API container receives `ASPNETCORE_ENVIRONMENT` from `GEOSEARCH_API_ENVIRONMENT`, rather than inheriting the devcontainer's `ASPNETCORE_ENVIRONMENT=Development`. Build configuration and runtime environment are independent: a Debug build does not enable Swagger. Docker Compose gives variables exported in the invoking shell precedence over `.env`, so do not export a conflicting `GEOSEARCH_API_ENVIRONMENT` value. Leave `DOTNET_ENVIRONMENT` unset in the API container to avoid another runtime override.
+
+The deployment uses three Docker-managed volumes: `postgis-data` for the database, `gis-data` for downloaded inputs, and `tls-certs` for the imported TLS material. Secrets must not be committed or included in images. The frontend uses the browser origin as its API base address, so no production `Api:BaseUrl` override or cross-origin browser configuration is needed.
+
+### Docker-outside-of-Docker boundaries
+
+DooD shares the host Docker daemon, **not** the devcontainer filesystem or network namespace. Image build contexts are sent to the daemon by the Docker client, but bind-mounted paths are resolved on the daemon host. Consequently, this deployment transfers TLS files through Docker's input stream and stores GIS downloads in named volumes; neither `deploy/certs/` nor `lab/data/` is bind-mounted from `/workspace`.
+
+Similarly, `localhost` inside the devcontainer may not be the Docker host. Test the published HTTPS port from the host browser or terminal; do not expose the port publicly to work around container networking. The Compose project name is `geosearch`, separate from the `geospatial-search` development project, so their networks and volumes are independent.
+
+Docker socket access gives the devcontainer extensive control of the host daemon. This model is suitable only for trusted local development and acceptance testing, not untrusted workloads or a hardened public deployment.
+
+## Operate the stack
+
+Run these commands from `deploy/`:
 
 ```sh
 docker compose ps
 docker compose logs -f frontend api postgis
-docker compose up -d --build       # Rebuild app images without reimporting data
-docker compose down                # Stop containers; keep data
-docker compose config --quiet      # Validate the merged deployment configuration
+docker compose up -d --build        # Rebuild and restart the application
+docker compose down                 # Stop services; preserve volumes
 ```
 
-**Do not use `docker compose down -v`** unless you explicitly want to delete the PostGIS database, cached GIS datasets **and the imported TLS certificate/key**. These are stored in the named volumes `geosearch_postgis-data`, `geosearch_gis-data`, and `geosearch_tls-certs`, respectively. Back up the original files in Git-ignored `deploy/certs/` separately; the deployment `.env` file also remains outside Docker volumes.
+For a renewed TLS certificate, update the files in `deploy/certs/`, run `./deploy/scripts/load-cert.sh` from the repository root, and restart `frontend`. For an intentional dataset refresh, run `./deploy/scripts/provision.sh` again; it is not part of normal application startup.
 
-The development container's `lab/data/` and the deployment's `gis-data` are intentionally independent, so a first deployment may download the snapshot again even if development data already exists. This avoids coupling production provisioning to a Docker-daemon-host path that might not match `/workspace` inside the development container. Docker owns the dataset volume; **do not `chown` the repository to match container UID 10001**.
+**Do not run `docker compose down -v` unless you intend to delete all deployment volumes**, including the imported dataset, database, and TLS material. `docker compose down` alone retains them. The deployment keeps its own GIS cache, distinct from `lab/data` in the development stack.
 
-If the non-root writeability check still reports an error, inspect `geosearch_gis-data` with `docker volume inspect geosearch_gis-data` and verify that the Docker daemon has sufficient disk space. The provisioning script already attempts to correct volume ownership; **do not change ownership of the repository checkout**. The preflight does not touch the database or import tables.
+For troubleshooting, inspect `docker compose logs` first. A failure to open `/run/tls/fullchain.pem` indicates missing or inaccessible imported TLS material; rerun the certificate importer. If the provisioning preflight reports an unwritable GIS volume, inspect `docker volume inspect geosearch_gis-data` and available Docker host disk space. Do not change ownership of the source checkout to match the `gis-tools` container user.
 
-ASP is built in `Release` by default and runs in `Production` by default. The **deployed API runtime** is controlled by `GEOSEARCH_API_ENVIRONMENT` in `deploy/.env`, independently of the devcontainer's `ASPNETCORE_ENVIRONMENT=Development`. To enable Swagger locally, set `GEOSEARCH_API_ENVIRONMENT=Development` in `deploy/.env` and recreate the API container with `docker compose up -d --force-recreate api`; Swagger UI is then at `https://localhost:8443/swagger` and JSON at `/swagger/v1/swagger.json`. `DOTNET_BUILD_CONFIGURATION=Debug` changes the ASP build configuration but **does not** enable Swagger by itself. Do not publish Development behavior to untrusted users.
-
-When updating from earlier deployment versions, **replace** `ASPNETCORE_ENVIRONMENT=Production` in your existing ignored `deploy/.env` with `GEOSEARCH_API_ENVIRONMENT=Production` (or `Development` for local Swagger testing). Before recreating, verify the effective API environment without printing other configuration or secrets:
+To confirm the API's effective runtime environment, run:
 
 ```sh
-docker compose config --format json | python3 -c 'import json,sys; print(json.load(sys.stdin)["services"]["api"]["environment"]["ASPNETCORE_ENVIRONMENT"])'
+docker compose exec api printenv ASPNETCORE_ENVIRONMENT
 ```
 
-The value should match `GEOSEARCH_API_ENVIRONMENT`, regardless of the devcontainer environment. After `docker compose up -d --force-recreate api`, confirm with `docker compose exec api printenv ASPNETCORE_ENVIRONMENT` or check the API startup logs. Note that Docker Compose generally gives *shell* values precedence over `.env`; use the dedicated variable to avoid collisions with the devcontainer, and do not export a conflicting `GEOSEARCH_API_ENVIRONMENT` value in your shell. A custom `DOTNET_ENVIRONMENT` inside the API container would also affect the .NET host environment, so leave that unset in this deployment.
+`Production` is the default. For local Swagger testing, set `GEOSEARCH_API_ENVIRONMENT=Development` in `deploy/.env` and run `docker compose up -d --force-recreate api`. Swagger UI is then available at `/swagger`, with its OpenAPI JSON at `/swagger/v1/swagger.json`. Revert to `Production` for normal operation and recreate the API; requests to those endpoints should then return 404.
 
-`frontend` is the only published service. Nginx access logging is disabled because nearby queries can contain device coordinates. Missing `/_framework/` and `/_content/` assets return 404 rather than the SPA HTML. The standalone .NET 10 client relies on a publish-generated `<script type="importmap">` in `index.html` to resolve fingerprinted framework modules such as `dotnet.js`. The frontend Docker build verifies that the import map is present; do not remove the placeholder from the client `index.html`. GeoSearch requires map tiles and browser geolocation, so UFWeb's more restrictive CSP and permissions policy cannot be reused unchanged. HTTPS is required for geolocation on non-localhost devices.
-
-### Scope
-
-The Compose stack is meant for a **local, single-host deployment**, not an Internet-facing managed service. It does not include certificate renewal, database backups, monitoring, resource limits, or deployment automation through CI. The current application baseline still has authentication startup requirements; this deployment is designed for the parallel auth-removal branch and intentionally does not configure the old Identity database.
+Nginx does not record access logs because nearby-search URLs can contain device coordinates. Missing static framework assets return 404 rather than the SPA entrypoint; Blazor's published import map resolves fingerprinted .NET 10 JavaScript modules. The stack has no automated certificate renewal, off-host database backup, monitoring, or public-service hardening. It is intended for local, single-host use.

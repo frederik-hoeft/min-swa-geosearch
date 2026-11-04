@@ -1,34 +1,48 @@
-# Validation and integration boundaries
+# Testing and acceptance
 
-GeoSearch has a read-only PostGIS data context, the public GeoJSON GIS endpoints, and a browser shell; interactive map and geolocation features remain pending. Validation therefore distinguishes compilation and in-memory contract checks from spatial tests requiring a populated PostGIS instance.
+GeoSearch's automated tests check application contracts without importing the Hannover dataset. Acceptance testing uses a populated PostGIS database and the browser-facing HTTPS deployment. The distinction matters: passing unit tests does not establish search quality, location behavior, or the lab's latency target.
 
-## Automated validation
+## Automated checks
 
-From the repository root in the [preferred devcontainer](development.md#start-the-devcontainer-and-prepare-the-gis-database):
+Run these from the repository root in the [devcontainer](../.devcontainer/README.md):
 
-```bash
+```sh
 dotnet restore src/GeoSearch.slnx
 dotnet format src/GeoSearch.slnx --no-restore --verify-no-changes
 dotnet build src/GeoSearch.slnx --no-restore -warnaserror
 dotnet test src/GeoSearch.slnx --no-restore --no-build
+python3 -m unittest discover -s scripts/tests -v
+python3 -m unittest discover -s deploy/tests -v
 ```
 
-GitHub Actions runs three separate jobs: **lab-scripts** (parses the real Justfile, checks shell syntax, and executes Python automation tests), **build** (.NET restore, format verification, warnings-as-errors Release build), and **test** (a fresh restore and Release test run, after a successful build job). The build also compiles the client SCSS through SassCompiler.
+The .NET tests cover GeoJSON serialization and axis ordering, HTTP parameter validation, application-service result mapping, model discovery, read-only query functions, and OpenAPI route generation. The Python suites exercise data-download and provisioning scripts using local fixtures, without fetching Geofabrik datasets or starting PostgreSQL. GitHub Actions runs lab script checks, .NET build/formatting, and .NET tests in separate jobs; the deployment Python tests can also be run locally.
 
-The lab automation tests use a local HTTP fixture server to verify initial dataset download, no-network reruns, HTTP-range resume, and corruption recovery. They also mock the reset recipe's preflight rejection, ordering, and fail-fast behavior. These checks fetch no real Geofabrik data and cannot prove PostgreSQL/GDAL runtime semantics or production-scale download performance.
+Passing these checks establishes the relevant in-process behavior. It does not verify the SQL against PostGIS, permissions on a real database role, Nginx-to-API routing, or browser geolocation.
 
-The automated tests exercise GeoJSON field/coordinate serialization, the keyless read-only GIS model, the GIS service and controller contracts, dependency registration, and generation of OpenAPI paths. They do not require PostgreSQL or a browser, and do not prove GIS SQL, database concurrency, or browser behavior.
+## Verify the running API and database
 
-`src/GeoSearch.Web.Server.Tests/Search` includes Moq-based controller validation and application-service mapping tests. They share the existing server test project and run with the normal solution once the NuGet source includes `Moq` 4.21.0 and its transitive dependencies. EF model tests independently verify that WKG's discovery filters isolate the GIS projections and that EF translates the three table-valued query functions without a live database.
+Use the [local Docker deployment](../deploy/README.md) after the GIS provisioning script has populated `lab1`. All browser-facing requests should pass through Nginx, not through the private API port.
 
-## Runtime verification
+```sh
+curl -kfsS https://127.0.0.1:8443/api/health
+curl -kfsS 'https://127.0.0.1:8443/api/search?q=Limmerstr%2012%20Hannover&limit=5'
+curl -kfsS 'https://127.0.0.1:8443/api/nearby?lat=52.3759&lon=9.7320&radius=500'
+```
 
-Build and reopen the [devcontainer](../.devcontainer/README.md), execute the `just` import recipes against PostGIS, and confirm that Docker host-port publication does not occupy Visual Studio's application ports. These integration checks require the running development stack; automated unit tests are not substitutes for them.
+Run these from the Docker host; `localhost` inside a DooD devcontainer may be a different network namespace. The `-k` option is only for local self-signed certificate smoke tests.
 
-## GIS runtime acceptance checks
+Verify all four GIS endpoints with the populated snapshot, including invalid and missing parameters (HTTP 400), empty results, stable snapshot attribution, category filters, nearest-result ordering, and metre distances. Check that GeoJSON point coordinates use longitude before latitude. Confirm that GIS endpoints require no HTTP authentication and that location coordinates are not written to request logs.
 
-Use `just s10-reader-setup` to provision the restricted `geosearch_reader` login after `s05-search-index` and the imports. Confirm that the role can execute the three API read functions and read categories and snapshots, but cannot write to `osm.snapshot`; the EF read-only guard alone is insufficient. `s05-search-index` installs the instructor's materialized view and search/reverse functions, then the API's additive read functions.
+Separately, verify the `geosearch_reader` database login can call the three API read functions and query category/snapshot metadata, but cannot insert into `osm.snapshot` or change the search index. The API's read-only EF model is not a substitute for PostgreSQL privileges. Confirm that an index refresh updates the snapshot metadata observed by the API.
 
-Verify `/api/search`, `/api/reverse`, `/api/nearby`, and `/api/categories` against the populated database. Cover required/malformed query parameters, boundary coordinate values and radius/limit values, empty results with snapshot metadata, longitude/latitude axis order, category labels, nearest-result behavior, and distance-in-metres ordering. Confirm that a refresh changes the exposed snapshot only as the materialized view changes and that coordinates are not present in API logs. Verify all four endpoints work without a user session or HTTP authentication credentials.
+## Browser acceptance
 
-Collect the instructor's ten fixture queries with their actual top result and measured latency, including the three known ranking errors described in [the lab specification](../lab/lab-2.md#test-your-search-with-ten-fixture-queries). The target is a search response under 300 ms on the Hannover extract; offline unit tests cannot establish this. For nearby-search performance, capture `EXPLAIN (ANALYZE, BUFFERS)` on representative radii and categories before considering the [optional geography expression index](architecture.md#possible-nearby-search-spatial-index-not-implemented); do not modify the instructor-managed schema without permission. Keep the future frontend acceptance checks separate: map markers, attribution, permission denial, stale-request cancellation, location accuracy circle, map-centre fallback, and a screenshot of nearby search using the device position.
+Test through the public HTTPS origin with a browser that trusts the local certificate. These are acceptance criteria for the interactive client; the current map/search UI is a placeholder and does not yet satisfy them. Verify search debounce (at least 300 ms after three characters), error and no-results feedback, result selection, marker placement, and visible OpenStreetMap attribution. For device position, test granted, denied, unavailable, and timeout outcomes. Nearby results should use the device position when permitted and the map centre otherwise, with the source position clear to the user. Check the position accuracy circle and stale-request handling if the UI issues overlapping requests.
+
+Browser tests also confirm that fingerprinted Blazor files load successfully, including the `/_framework/` modules resolved through the publish-generated import map. Development-mode Swagger UI and the `/swagger/v1/swagger.json` description document the four API routes; production runtime mode should not expose them.
+
+## Capture submission evidence
+
+The lab requires ten observed top search results with latency measurements, one screenshot of nearby search using the device position, a short architecture note, and a five-minute demonstration. Use the [lab handoff record](lab-handoff.md) for those deliverables and the instructor's [fixture list](../lab/lab-2.md#test-your-search-with-ten-fixture-queries) as the source of expected results.
+
+For the ten search queries, measure the same end-to-end HTTP path under comparable conditions and report the median. The target is less than 300 ms on the Hannover extract. Record the actual top result even when ranking is wrong; the lab identifies three known failures to explain. If nearby queries are slow, profile with `EXPLAIN (ANALYZE, BUFFERS)` before considering the [optional spatial index](architecture.md#privacy-and-quality-boundaries). Do not modify instructor-managed SQL or indexes without confirming the permitted scope.

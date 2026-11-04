@@ -1,6 +1,6 @@
 # GeoSearch UI conventions and visual identity
 
-The client uses MudBlazor for accessible controls and a restrained cartographic visual identity: mineral-ink text, evergreen accents, light surfaces, subtle contours, and compact information hierarchy. The styling is specific to GeoSearch; UFWeb remains a reference for Razor organization and engineering conventions rather than a visual template.
+The client uses MudBlazor for accessible controls and a restrained cartographic visual identity: mineral-ink text, evergreen accents, light surfaces, subtle contours, and compact information hierarchy. Custom styling complements MudBlazor rather than replacing its component behavior or accessibility support.
 
 ## Component responsibilities
 
@@ -36,7 +36,7 @@ The client uses a local system sans-serif stack and monospace typography for coo
 
 `MainLayout` supplies branding, common navigation, and a keyboard skip link. The map workspace uses a two-column arrangement that collapses on smaller viewports. App-wide MudBlazor providers appear once in `UI/App.razor`.
 
-The map surface remains a **noninteractive placeholder** until the GIS API and MapLibre integration exist. Search controls and status labels must not imply working map or search functionality. The future MapLibre component will consume GeoJSON-facing view models and keep map-library types out of the rest of the UI.
+The map surface remains a **noninteractive placeholder** until the MapLibre integration is complete. Search controls and status labels must not imply working map or search functionality. The future MapLibre component will consume GeoJSON-facing view models and keep map-library types out of the rest of the UI.
 
 ## Accessibility and verification
 

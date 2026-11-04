@@ -1,55 +1,42 @@
 # GeoSearch
 
-GeoSearch is a .NET 10 / Blazor WebAssembly application for [Software Architectures Lab 2](lab/lab-2.md). It exposes address, place, reverse-geocoding, and nearby search over the instructor's OpenStreetMap-derived Hannover dataset through a PostGIS-backed API. A MapLibre map is planned for the Blazor client.
+GeoSearch is a .NET 10 / Blazor WebAssembly application for [Software Architectures Lab 2](lab/lab-2.md). Its ASP.NET Core API searches the OpenStreetMap-derived Hannover dataset in PostGIS and exposes address search, reverse geocoding, nearby POIs, and category discovery as JSON/GeoJSON. The browser communicates with the API rather than accessing the database or an external geocoder.
 
-**Current scope:** the solution, development environment, public read-only GIS API, and browser shell are implemented. Interactive search, map, and geolocation UI features remain placeholders.
+The GIS API and development/deployment infrastructure are implemented. The client currently has an application shell and map placeholder; interactive map search and browser geolocation remain to be completed. The four GIS endpoints are anonymous and read-only.
 
-## Getting started
+## Run the application
 
-**Use the VS Code Dev Containers environment.** It includes .NET 10, PostgreSQL client tools, GDAL, `just`, and the Docker tooling. The devcontainer also starts PostGIS. Visual Studio 2026 is an optional debugging environment using the same database.
+For a local, single-origin HTTPS deployment, use [the Docker deployment guide](deploy/README.md). It builds the frontend and API images locally, runs PostGIS with persistent storage, and serves Blazor through Nginx. The recommended acceptance-test environment is a VS Code devcontainer controlling the host Docker daemon via Docker-outside-of-Docker (DooD).
 
-1. Copy `.devcontainer/.env.example` to `.devcontainer/.env` and set a strong `GEOSEARCH_READER_PASSWORD` (at least 24 characters). The file is ignored by Git. Then open the repository in VS Code and select **Dev Containers: Reopen in Container**.
-2. Inside the devcontainer, run `cd /workspace/lab && just s00-download-data` to fetch the two pinned Geofabrik datasets (about 1.3 GB). See [the geodata instructions](lab/data/README.md). Skip this step if you only need to build or test the application.
-3. From a terminal **inside the devcontainer**, initialize the GIS database:
+If the dataset and TLS certificates are already provisioned, start the deployment from the repository root:
 
-   ```bash
-   cd /workspace/lab
-   just s02-db-setup
-   just s03-import-gpkg
-   just s04-import-addresses
-   just s05-search-index
-   just s10-reader-setup
-   just s06-search "Limmerstr 12 Hannover"
-   ```
+```sh
+cd deploy
+docker compose up -d --build
+```
 
-   To discard and rebuild the local GIS database later, run `just reset-lab RESET-LAB1` from `lab/`. This deletes **only** `lab1`, not the downloaded data. See [lab reset instructions](lab/README.md#rebuild-the-disposable-gis-database).
+Open `https://localhost:8443/` on the Docker host. First-time setup requires configuring `deploy/.env`, loading a TLS certificate, and importing the pinned GIS dataset; follow the deployment guide before using the commands above on a fresh installation. The initial download and import are not included in the short startup path.
 
-   `s01-stack-up` is disabled inside the devcontainer: PostGIS is already running as its Compose dependency. The `s10-reader-setup` recipe provisions an independent, restricted login using the required `GEOSEARCH_READER_PASSWORD` from the devcontainer environment; it never generates or stores credentials itself. The GIS API needs the imported dataset and search index to return results; compiling and testing the solution do not.
-4. Configure the server and start the web projects following the [development guide](docs/development.md).
+## Develop and test
 
-The devcontainer forwards PostgreSQL to Windows at `localhost:5432`. Its web app ports are kept separate from Visual Studio's ports; see the [container and host debugging guide](.devcontainer/README.md).
+The [development guide](docs/development.md) covers the VS Code devcontainer, GIS recipes, and local ASP.NET Core/Blazor debugging. From the repository root in the devcontainer:
 
-## Build and test
-
-From the repository root inside the devcontainer:
-
-```bash
+```sh
 dotnet restore src/GeoSearch.slnx
-dotnet format src/GeoSearch.slnx --no-restore --verify-no-changes
 dotnet build src/GeoSearch.slnx --no-restore -warnaserror
 dotnet test src/GeoSearch.slnx --no-restore --no-build
 ```
 
-## Repository guide
+The [architecture](docs/architecture.md) explains the search pipeline, API contract, and database ownership. [Validation](docs/validation.md) describes automated checks and runtime acceptance. [Lab handoff](docs/lab-handoff.md) tracks the architecture note and evidence required for submission. For UI styling and source conventions, see [UI design](docs/ui-design.md) and [code style](code-style.md).
 
-| Path | Purpose |
+## Repository layout
+
+| Path | Contents |
 | --- | --- |
-| `lab/` | Instructor lab specification, SQL, Compose, and `just` recipes |
-| `src/GeoSearch.Web.Server/` | ASP.NET Core API and read-only GIS query adapter |
-| `src/GeoSearch.Web.Client/` | Blazor WASM client and UI theme |
-| `src/GeoSearch.Web.Shared/` | Client/server GIS API contracts, including point-only GeoJSON DTOs |
-| `src/GeoSearch.Web.Server.Tests/` | GIS unit, contract, model, and controller tests |
-| `.devcontainer/` | Preferred development environment |
-| `.agents/skills/` | Engineering-quality and documentation conventions |
-
-For detailed instructions and system boundaries, see [development](docs/development.md), [architecture](docs/architecture.md), [validation](docs/validation.md), [UI conventions](docs/ui-design.md), and [code style](code-style.md). The instructor's original [lab task](lab/lab-2.md) remains the authority for feature requirements.
+| `src/GeoSearch.Web.Server/` | ASP.NET Core API and read-only GIS data access |
+| `src/GeoSearch.Web.Client/` | Blazor WebAssembly frontend |
+| `src/GeoSearch.Web.Shared/` | Shared HTTP contracts and GeoJSON models |
+| `src/*Tests/` | Unit and contract tests |
+| `lab/` | Instructor specification, data import, PostGIS SQL, and `just` recipes |
+| `.devcontainer/` | Development toolchain and services |
+| `deploy/` | Local Compose stack, Dockerfiles, Nginx, and provisioning scripts |
