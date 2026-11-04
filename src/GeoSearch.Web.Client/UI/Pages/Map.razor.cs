@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Components;
+﻿using GeoSearch.Web.Client.UI.Components.Search;
+using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 
 namespace GeoSearch.Web.Client.UI.Pages;
@@ -6,15 +7,13 @@ namespace GeoSearch.Web.Client.UI.Pages;
 public partial class Map : ComponentBase, IAsyncDisposable
 {
     private ElementReference _searchPanel;
+    private SearchWorkspace? _searchWorkspace;
     private IJSObjectReference? _module;
     private IJSObjectReference? _observer;
     private DotNetObjectReference<Map>? _self;
     private bool _isSearchPanelExpanded = true;
     private bool _temporaryInteractionExpanded;
     private bool _disposed;
-
-    // F2 will consume this value; typing alone does not send API requests yet.
-    private string? _searchQuery;
 
     private bool IsEffectivelyExpanded => _isSearchPanelExpanded || _temporaryInteractionExpanded;
 
@@ -79,6 +78,10 @@ public partial class Map : ComponentBase, IAsyncDisposable
         _temporaryInteractionExpanded = active;
         return InvokeAsync(StateHasChanged);
     }
+
+    private Task DismissSearchDraftAsync() => _searchWorkspace?.DismissDraftAsync() ?? Task.CompletedTask;
+
+    private void ExpandOnCommit() => _isSearchPanelExpanded = true;
 
     private async Task ToggleSearchPanelAsync()
     {

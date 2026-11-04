@@ -1,37 +1,16 @@
+@using GeoSearch.Web.Client.UI.Components.Search
 @page "/map"
 @layout MapLayout
 
 <PageTitle>Explore | GeoSearch</PageTitle>
 
 <section class="gs-map-workspace" aria-label="Map exploration workspace">
-    <div class="gs-map-surface">
+    <div class="gs-map-surface" @onclick="DismissSearchDraftAsync">
         <MapViewer />
     </div>
     <aside @ref="_searchPanel" class="gs-search-panel @(_isSearchPanelExpanded ? "gs-search-panel--expanded" : "gs-search-panel--collapsed") @(_temporaryInteractionExpanded ? "gs-search-panel--temporarily-expanded" : "")"
            aria-label="Search workspace">
-        <div class="gs-search-bar">
-            <MudTextField T="string" Label="Search" Variant="Variant.Outlined"
-                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
-                          Immediate="true" @bind-Value="_searchQuery" />
-        </div>
-        <button type="button" class="gs-search-toggle" @onclick="ToggleSearchPanelAsync"
-                aria-controls="map-search-content" aria-expanded="@(IsEffectivelyExpanded ? "true" : "false")"
-                aria-label="@(IsEffectivelyExpanded ? "Collapse search panel" : "Expand search panel")"
-                title="@(IsEffectivelyExpanded ? "Collapse search panel" : "Expand search panel")">
-            <svg viewBox="0 0 48 12" width="48" height="12" aria-hidden="true" focusable="false">
-                <path d="M4 9 L24 3 L44 9" fill="none" stroke="currentColor" stroke-width="2.5"
-                      stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-        </button>
-        <div id="map-search-content" class="gs-search-panel-content">
-            <div class="gs-search-panel-heading">
-                <div>
-                    <span class="gs-section-label">DISCOVERY</span>
-                    <h1>Explore</h1>
-                </div>
-                <span class="gs-coming-soon">In development</span>
-            </div>
-            <p class="gs-search-hint">Place, address, and nearby search will appear here.</p>
-        </div>
+        <SearchWorkspace @ref="_searchWorkspace" IsEffectivelyExpanded="IsEffectivelyExpanded"
+                         OnToggle="ToggleSearchPanelAsync" OnCommitted="ExpandOnCommit" />
     </aside>
 </section>

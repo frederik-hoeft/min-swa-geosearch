@@ -1,0 +1,87 @@
+@using GeoSearch.Web.Client.Search.Model
+@using GeoSearch.Web.Shared.GeoJson
+
+@switch (Panel)
+{
+    case IdleSearchPanel:
+        <div class="gs-search-panel-heading">
+            <div><span class="gs-section-label">DISCOVERY</span><h1>Explore</h1></div>
+        </div>
+        <p class="gs-search-hint">Search for a place or address. Choose a suggestion or press Enter to see full results.</p>
+        <p class="gs-search-hint">Nearby discovery will be added in a later phase.</p>
+        break;
+    case ForwardSearchPanel forward:
+        <div class="gs-search-panel-heading">
+            <div><span class="gs-section-label">SEARCH RESULTS</span><h1>@forward.Query</h1></div>
+        </div>
+        @switch (forward.Results)
+        {
+            case LoadingSearch:
+                <p role="status" class="gs-search-hint">Searching...</p>
+                break;
+            case FailedSearch failure:
+                <div role="alert" class="gs-search-feedback">
+                    <p>@failure.Message</p>
+                    <MudButton OnClick="OnRetry" Variant="Variant.Outlined" Color="Color.Primary">Retry</MudButton>
+                </div>
+                break;
+            case ReadySearch ready:
+                @if (ready.Collection.Features.Count == 0)
+                {
+                    <p class="gs-search-hint" role="status">No results found for "@forward.Query".</p>
+                }
+                else
+                {
+                    <p class="gs-results-count">@ready.Collection.Features.Count result(s), ranked by relevance</p>
+                    <div class="gs-results-list">
+                        @foreach (GeoJsonFeature feature in ready.Collection.Features)
+                        {
+                            <button type="button" class="gs-result" @onclick="() => OnPlaceSelected.InvokeAsync(feature)">
+                                <MudIcon Icon="@Icons.Material.Filled.Place" Size="Size.Small" />
+                                <span><strong>@feature.Properties.Label</strong><small>@feature.Properties.Type</small></span>
+                            </button>
+                        }
+                    </div>
+                    @if (forward.Limit < 20 && ready.Collection.Features.Count >= forward.Limit)
+                    {
+                        <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="OnShowMore">Show more</MudButton>
+                    }
+                }
+                break;
+        }
+        break;
+    case PlaceSearchPanel place:
+        <header class="gs-place-details-header">
+            <button type="button" class="gs-results-back" @onclick="OnBack">
+                <MudIcon Icon="@Icons.Material.Filled.ArrowBack" Size="Size.Small" /> Back
+            </button>
+            <span class="gs-section-label">PLACE DETAILS</span>
+        </header>
+        <h1 class="gs-detail-title">@place.Feature.Properties.Label</h1>
+        <dl class="gs-place-details">
+            <dt>Type</dt><dd>@place.Feature.Properties.Type</dd>
+            @if (!string.IsNullOrWhiteSpace(place.Feature.Properties.Category))
+            {
+                <dt>Category</dt><dd>@place.Feature.Properties.Category</dd>
+            }
+        </dl>
+        <p class="gs-search-hint">Map highlighting and navigation will be added in F3.</p>
+        break;
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public SearchPanelState Panel { get; set; } = new IdleSearchPanel();
+
+    [Parameter]
+    public EventCallback<GeoJsonFeature> OnPlaceSelected { get; set; }
+
+    [Parameter]
+    public EventCallback OnBack { get; set; }
+
+    [Parameter]
+    public EventCallback OnRetry { get; set; }
+
+    [Parameter]
+    public EventCallback OnShowMore { get; set; }
+}

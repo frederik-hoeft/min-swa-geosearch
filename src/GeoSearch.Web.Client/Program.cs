@@ -1,3 +1,4 @@
+﻿using GeoSearch.Web.Client.Services.Search;
 ﻿using GeoSearch.Web.Client.Services.Testing;
 using GeoSearch.Web.Client.Services.Theming;
 using GeoSearch.Web.Client.UI;
@@ -11,6 +12,7 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 
 builder.Services.AddMudServices();
 builder.Services.AddScoped<ThemePreferenceService>();
+builder.Services.AddScoped<SearchApiClient>();
 builder.Services.AddScoped<SearchFixtureBenchmarkService>();
 
 string apiBaseUrl = builder.Configuration["Api:BaseUrl"] ?? builder.HostEnvironment.BaseAddress;
