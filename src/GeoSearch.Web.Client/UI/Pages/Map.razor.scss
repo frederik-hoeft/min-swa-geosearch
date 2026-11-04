@@ -23,6 +23,7 @@
 // toggling it does not resize MapLibre's canvas or alter its camera/zoom.
 .gs-search-panel {
     position: absolute;
+    --gs-mobile-search-focus: 0;
     z-index: 5;
     top: 0;
     left: 0;
@@ -106,8 +107,8 @@
 }
 
 // visibility:hidden also removes collapsed content from keyboard navigation and the
-// accessibility tree. Unlike an inert attribute, it can be overridden by CSS
-// while the search field temporarily opens the sheet on mobile.
+// accessibility tree. Interaction expansion can reveal it without changing the
+// manually selected collapsed state.
 .gs-search-panel--collapsed .gs-search-panel-content {
     opacity: 0;
     visibility: hidden;
@@ -203,25 +204,32 @@
     }
 }
 
-// Focusing the search field temporarily fills the *mobile* workspace, putting
-// the field directly below the app bar and safely above the software keyboard.
-// This is purely presentational: the manual expanded/collapsed class is preserved
-// and automatically takes effect again as soon as the field loses focus.
-// Include compact landscape phones with a coarse pointer; tablets and desktop
-// keep their normal left-column behavior even while typing.
+// Mobile focus/interaction state is reported by Map.razor.js and exposed through
+// the same class, aria-expanded, and button label. The browser reads the custom
+// property rather than duplicating Sass media-query values in JavaScript.
 @media (max-width: bp.$phone-max),
        (max-width: bp.$tablet-max) and (max-height: bp.$short-touch-viewport-max) and (pointer: coarse) {
-    .gs-search-panel:has(.gs-search-bar input:focus) {
+    .gs-search-panel {
+        --gs-mobile-search-focus: 1;
+    }
+
+    .gs-search-panel--temporarily-expanded {
         width: 100%;
         height: 100%;
         border-radius: 0;
     }
 
-    .gs-search-panel--collapsed:has(.gs-search-bar input:focus) .gs-search-panel-content {
+    .gs-search-panel--collapsed.gs-search-panel--temporarily-expanded .gs-search-panel-content {
         opacity: 1;
         visibility: visible;
         pointer-events: auto;
         transition: opacity 160ms ease-out, visibility 0s;
+    }
+}
+
+@media (max-width: bp.$phone-max) and (orientation: portrait) {
+    .gs-search-panel--temporarily-expanded.gs-search-panel--collapsed .gs-search-toggle svg {
+        transform: rotate(180deg);
     }
 }
 

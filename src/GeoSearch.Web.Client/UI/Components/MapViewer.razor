@@ -1,7 +1,14 @@
 @using Community.Blazor.MapLibre
 
 <div class="gs-map-viewer" role="region" aria-label="Interactive OpenStreetMap map">
-    @if (!_browserChecked)
+    @if (_startupError is not null)
+    {
+        <div class="gs-map-notice gs-map-notice--error" role="alert">
+            @_startupError
+            <button type="button" @onclick="Reload">Reload</button>
+        </div>
+    }
+    else if (!_styleChecked || !_browserChecked)
     {
         <div class="gs-map-notice" role="status">Preparing the map...</div>
     }
@@ -17,11 +24,18 @@
             <ChildContent>
                 <MapLibre @ref="_map" Options="_options" Height="100%" Width="100%"
                           OnLoad="OnMapLoadedAsync" OnStyleLoad="OnStyleLoadedAsync" />
-                @if (!_mapLoaded && !_hasTileError)
+                @if (!_mapLoaded && !_hasTileError && !_mapLoadTimedOut)
                 {
                     <div class="gs-map-loading" role="status">Loading map tiles...</div>
                 }
-                @if (_hasTileError)
+                @if (_mapLoadTimedOut)
+                {
+                    <div class="gs-map-tile-error" role="alert">
+                        The map did not finish loading. Check the map style, tile provider, and network connection.
+                        <button type="button" @onclick="Reload">Reload</button>
+                    </div>
+                }
+                else if (_hasTileError)
                 {
                     <div class="gs-map-tile-error" role="alert">
                         Some map tiles could not be loaded. Check your connection or try again later.

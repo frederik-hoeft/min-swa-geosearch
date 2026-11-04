@@ -1,10 +1,10 @@
 # Frontend integration backlog
 
-**Status:** Proposed for review. Epics define outcomes and review gates, not an approved implementation plan. Work proceeds in order, with each phase independently reviewable.
+**Status:** Backlog approved. F1 is implemented in PR #5 with real-browser acceptance still pending; F2–F6 are not yet implemented. Epics define outcomes and review gates rather than a fixed implementation plan.
 
-GeoSearch currently has a Blazor WebAssembly application shell and map placeholder. The read-only ASP.NET Core API is implemented. The goal of these epics is to turn the shell into the Lab 2 search, map, and nearby application without moving geospatial query logic into the client.
+GeoSearch has a Blazor WebAssembly frontend with an interactive MapLibre/OSM map, a separate landing page, and a responsive search overlay. The read-only ASP.NET Core API is implemented, but frontend search, reverse, and nearby integration remain pending. These epics track the remaining Lab 2 work without moving geospatial query logic into the client.
 
-The [architecture](../../architecture.md) owns the backend/data-flow model, [UI conventions](../../ui-design.md) own frontend structure and styling, and [validation](../../validation.md) and [Lab 2](../../../lab/lab-2.md) own the established contracts and acceptance requirements. This backlog covers **pending frontend work** only.
+The [architecture](../../architecture.md) owns the backend/data-flow model, [UI conventions](../../ui-design.md) own frontend structure and styling, and [validation](../../validation.md) and [Lab 2](../../../lab/lab-2.md) own the established contracts and acceptance requirements. This backlog records frontend phase status and the remaining integration work.
 
 ## Integration boundaries
 
@@ -16,9 +16,11 @@ The [architecture](../../architecture.md) owns the backend/data-flow model, [UI 
 - For any overlapping asynchronous operation, prevent an older response from replacing a newer user selection or query. Switching between free-text, reverse, and nearby views must have explicit and predictable state ownership.
 - Geolocation is opt-in: only a user-initiated action may request device coordinates or send them to the API. The backend must not log or store them.
 
-## Proposed epics and review gates
+## Epics and review gates
 
 ### F1. Interactive map and OSM basemap
+
+**Implementation:** MapLibre map, configurable OSM Standard raster style, responsive search overlay, and landing-page separation implemented in PR #5. **Acceptance pending:** real-browser pan/zoom, attribution, initialization failures, and mobile keyboard behavior must still be verified. F2–F6 have not started.
 
 **Goal:** Replace the placeholder with a usable, independently testable MapLibre map before coupling it to search.
 
@@ -31,7 +33,7 @@ The [architecture](../../architecture.md) owns the backend/data-flow model, [UI 
 
 **Gate F1:** A browser-loaded map supports pan/zoom, correct Hannover positioning, responsive resize, and visible attribution on the deployed origin. A failed tile request has understandable feedback. Verify WebGL2 support in the target browser, since the wrapper bundles MapLibre GL JS 6.13.0. No search/backend integration is required at this gate.
 
-**Decision for F1 planning:** Confirm the initial tile/style provider, its use terms, and whether OSM Standard raster is a development-only default.
+**F1 basemap decision:** Start with OSM Standard (osm-carto) raster tiles from the official OSMF HTTPS endpoint for this lab, subject to the [tile usage policy](https://operations.osmfoundation.org/policies/tiles/). Keep the map style/provider replaceable; self-hosting from OSM data remains a possible later deployment choice, not a requirement of F1.
 
 ### F2. Live free-text search and result list
 
@@ -85,7 +87,15 @@ The [architecture](../../architecture.md) owns the backend/data-flow model, [UI 
 
 **Gate F5:** Category and radius selections produce correct API queries. Nearby search succeeds with device location and with map-center fallback, displays results in distance order, and synchronizes list/map selection. Locate-me states and accuracy visualization are demonstrable, with the selected origin unambiguous and no automatic location transmission.
 
-**Decision for F5 planning:** Review the concrete responsive layout and the nearby origin/mode-switching model before implementation; this is the main interaction-design gate.
+**Open F5 design questions (to resolve before implementing F5):**
+
+1. **Search-mode ownership:** Should free-text and nearby be exclusive workspace modes sharing one result list and marker layer, or should results from both coexist? What changes when the user switches modes, and which previous query/selection is preserved?
+2. **Location ownership:** Which nearby origin is active at any moment (device, map center, or F4 clicked point), how is it selected and labeled, and what happens to that origin after panning, choosing a result, or switching modes?
+3. **Refresh semantics:** Which interactions explicitly trigger a new nearby request (Search button, category/radius change, origin change), and when should existing results be marked stale? Map movement alone must not silently send coordinates or trigger queries.
+4. **Selection behavior:** How should the active result, map popup, origin marker, accuracy circle, and nearby-result markers interact, especially when the map is recentered by choosing a search result?
+5. **Responsive layout:** Where should the mode switcher, category selector, radius selector, and location-source control live on narrow screens so the map remains usable and the origin remains clear?
+
+**Decision for F5 planning:** Review and record answers to these questions and the resulting responsive layout/interaction model before implementation; do not prematurely hard-code them in F1–F4.
 
 ### F6. Refinement, quality, and lab handoff
 
@@ -102,7 +112,7 @@ The [architecture](../../architecture.md) owns the backend/data-flow model, [UI 
 
 ## Delivery and review rules
 
-Each epic is a separate local feature branch/patch against the last **approved** baseline and ends at its review gate. Do not merge or begin the next epic's implementation before approval. The implementation plan for F1 should be written **after this backlog is approved**, informed by the chosen basemap source and the Blazor.MapLibre API.
+Each epic is a separate local feature branch/patch against the last **approved** baseline and ends at its review gate. F1 is implemented in PR #5; complete its remaining browser acceptance checks before closing that gate. Do not merge or begin F2 implementation before approval. Later epics receive their own implementation plans, informed by the preceding review gate and the current Blazor.MapLibre API.
 
 Cross-phase decisions should be documented once in the appropriate architecture/UI document when settled. Backlog acceptance criteria describe intended behavior, not functionality that already exists.
 
