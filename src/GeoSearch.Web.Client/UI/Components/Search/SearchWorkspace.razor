@@ -19,7 +19,7 @@
     @if (ShowSuggestions)
     {
         <SearchSuggestionList Suggestions="Suggestions" HighlightedIndex="_searchState.HighlightedIndex"
-                              InputHint="SearchInputHint" OnSelected="ChooseSuggestionAsync" />
+                              InputHint="@SearchInputHint" OnSelected="ChooseSuggestionAsync" />
     }
 </div>
 <button type="button" class="gs-search-toggle" @onclick="OnToggle"
