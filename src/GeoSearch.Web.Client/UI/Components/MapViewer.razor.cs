@@ -26,14 +26,11 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
     private MapResultOverlay? _resultOverlay;
     private bool _resultOverlayReady;
     private bool _hasOverlayError;
-    private bool _isResultHovered;
     private bool _styleChecked;
     private bool _browserProbeStarted;
     private bool _browserChecked;
     private bool _supportsWebGl2;
     private bool _mapLoaded;
-    private bool _isErrorListenerRegistered;
-    private bool _hasTileError;
     private bool _mapLoadTimedOut;
     private bool _disposed;
     private string? _startupError;
@@ -214,28 +211,6 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
         }
     }
 
-    private async Task OnStyleLoadedAsync(EventArgs _)
-    {
-        if (_map is null || _isErrorListenerRegistered || _disposed)
-        {
-            return;
-        }
-
-        try
-        {
-            // Observe subsequent tile/source failures. Errors before style.load are
-            // covered by the preflight check and bounded load watchdog above.
-            await _map.AddAsyncListener<JsonElement>("error", OnMapErrorAsync);
-            _isErrorListenerRegistered = true;
-        }
-        catch (JSException exception)
-        {
-            LogMapErrorListenerFailure(Logger, exception);
-            _startupError = "The map could not finish initializing. Reload the page to try again.";
-            await InvokeAsync(StateHasChanged);
-        }
-    }
-
     private async Task OnMapLoadedAsync(EventArgs _)
     {
         if (_map is null || _startupError is not null || _disposed)
@@ -249,10 +224,7 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
         try
         {
             _resultOverlay = new MapResultOverlay(
-                _map, SelectKnownMapFeatureAsync, GetSelectionOffsetAsync, OnResultHoverChangedAsync,
-                Navigation.ToAbsoluteUri("map-icons/search-pin.png").ToString(),
-                Navigation.ToAbsoluteUri("map-icons/selected-pin.png").ToString());
-            await _resultOverlay.InitializeAsync();
+                _map, SelectKnownMapFeatureAsync, GetSelectionOffsetAsync);
             _resultOverlayReady = true;
             await UpdateOverlayAsync();
         }
@@ -277,17 +249,6 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
         return known && !_disposed
             ? OnFeatureSelected.InvokeAsync(feature)
             : Task.CompletedTask;
-    }
-
-    private Task OnResultHoverChangedAsync(bool hovered)
-    {
-        if (_disposed || _isResultHovered == hovered)
-        {
-            return Task.CompletedTask;
-        }
-
-        _isResultHovered = hovered;
-        return InvokeAsync(StateHasChanged);
     }
 
     // The canvas never resizes with the search pane. On portrait phones, place
@@ -332,17 +293,6 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
         }
     }
 
-    private Task OnMapErrorAsync(JsonElement _)
-    {
-        if (_disposed)
-        {
-            return Task.CompletedTask;
-        }
-
-        _hasTileError = true;
-        return InvokeAsync(StateHasChanged);
-    }
-
     [LoggerMessage(EventId = 1, Level = LogLevel.Warning,
         Message = "Could not load or validate map style at {StyleUrl}")]
     private static partial void LogMapStyleFailure(ILogger logger, Exception exception, string styleUrl);
@@ -351,15 +301,9 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
         Message = "Could not initialize the map browser module")]
     private static partial void LogMapBrowserFailure(ILogger logger, Exception exception);
 
-    [LoggerMessage(EventId = 3, Level = LogLevel.Error,
-        Message = "Could not register map error listener")]
-    private static partial void LogMapErrorListenerFailure(ILogger logger, Exception exception);
-
     [LoggerMessage(EventId = 4, Level = LogLevel.Error,
-        Message = "Could not update map result layers")]
+        Message = "Could not synchronize map result markers")]
     private static partial void LogMapOverlayFailure(ILogger logger, Exception exception);
-
-    private void DismissError() => _hasTileError = false;
 
     private void Reload() => Navigation.NavigateTo(Navigation.Uri, forceLoad: true);
 

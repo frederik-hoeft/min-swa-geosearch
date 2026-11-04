@@ -1,102 +1,60 @@
 ﻿using Community.Blazor.MapLibre;
 using Community.Blazor.MapLibre.Models;
 using Community.Blazor.MapLibre.Models.Camera;
-using Community.Blazor.MapLibre.Models.Feature;
-using Community.Blazor.MapLibre.Models.Image;
-using Community.Blazor.MapLibre.Models.Layers;
-using Community.Blazor.MapLibre.Models.Sources;
+using Community.Blazor.MapLibre.Models.Marker;
 using GeoSearch.Web.Client.Search.Model;
 using GeoSearch.Web.Shared.GeoJson;
-using OneOf;
-using System.Text.Json;
+using System.Text.Encodings.Web;
 
 namespace GeoSearch.Web.Client.UI.Components.Map;
 
 /// <summary>
-/// Owns the two GeoJSON sources and the MapLibre layers used for search results
-/// and a foreground inspected place. Search state and HTTP never live here.
+/// Reconciles the committed search projection with MapLibre's HTML markers.
+/// No HTTP requests or search-state transitions are owned by this class.
 /// </summary>
 internal sealed class MapResultOverlay(
-    MapLibre map, Func<GeoJsonFeature, Task> onSelected, Func<Task<PointLike?>> selectionOffset,
-    Func<bool, Task> onHoverChanged, string resultIconUrl, string selectedIconUrl)
+    MapLibre map, Func<GeoJsonFeature, Task> onSelected, Func<Task<PointLike?>> selectionOffset)
 {
-    private const string RESULTS_SOURCE = "gs-search-results";
-    private const string SELECTED_SOURCE = "gs-search-selection";
-    private const string RESULTS_LAYER = "gs-search-result-pins";
-    private const string SELECTED_LAYER = "gs-search-selected-pin";
-    private const string RESULTS_ICON = "gs-search-pin-image";
-    private const string SELECTED_ICON = "gs-search-selected-image";
     private const double DETAIL_ZOOM = 14.5;
 
     private readonly SemaphoreSlim _sync = new(1, 1);
+    private readonly Dictionary<string, (Guid MarkerId, GeoJsonFeature Feature, bool Selected)> _markers = new(StringComparer.Ordinal);
     private SearchMapState _current = SearchMapState.Empty;
-    private bool _initialized;
-
-    public async Task InitializeAsync()
-    {
-        // Blazor.MapLibre can load PNG icon assets directly into its sprite registry.
-        // Keep the features as GeoJSON rather than creating DOM markers/callbacks
-        // for each result; both sources and listeners survive query changes.
-        StyleImageMetadata imageMetadata = new() { PixelRatio = 2 };
-        await map.AddImage(RESULTS_ICON, resultIconUrl, imageMetadata);
-        await map.AddImage(SELECTED_ICON, selectedIconUrl, imageMetadata);
-        await map.AddSource(RESULTS_SOURCE, EmptySource());
-        await map.AddSource(SELECTED_SOURCE, EmptySource());
-        await map.AddLayer(new SymbolLayer
-        {
-            Id = RESULTS_LAYER,
-            Source = RESULTS_SOURCE,
-            Layout = PinLayout(RESULTS_ICON)
-        });
-        await map.AddLayer(new SymbolLayer
-        {
-            Id = SELECTED_LAYER,
-            Source = SELECTED_SOURCE,
-            Layout = PinLayout(SELECTED_ICON, 0.65)
-        });
-
-        // The wrapper serializes browser events before handing them to .NET.
-        // Read the minimal ID from JSON rather than binding the entire event
-        // (including optional vendor-specific fields) to a rigid .NET model.
-        await map.AddAsyncListener<JsonElement>("click", OnMarkerClickedAsync, RESULTS_LAYER);
-        await map.AddAsyncListener<JsonElement>("click", OnMarkerClickedAsync, SELECTED_LAYER);
-        await map.AddAsyncListener<JsonElement>("mouseenter", OnHoverEnteredAsync, RESULTS_LAYER);
-        await map.AddAsyncListener<JsonElement>("mouseenter", OnHoverEnteredAsync, SELECTED_LAYER);
-        await map.AddAsyncListener<JsonElement>("mouseleave", OnHoverLeftAsync, RESULTS_LAYER);
-        await map.AddAsyncListener<JsonElement>("mouseleave", OnHoverLeftAsync, SELECTED_LAYER);
-        _initialized = true;
-    }
-
-    private static SymbolLayerLayout PinLayout(string iconId, double size = 0.5) => new()
-    {
-        IconImage = iconId,
-        IconSize = size,
-        IconAnchor = "bottom",
-        IconAllowOverlap = true,
-        IconIgnorePlacement = true
-    };
 
     public async Task ApplyAsync(SearchMapState state)
     {
         await _sync.WaitAsync();
         try
         {
-            if (!_initialized)
+            // A single marker per feature ID: the selected marker replaces its
+            // normal counterpart instead of appearing twice at the same point.
+            Dictionary<string, (GeoJsonFeature Feature, bool Selected)> desired = ProjectMarkers(state);
+            foreach (KeyValuePair<string, (Guid MarkerId, GeoJsonFeature Feature, bool Selected)> current in _markers.ToArray())
             {
-                return;
+                if (!desired.TryGetValue(current.Key, out (GeoJsonFeature Feature, bool Selected) next) ||
+                    !SameAppearance(current.Value.Feature, current.Value.Selected, next.Feature, next.Selected))
+                {
+                    await map.RemoveMarker(current.Value.MarkerId);
+                    _markers.Remove(current.Key);
+                }
             }
 
-            SearchMapState previous = _current;
-            bool selectedChanged = !SameFeature(previous.SelectedFeature, state.SelectedFeature);
-            if (!ReferenceEquals(previous.Results, state.Results) || selectedChanged)
+            foreach (KeyValuePair<string, (GeoJsonFeature Feature, bool Selected)> item in desired)
             {
-                string? selectedId = state.SelectedFeature?.Properties.Id;
-                await map.SetSourceData(RESULTS_SOURCE, SourceFrom(state.Results, selectedId));
-                await map.SetSourceData(SELECTED_SOURCE, SourceFrom(state.SelectedFeature));
+                if (_markers.ContainsKey(item.Key) || !TryGetPosition(item.Value.Feature, out LngLat? point) || point is null)
+                {
+                    continue;
+                }
+
+                string featureId = item.Key;
+                MarkerOptions options = CreateMarkerOptions(item.Value.Feature, item.Value.Selected, () => OnMarkerClickedAsync(featureId));
+                Guid markerId = await map.AddMarker(options, point);
+                _markers.Add(featureId, (markerId, item.Value.Feature, item.Value.Selected));
             }
 
+            bool selectionChanged = !SameFeature(_current.SelectedFeature, state.SelectedFeature);
             _current = state;
-            if (selectedChanged && TryGetPosition(state.SelectedFeature, out LngLat? target) && target is not null)
+            if (selectionChanged && TryGetPosition(state.SelectedFeature, out LngLat? target) && target is not null)
             {
                 double zoom = await map.GetZoom();
                 await map.EaseTo(new EaseToOptions
@@ -114,10 +72,11 @@ internal sealed class MapResultOverlay(
         }
     }
 
-    private async Task OnMarkerClickedAsync(JsonElement clicked)
+    private async Task OnMarkerClickedAsync(string id)
     {
-        string? id = ClickedFeatureId(clicked);
-        if (id is null)
+        // An event already in flight must not select a marker removed by a
+        // newer committed query.
+        if (!_markers.ContainsKey(id))
         {
             return;
         }
@@ -131,87 +90,54 @@ internal sealed class MapResultOverlay(
         }
     }
 
-    private Task OnHoverEnteredAsync(JsonElement _) => onHoverChanged(true);
-
-    private Task OnHoverLeftAsync(JsonElement _) => onHoverChanged(false);
-
-    internal static string? ClickedFeatureId(JsonElement clicked)
+    internal static Dictionary<string, (GeoJsonFeature Feature, bool Selected)> ProjectMarkers(SearchMapState state)
     {
-        if (clicked.ValueKind != JsonValueKind.Object ||
-            !clicked.TryGetProperty("features", out JsonElement features) ||
-            features.ValueKind != JsonValueKind.Array)
+        Dictionary<string, (GeoJsonFeature Feature, bool Selected)> projected = new(StringComparer.Ordinal);
+        foreach (GeoJsonFeature feature in state.Results)
         {
-            return null;
-        }
-
-        foreach (JsonElement feature in features.EnumerateArray())
-        {
-            if (feature.ValueKind != JsonValueKind.Object)
+            if (!string.IsNullOrWhiteSpace(feature.Properties.Id) &&
+                TryGetPosition(feature, out _))
             {
-                continue;
-            }
-
-            // Our API ID is mirrored in properties.id. Prefer it to the
-            // renderer's feature.id, which some GeoJSON pipelines may coerce.
-            if (feature.TryGetProperty("properties", out JsonElement properties) &&
-                properties.ValueKind == JsonValueKind.Object &&
-                properties.TryGetProperty("id", out JsonElement propertyId) &&
-                ReadId(propertyId) is { Length: > 0 } id)
-            {
-                return id;
-            }
-
-            if (feature.TryGetProperty("id", out JsonElement featureId) &&
-                ReadId(featureId) is { Length: > 0 } fallbackId)
-            {
-                return fallbackId;
+                projected.TryAdd(feature.Properties.Id, (feature, false));
             }
         }
 
-        return null;
+        if (state.SelectedFeature is { } selected && !string.IsNullOrWhiteSpace(selected.Properties.Id) &&
+            TryGetPosition(selected, out _))
+        {
+            projected[selected.Properties.Id] = (selected, true);
+        }
+
+        return projected;
     }
 
-    private static string? ReadId(JsonElement value) => value.ValueKind switch
+    internal static MarkerOptions CreateMarkerOptions(GeoJsonFeature feature, bool selected, Func<Task> onClick)
     {
-        JsonValueKind.String => value.GetString(),
-        JsonValueKind.Number => value.GetRawText(),
-        _ => null
-    };
+        string label = HtmlEncoder.Default.Encode(feature.Properties.Label);
+        return new MarkerOptions
+        {
+            Anchor = MarkerAnchor.Bottom,
+            ClassName = selected ? "gs-search-marker gs-search-marker--selected" : "gs-search-marker",
+            Extensions = new MarkerOptionsExtensions
+            {
+                // This is a real button, with native keyboard activation and an
+                // accessible label. User-provided labels are HTML-encoded.
+                HtmlContent = $"<button class=\"gs-map-pin\" type=\"button\" aria-label=\"Show {label} on map\" title=\"{label}\"><span class=\"gs-map-pin__head\" aria-hidden=\"true\"><span class=\"gs-map-pin__center\"></span></span></button>"
+            },
+            // The wrapper's onMarker click path serializes a small payload,
+            // unlike the map-level event handler that serializes a circular Map.
+            OnClickAsync = _ => onClick()
+        };
+    }
+
+    private static bool SameAppearance(GeoJsonFeature first, bool firstSelected, GeoJsonFeature second, bool secondSelected) =>
+        firstSelected == secondSelected &&
+        first.Properties.Label == second.Properties.Label &&
+        first.Geometry.Coordinates.SequenceEqual(second.Geometry.Coordinates);
 
     private static bool SameFeature(GeoJsonFeature? first, GeoJsonFeature? second) =>
         first?.Properties.Id == second?.Properties.Id &&
         (first is null || ReferenceEquals(first, second));
-
-    private static GeoJsonSource EmptySource() => SourceFrom([]);
-
-    private static GeoJsonSource SourceFrom(GeoJsonFeature? feature) =>
-        SourceFrom(feature is null ? [] : [feature]);
-
-    private static GeoJsonSource SourceFrom(IReadOnlyList<GeoJsonFeature> features, string? excludeId = null) =>
-        new() { Data = OneOf<IFeature, string>.FromT0(ToFeatureCollection(features, excludeId)) };
-
-    internal static FeatureCollection ToFeatureCollection(IReadOnlyList<GeoJsonFeature> features, string? excludeId = null)
-    {
-        FeatureCollection result = new();
-        HashSet<string> ids = new(StringComparer.Ordinal);
-        foreach (GeoJsonFeature feature in features)
-        {
-            string id = feature.Properties.Id;
-            if (string.IsNullOrWhiteSpace(id) || id == excludeId ||
-                !TryGetPosition(feature, out LngLat? position) || position is null || !ids.Add(id))
-            {
-                continue;
-            }
-
-            result.Features.Add(new FeatureFeature
-            {
-                Id = id,
-                Geometry = new PointGeometry { Coordinates = [position.Longitude, position.Latitude] },
-                Properties = new Dictionary<string, object> { ["id"] = id }
-            });
-        }
-        return result;
-    }
 
     private static bool TryGetPosition(GeoJsonFeature? feature, out LngLat? position)
     {

@@ -1,4 +1,4 @@
-@use "../Styles/core/breakpoints" as bp;
+﻿@use "../Styles/core/breakpoints" as bp;
 
 .gs-map-viewer {
     position: relative;
@@ -49,9 +49,9 @@
     .gs-map-tile-error {
         position: absolute;
         z-index: 3;
-        top: 1rem;
-        left: 1rem;
-        max-width: min(22rem, calc(100% - 6rem));
+        right: 0.75rem;
+        bottom: 2.5rem;
+        max-width: min(22rem, calc(100% - 1.5rem));
         padding: 0.75rem 1rem;
         border-radius: 9px;
         background: var(--mud-palette-surface);
@@ -100,8 +100,91 @@
     }
 }
 
-// MapLibre owns the canvas DOM. The pointer state is driven by delegated
-// layer hover callbacks instead of registering a handler for every feature.
-.gs-map-viewer--marker-hover .maplibregl-canvas {
-    cursor: pointer !important;
+
+// MapLibre creates these marker elements outside Razor rendering. Keep their
+// styles in the map component SCSS and use MudBlazor palette tokens for both themes.
+.gs-map-viewer ::deep .maplibregl-marker.gs-search-marker {
+    --gs-marker-fill: var(--mud-palette-primary);
+    --gs-marker-ring: var(--mud-palette-surface);
+
+    &--selected {
+        --gs-marker-fill: var(--mud-palette-tertiary);
+        --gs-marker-ring: var(--mud-palette-text-primary);
+        z-index: 2;
+    }
+
+    .gs-map-pin {
+        position: relative;
+        display: block;
+        width: 2.7rem;
+        height: 3.2rem;
+        padding: 0;
+        border: none;
+        background: transparent;
+        color: var(--gs-marker-fill);
+        cursor: pointer;
+        filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.3));
+        transition: scale 150ms ease, filter 150ms ease;
+
+        &::after {
+            content: "";
+            position: absolute;
+            z-index: 0;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 0;
+            transform: translateX(-50%);
+            border-right: 0.7rem solid transparent;
+            border-left: 0.7rem solid transparent;
+            border-top: 1.1rem solid var(--gs-marker-fill);
+        }
+
+        &:hover, &:focus-visible {
+            scale: 1.12;
+            filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.4));
+        }
+
+        &:focus-visible {
+            outline: 3px solid var(--mud-palette-info);
+            outline-offset: 2px;
+            border-radius: 4px;
+        }
+    }
+
+    .gs-map-pin__head {
+        position: absolute;
+        z-index: 1;
+        top: 0;
+        left: 50%;
+        display: grid;
+        place-items: center;
+        width: 2.7rem;
+        height: 2.7rem;
+        transform: translateX(-50%);
+        border: 3px solid var(--gs-marker-ring);
+        border-radius: 50%;
+        background: var(--gs-marker-fill);
+    }
+
+    .gs-map-pin__center {
+        width: 0.7rem;
+        height: 0.7rem;
+        border-radius: 50%;
+        background: var(--gs-marker-ring);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .gs-map-viewer ::deep .gs-map-pin { transition: none; }
+}
+
+// On portrait phones the bottom sheet covers the lower map; keep notices above it.
+@media (max-width: bp.$phone-max) and (orientation: portrait) {
+    .gs-map-viewer .gs-map-tile-error {
+        top: 6rem;
+        bottom: auto;
+        right: 0.6rem;
+        max-width: calc(100% - 1.2rem);
+    }
 }
