@@ -12,8 +12,12 @@
         align-items: center;
         gap: 0.25rem;
         min-width: 0;
+        margin-left: auto;
 
         .mud-nav-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             min-height: 2.75rem;
             padding: 0.5rem 0.875rem;
             border-radius: 8px;

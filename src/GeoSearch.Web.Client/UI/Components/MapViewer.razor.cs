@@ -83,6 +83,16 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
         return InvokeAsync(StateHasChanged);
     }
 
+    // A change to the surrounding workspace grid is not a window resize.
+    // Notify MapLibre explicitly so its canvas and camera match the new bounds.
+    public async ValueTask ResizeAsync()
+    {
+        if (_mapLoaded && _map is not null)
+        {
+            await _map.Resize();
+        }
+    }
+
     private void DismissError() => _hasTileError = false;
 
     public async ValueTask DisposeAsync()
