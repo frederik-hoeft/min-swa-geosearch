@@ -1,6 +1,10 @@
 @use "../Styles/core/breakpoints" as bp;
 
 .gs-map-workspace {
+    // This landmark is a programmatic focus destination when mobile search
+    // commits. It is excluded from sequential keyboard navigation.
+    &:focus { outline: none; }
+
     position: relative;
     isolation: isolate;
     width: 100%;

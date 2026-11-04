@@ -224,7 +224,7 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
         try
         {
             _resultOverlay = new MapResultOverlay(
-                _map, SelectKnownMapFeatureAsync, GetSelectionOffsetAsync);
+                _map, SelectKnownMapFeatureAsync, GetSelectionOffsetPixelsAsync);
             _resultOverlayReady = true;
             await UpdateOverlayAsync();
         }
@@ -255,23 +255,18 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
     // a selected point in the exposed upper portion rather than behind the
     // expanded bottom sheet. This uses MudBlazor's managed viewport service,
     // without additional application-specific JavaScript or listeners.
-    private async Task<PointLike?> GetSelectionOffsetAsync()
+    private async Task<double> GetSelectionOffsetPixelsAsync()
     {
-        if (!SearchPanelExpanded || _disposed)
+        if (!SearchPanelExpanded || _disposed || await Viewport.GetCurrentBreakpointAsync() != Breakpoint.Xs)
         {
-            return null;
-        }
-
-        Breakpoint breakpoint = await Viewport.GetCurrentBreakpointAsync();
-        if (breakpoint != Breakpoint.Xs)
-        {
-            return null;
+            return 0;
         }
 
         BrowserWindowSize size = await Viewport.GetCurrentBrowserWindowSizeAsync();
-        return size.Height > size.Width
-            ? new PointLike(0, -size.Height * 0.32)
-            : null;
+        // With the portrait bottom sheet at 68% of the map workspace,
+        // shift the point into the upper, unobstructed portion. Use a
+        // viewport-based distance without resizing MapLibre's canvas.
+        return size.Height > size.Width ? size.Height * 0.30 : 0;
     }
 
     private async Task UpdateOverlayAsync()

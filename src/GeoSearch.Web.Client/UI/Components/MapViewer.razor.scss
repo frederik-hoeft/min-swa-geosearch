@@ -112,8 +112,8 @@
     height: 3rem;
 
     &--selected {
-        --gs-marker-fill: var(--mud-palette-tertiary);
-        --gs-marker-ring: var(--mud-palette-text-primary);
+        --gs-marker-fill: var(--mud-palette-error);
+        --gs-marker-ring: var(--mud-palette-surface);
         z-index: 2;
     }
 

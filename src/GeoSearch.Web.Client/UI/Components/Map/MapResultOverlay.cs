@@ -13,7 +13,7 @@ namespace GeoSearch.Web.Client.UI.Components.Map;
 /// No HTTP requests or search-state transitions are owned by this class.
 /// </summary>
 internal sealed class MapResultOverlay(
-    MapLibre map, Func<GeoJsonFeature, Task> onSelected, Func<Task<PointLike?>> selectionOffset)
+    MapLibre map, Func<GeoJsonFeature, Task> onSelected, Func<Task<double>> selectionOffsetPixels)
 {
     private const double DETAIL_ZOOM = 14.5;
 
@@ -57,12 +57,17 @@ internal sealed class MapResultOverlay(
             if (selectionChanged && TryGetPosition(state.SelectedFeature, out LngLat? target) && target is not null)
             {
                 double zoom = await map.GetZoom();
+                double targetZoom = Math.Max(zoom, DETAIL_ZOOM);
+                double upwardOffsetPixels = await selectionOffsetPixels();
                 await map.EaseTo(new EaseToOptions
                 {
-                    Center = target,
-                    Zoom = Math.Max(zoom, DETAIL_ZOOM),
-                    Duration = 450,
-                    Offset = await selectionOffset()
+                    // The wrapper's PointLike is serialized as {x,y}, whereas
+                    // MapLibre's easeTo offset expects a point-geometry value.
+                    // Move the geographic camera center instead: no persistent
+                    // padding and no additional JavaScript interoperability.
+                    Center = SelectionCamera.GetCenter(target, targetZoom, upwardOffsetPixels),
+                    Zoom = targetZoom,
+                    Duration = 450
                 });
             }
         }

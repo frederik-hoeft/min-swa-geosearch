@@ -9,6 +9,7 @@ namespace GeoSearch.Web.Client.UI.Pages;
 public partial class Map : ComponentBase, IAsyncDisposable
 {
     private ElementReference _searchPanel;
+    private ElementReference _workspaceFocusTarget;
     private SearchWorkspace? _searchWorkspace;
     private IJSObjectReference? _module;
     private IJSObjectReference? _observer;
@@ -93,7 +94,17 @@ public partial class Map : ComponentBase, IAsyncDisposable
     private Task OnMapFeatureSelectedAsync(GeoJsonFeature feature) =>
         _searchWorkspace?.SelectMapFeatureAsync(feature) ?? Task.CompletedTask;
 
-    private void ExpandOnCommit() => _isSearchPanelExpanded = true;
+    private async Task ExpandOnCommitAsync()
+    {
+        _isSearchPanelExpanded = true;
+        if (_temporaryInteractionExpanded && !_disposed)
+        {
+            // A committed search is no longer an edit. Move focus outside the
+            // mobile input overlay to dismiss the software keyboard and return
+            // the sheet to its regular (manually expanded) result height.
+            await _workspaceFocusTarget.FocusAsync(preventScroll: true);
+        }
+    }
 
     private async Task ToggleSearchPanelAsync()
     {
