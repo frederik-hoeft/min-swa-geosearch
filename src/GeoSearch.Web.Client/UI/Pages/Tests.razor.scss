@@ -36,8 +36,16 @@
     letter-spacing: 0.13em;
 }
 
-.gs-tests-stat.mud-paper {
-    height: 100%;
+.gs-tests-summary {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+// MudPaper and MudTable render their own elements without the page's CSS-isolation
+// attribute. Anchor deep selectors to the page instead of using global overrides.
+.gs-tests-page ::deep .gs-tests-stat.mud-paper {
+    min-width: 0;
     min-height: 8.5rem;
     padding: 1.3rem;
     border: 1px solid var(--gs-border);
@@ -71,14 +79,14 @@
     font-weight: 500;
 }
 
-.gs-tests-panel.mud-paper,
-.gs-tests-results-panel.mud-paper {
+.gs-tests-page ::deep .gs-tests-panel.mud-paper,
+.gs-tests-page ::deep .gs-tests-results-panel.mud-paper {
     border: 1px solid var(--gs-border);
     border-radius: 14px;
     background: var(--mud-palette-surface);
 }
 
-.gs-tests-panel {
+.gs-tests-page ::deep .gs-tests-panel.mud-paper {
     padding: 1.4rem;
 }
 
@@ -108,10 +116,10 @@
     align-items: center;
     flex-wrap: wrap;
     gap: 0.75rem;
+}
 
-    .gs-tests-samples {
-        min-width: 11rem;
-    }
+.gs-tests-page ::deep .gs-tests-samples {
+    min-width: 11rem;
 }
 
 .gs-tests-progress {
@@ -128,7 +136,8 @@
     margin-top: 1rem;
 }
 
-.gs-tests-results-panel {
+.gs-tests-page ::deep .gs-tests-results-panel.mud-paper {
+    min-width: 0;
     overflow: hidden;
 }
 
@@ -151,13 +160,14 @@
     }
 }
 
-.gs-tests-table {
+.gs-tests-page ::deep .gs-tests-table {
     .mud-table-container {
+        max-width: 100%;
         overflow-x: auto;
     }
 
     table {
-        min-width: 850px;
+        min-width: 1060px;
     }
 
     th {
@@ -169,8 +179,33 @@
     }
 
     td {
-        padding: 1rem 0.8rem;
+        padding: 1rem 1.2rem;
         vertical-align: top;
+    }
+
+    th,
+    td {
+        // The fixed floor prevents MudTable from compressing neighboring labels,
+        // while its container retains horizontal scrolling on narrow screens.
+        &.gs-tests-col-query {
+            min-width: 12rem;
+        }
+
+        &.gs-tests-col-expected {
+            min-width: 14rem;
+        }
+
+        &.gs-tests-col-observed {
+            min-width: 19rem;
+        }
+
+        &.gs-tests-col-latency {
+            min-width: 14rem;
+        }
+
+        &.gs-tests-col-status {
+            min-width: 10rem;
+        }
     }
 
     .mud-chip {
@@ -217,8 +252,8 @@
 
 .gs-tests-timings {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.65rem;
+    grid-template-columns: repeat(3, minmax(3.25rem, 1fr));
+    gap: 0.75rem;
     margin-bottom: 0.35rem;
     font-variant-numeric: tabular-nums;
 
@@ -248,53 +283,29 @@
     overflow-wrap: anywhere;
 }
 
-.gs-tests-footnote {
+.gs-tests-page ::deep .gs-tests-footnote.mud-alert {
     font-size: 0.9rem;
     line-height: 1.6;
 }
 
+@media (max-width: 1199px) {
+    .gs-tests-summary {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
 @media (max-width: bp.$tablet-max) {
+    .gs-tests-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .gs-tests-actions {
         width: 100%;
     }
 }
 
-.gs-tests-notes-panel.mud-paper {
-    padding: 1.4rem;
-    border: 1px solid var(--gs-border);
-    border-radius: 14px;
-    background: var(--mud-palette-surface);
-
-    h2 {
-        margin: 0 0 0.5rem;
-        font-size: 1.15rem;
-    }
-
-    > p {
-        margin: 0 0 1.2rem;
-        color: var(--gs-muted);
-        font-size: 0.86rem;
-        line-height: 1.6;
-    }
-}
-
-.gs-tests-note {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    height: 100%;
-    padding: 1rem;
-    border: 1px solid var(--gs-border);
-    border-radius: 10px;
-
-    > strong {
-        color: var(--gs-ink);
-    }
-
-    > span {
-        min-height: 2.5rem;
-        color: var(--gs-muted);
-        font-size: 0.81rem;
-        overflow-wrap: anywhere;
+@media (max-width: bp.$phone-max) {
+    .gs-tests-summary {
+        grid-template-columns: minmax(0, 1fr);
     }
 }

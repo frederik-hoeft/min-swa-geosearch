@@ -162,13 +162,36 @@ public sealed class SearchFixtureBenchmarkServiceTests
     }
 
     [TestMethod]
-    public async Task OnlyFiveOrTenSamplesCanBeRequestedAsync()
+    public async Task OnlySupportedSampleCountsCanBeRequestedAsync()
     {
         using HttpClient client = CreateClient((_, _) => Task.FromResult(GeoJsonResponse("poi:1", "Zoo")));
         SearchFixtureBenchmarkService service = new(client);
 
         await Assert.ThrowsExactlyAsync<ArgumentOutOfRangeException>(async () => await service.RunAsync(SearchFixtureCatalog.All[0], 0));
         await Assert.ThrowsExactlyAsync<ArgumentOutOfRangeException>(async () => await service.RunAsync(SearchFixtureCatalog.All[0], 11));
+        await Assert.ThrowsExactlyAsync<ArgumentOutOfRangeException>(async () => await service.RunAsync(SearchFixtureCatalog.All[0], 26));
+        await Assert.ThrowsExactlyAsync<ArgumentOutOfRangeException>(async () => await service.RunAsync(SearchFixtureCatalog.All[0], 101));
+    }
+
+    [TestMethod]
+    public async Task LargerRunsExecuteAllRequestedSamplesAsync()
+    {
+        int calls = 0;
+        using HttpClient client = CreateClient((_, _) =>
+        {
+            calls++;
+            return Task.FromResult(GeoJsonResponse("poi:1", "Zoo"));
+        });
+        SearchFixtureBenchmarkService service = new(client);
+
+        foreach (int samples in new[] { 25, 100 })
+        {
+            SearchFixtureResult result = await service.RunAsync(SearchFixtureCatalog.All[8], samples);
+            Assert.AreEqual(samples, result.Attempts);
+            Assert.AreEqual(samples, result.SuccessfulRequests);
+        }
+
+        Assert.AreEqual(125, calls);
     }
 
     private static HttpClient CreateClient(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> respond)

@@ -19,9 +19,9 @@ public sealed class SearchFixtureBenchmarkService(HttpClient httpClient)
     public async Task<SearchFixtureResult> RunAsync(SearchFixture fixture, int samples, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(fixture);
-        if (samples is not (5 or 10))
+        if (samples is not (5 or 10 or 25 or 100))
         {
-            throw new ArgumentOutOfRangeException(nameof(samples), samples, "Use five or ten samples per query.");
+            throw new ArgumentOutOfRangeException(nameof(samples), samples, "Use 5, 10, 25, or 100 samples per query.");
         }
 
         return await MeasureAsync(fixture, samples, cancellationToken);

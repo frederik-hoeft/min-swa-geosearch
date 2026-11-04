@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using MudBlazor;
+using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 
@@ -11,8 +12,8 @@ namespace GeoSearch.Web.Client.UI.Pages;
 public sealed partial class Tests : ComponentBase, IDisposable
 {
     private readonly Dictionary<string, SearchFixtureResult> _results = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, string> _explanations = new(StringComparer.Ordinal);
     private CancellationTokenSource? _runCancellation;
+    private TimeSpan? _lastRunDuration;
     private string? ActiveQuery { get; set; }
     private string? CopyError { get; set; }
     private bool IsRunning { get; set; }
@@ -70,11 +71,14 @@ public sealed partial class Tests : ComponentBase, IDisposable
 
     private SearchFixtureResult? GetResult(SearchFixture fixture) => _results.GetValueOrDefault(fixture.Query);
 
-    private string GetExplanation(SearchFixture fixture) => _explanations.GetValueOrDefault(fixture.Query, string.Empty);
-
-    private void SetExplanation(SearchFixture fixture, string explanation) => _explanations[fixture.Query] = explanation;
-
     private static string FormatMs(double? duration) => duration?.ToString("F1", CultureInfo.InvariantCulture) ?? "—";
+
+    private static string FormatDuration(TimeSpan? elapsed) => elapsed switch
+    {
+        null => "—",
+        { TotalMinutes: >= 1 } time => $"{(int)time.TotalMinutes}m {time.Seconds:D2}s",
+        { } time => $"{time.TotalSeconds.ToString("F1", CultureInfo.InvariantCulture)} s",
+    };
 
     private static Color StatusColor(SearchFixtureResult result) => result switch
     {
@@ -92,7 +96,7 @@ public sealed partial class Tests : ComponentBase, IDisposable
         { FailedRequests: > 0 } => "Partial",
         { TopResultVaried: true } or { SnapshotVaried: true } => "Inconsistent",
         { EmptyResponses: > 0 } => "No/variable matches",
-        { WorstMs: >= 300 } => "Above target",
+        { WorstMs: >= 300 } => "E2E ≥ 300 ms",
         _ => "Measured",
     };
 
@@ -104,10 +108,12 @@ public sealed partial class Tests : ComponentBase, IDisposable
         }
 
         _results.Clear();
+        _lastRunDuration = null;
         CopyError = null;
         WasCanceled = false;
         IsRunning = true;
         _runCancellation = new CancellationTokenSource();
+        Stopwatch runStopwatch = Stopwatch.StartNew();
 
         try
         {
@@ -126,6 +132,8 @@ public sealed partial class Tests : ComponentBase, IDisposable
         }
         finally
         {
+            runStopwatch.Stop();
+            _lastRunDuration = runStopwatch.Elapsed;
             ActiveQuery = null;
             IsRunning = false;
             _runCancellation.Dispose();
@@ -155,8 +163,8 @@ public sealed partial class Tests : ComponentBase, IDisposable
         output.AppendLine("## Lab 2 search fixture observations");
         output.AppendLine();
         output.AppendLine(CultureInfo.InvariantCulture, $"Measured: {DateTimeOffset.Now:yyyy-MM-dd HH:mm zzz}; browser-to-API, sequential HTTP requests, {Repetitions} requested per fixture; no warm-up.");
-        output.AppendLine(CultureInfo.InvariantCulture, $"Snapshot: {SnapshotLabel}; successful requests: {SuccessfulRequests}/{AttemptedRequests}; overall average: {FormatMs(OverallAverageMs)} ms.");
-        output.AppendLine("Timing: .NET Stopwatch around full HTTP response (includes network/download, excludes JSON parsing). Failed requests are excluded from timing statistics.");
+        output.AppendLine(CultureInfo.InvariantCulture, $"Snapshot: {SnapshotLabel}; successful requests: {SuccessfulRequests}/{AttemptedRequests}; overall average: {FormatMs(OverallAverageMs)} ms; total runtime: {FormatDuration(_lastRunDuration)}.");
+        output.AppendLine("Per-request timing: end-to-end browser-to-API HTTP (including browser, network, reverse proxy and TLS overhead where applicable), excluding JSON parsing and UI rendering. Total runtime: wall-clock duration for the full run, including processing between requests. Failed requests are excluded from per-request latency statistics. Not a raw backend benchmark.");
         output.AppendLine();
         output.AppendLine("| Query | Expected | Observed top result (name / type / ID) | Best (ms) | Average (ms) | Worst (ms) | Median (ms) | Requests | Snapshot | Notes |");
         output.AppendLine("| --- | --- | --- | ---: | ---: | ---: | ---: | --- | --- | --- |");
@@ -170,10 +178,7 @@ public sealed partial class Tests : ComponentBase, IDisposable
             string note = result is null ? "Pending" : StatusLabel(result);
             if (fixture.KnownRankingIssue)
             {
-                string explanation = GetExplanation(fixture);
-                note += string.IsNullOrWhiteSpace(explanation)
-                    ? "; lab-identified ranking issue; explanation not yet recorded"
-                    : $"; explanation: {explanation}";
+                note += "; lab-identified ranking issue";
             }
 
             if (result?.TopResultVaried == true)
