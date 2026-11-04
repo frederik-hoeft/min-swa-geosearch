@@ -72,10 +72,9 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
             return;
         }
 
-        await _map.AddControl(ControlType.NavigationControl, ControlPosition.TopRight, new { showCompass = false });
-
-        // Keep OSM attribution visible above the mobile bottom sheet.
+        // Add attribution first so it sits above the navigation controls in the top-right stack.
         await _map.AddControl(ControlType.AttributionControl, ControlPosition.TopRight, new { compact = false });
+        await _map.AddControl(ControlType.NavigationControl, ControlPosition.TopRight, new { showCompass = false });
         _mapLoaded = true;
         StateHasChanged();
     }

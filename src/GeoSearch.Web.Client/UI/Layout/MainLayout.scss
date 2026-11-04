@@ -1,3 +1,5 @@
+@use "../Styles/core/breakpoints" as bp;
+
 .gs-appbar.mud-appbar {
     border-bottom: 1px solid var(--gs-border);
     box-shadow: none;
@@ -42,7 +44,7 @@
     padding: clamp(1.5rem, 4vw, 3.5rem);
 }
 
-@media (max-width: 540px) {
+@media (max-width: bp.$compact-navigation-max) {
     .gs-appbar.mud-appbar {
         .mud-toolbar {
             gap: 0.5rem;
@@ -72,7 +74,7 @@
     transform: translateY(0);
 }
 
-@media (max-width: 420px) {
+@media (max-width: bp.$compact-brand-max) {
     .gs-appbar.mud-appbar .gs-brand-name {
         display: none;
     }

@@ -1,3 +1,5 @@
+@use "../Styles/core/breakpoints" as bp;
+
 .gs-landing-page {
     min-width: 0;
 }
@@ -142,7 +144,7 @@
     }
 }
 
-@media (max-width: 900px) {
+@media (max-width: bp.$landing-compact-hero-max) {
     .gs-landing-hero {
         grid-template-columns: minmax(0, 1fr) minmax(11rem, 0.6fr);
     }
@@ -152,7 +154,7 @@
     }
 }
 
-@media (max-width: 720px) {
+@media (max-width: bp.$landing-stacked-max) {
     .gs-landing-hero {
         grid-template-columns: 1fr;
     }
@@ -170,7 +172,7 @@
     }
 }
 
-@media (max-width: 420px) {
+@media (max-width: bp.$compact-brand-max) {
     .gs-hero-content {
         padding: 1.5rem;
 

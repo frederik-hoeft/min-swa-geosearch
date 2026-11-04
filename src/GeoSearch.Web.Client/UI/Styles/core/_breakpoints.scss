@@ -1,0 +1,12 @@
+// Shared responsive boundaries. Keep these aligned with MudBlazor's xs/sm/md widths.
+// Sass variables are compile-time: CSS custom properties cannot be used in @media.
+$phone-max: 599px;           // xs (below 600px)
+$tablet-min: $phone-max + 1px;
+$tablet-max: 959px;          // sm (below 960px)
+
+// Layout-specific transitions shared through this module, not duplicated in pages.
+$landing-compact-hero-max: 900px;
+$landing-stacked-max: 720px;
+$compact-navigation-max: 540px;
+$compact-brand-max: 420px;
+$short-touch-viewport-max: 500px;

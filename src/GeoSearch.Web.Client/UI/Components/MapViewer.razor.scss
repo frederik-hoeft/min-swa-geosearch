@@ -1,3 +1,5 @@
+@use "../Styles/core/breakpoints" as bp;
+
 .gs-map-viewer {
     position: relative;
     width: 100%;
@@ -60,9 +62,8 @@
     .gs-map-report-link {
         position: absolute;
         z-index: 2;
-        // Keep the report link above the search overlay, below the map controls.
         right: 0.6rem;
-        top: 6.5rem;
+        bottom: 0.6rem;
         padding: 0.2rem 0.45rem;
         background: rgba(255, 255, 255, 0.95);
         border-radius: 3px;
@@ -74,5 +75,16 @@
     // MapLibre creates these elements inside the map component, outside Razor's scope.
     ::deep .maplibregl-ctrl-attrib {
         font-size: 11px;
+    }
+}
+
+// The portrait-phone bottom sheet leaves the top-left corner of the map available.
+// In landscape, the search overlay occupies that corner: keep the desktop position.
+@media (max-width: bp.$phone-max) and (orientation: portrait) {
+    .gs-map-viewer .gs-map-report-link {
+        right: auto;
+        bottom: auto;
+        left: 0.6rem;
+        top: 0.6rem;
     }
 }
