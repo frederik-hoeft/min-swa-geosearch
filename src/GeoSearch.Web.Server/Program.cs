@@ -1,6 +1,7 @@
 ﻿using GeoSearch.Web.Server.Data;
 using GeoSearch.Web.Server.Data.Search;
 using GeoSearch.Web.Server.Search;
+using GeoSearch.Web.Shared.Api;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Data;
@@ -25,7 +26,7 @@ builder.Services.AddControllers();
 // Preserve the lab's error envelope for malformed GIS query parameters.
 builder.Services.Configure<ApiBehaviorOptions>(options =>
     options.InvalidModelStateResponseFactory = _ =>
-        new BadRequestObjectResult(new GeoSearch.Web.Shared.Api.ApiError("Invalid request parameters.")));
+        new BadRequestObjectResult(new ApiError("Invalid request parameters.")));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
