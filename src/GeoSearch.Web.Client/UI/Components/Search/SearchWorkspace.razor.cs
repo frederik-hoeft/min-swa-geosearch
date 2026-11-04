@@ -333,7 +333,12 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
             return;
         }
 
-        await SelectPlaceAsync(feature);
+        // Re-selecting the current map pin is not a new list selection. In
+        // particular, a place chosen directly from autocomplete must keep its
+        // previous query's markers hidden until Back is requested.
+        bool showReturnResults = _searchState.Panel is not PlaceSearchPanel current ||
+            current.Feature.Properties.Id != id || current.ShowReturnResults;
+        await SelectPlaceCoreAsync(feature, showReturnResults);
         // This method is invoked through @ref by Map, not by a SearchWorkspace UI
         // event. Parent callbacks update the map, but do not guarantee that Blazor
         // renders this child's updated details state when its parameters are unchanged.

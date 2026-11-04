@@ -51,6 +51,54 @@ public sealed class MapSelectionRenderingTests
         Assert.IsFalse(secondHtml.Contains("First place", StringComparison.Ordinal));
     }
 
+    [TestMethod]
+    public async Task ReselectingDirectAutocompletePinKeepsPriorQueryMarkersHiddenUntilBackAsync()
+    {
+        SelectionProbe probe = new();
+        ServiceCollection services = new();
+        services.AddLogging();
+        services.AddMudServices();
+        services.AddSingleton(probe);
+        using HttpClient client = new() { BaseAddress = new Uri("https://example.test/") };
+        services.AddSingleton(new SearchApiClient(client));
+        using ServiceProvider provider = services.BuildServiceProvider();
+        await using HtmlRenderer renderer = new(provider, provider.GetRequiredService<ILoggerFactory>());
+
+        await renderer.Dispatcher.InvokeAsync(renderer.RenderComponentAsync<SearchWorkspaceHarness>);
+        Assert.IsNotNull(probe.Workspace);
+
+        GeoJsonFeature firstA = Feature("osm:a1", "A1");
+        GeoJsonFeature secondA = Feature("osm:a2", "A2");
+        GeoJsonFeature placeB = Feature("osm:b1", "B1");
+        GeoJsonFeatureCollection resultsA = new("test", [firstA, secondA]);
+        ExploreSearchState queryA = ExploreSearchState.Initial.CommitQuery("query A")
+            .WithForwardResult("query A", new ReadySearch(resultsA));
+        ExploreSearchState directB = queryA.Edit("query B")
+            .CommitPlace(placeB, showReturnResults: false);
+        FieldInfo searchStateField = typeof(SearchWorkspace).GetField("_searchState", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        searchStateField.SetValue(probe.Workspace, directB);
+
+        // The same pin's event takes the normal map-selection path. It must not
+        // make the unrelated prior query A markers reappear.
+        await renderer.Dispatcher.InvokeAsync(() => probe.Workspace.SelectMapFeatureAsync(placeB));
+        ExploreSearchState afterClick = (ExploreSearchState)searchStateField.GetValue(probe.Workspace)!;
+        SearchMapState map = SearchMapState.FromPanel(afterClick.Panel);
+        Assert.AreSame(directB.Panel, afterClick.Panel);
+        Assert.HasCount(0, map.Results);
+        Assert.AreSame(placeB, map.SelectedFeature);
+        Assert.AreSame(queryA.Panel, afterClick.Back().Panel);
+        Assert.AreSame(resultsA.Features, SearchMapState.FromPanel(afterClick.Back().Panel).Results);
+
+        // Even if a draft was open, reselecting the pin dismisses the draft
+        // while retaining the same place inspection and return target.
+        searchStateField.SetValue(probe.Workspace, directB.Edit("unfinished"));
+        await renderer.Dispatcher.InvokeAsync(() => probe.Workspace.SelectMapFeatureAsync(placeB));
+        ExploreSearchState afterDraft = (ExploreSearchState)searchStateField.GetValue(probe.Workspace)!;
+        Assert.IsFalse(afterDraft.IsEditing);
+        Assert.AreEqual(placeB.Properties.Label, afterDraft.DisplayText);
+        Assert.AreSame(directB.Panel, afterDraft.Panel);
+    }
+
     private static GeoJsonFeature Feature(string id, string label) =>
         new(new GeoJsonPoint(9.732, 52.376), new GeoJsonProperties(id, label, label, "poi", "", null, null));
 }
