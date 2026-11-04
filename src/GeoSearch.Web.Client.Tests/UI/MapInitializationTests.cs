@@ -1,6 +1,6 @@
-﻿using System.Reflection;
-using GeoSearch.Web.Client.UI.Pages;
+﻿using GeoSearch.Web.Client.UI.Pages;
 using Microsoft.JSInterop;
+using System.Reflection;
 
 namespace GeoSearch.Web.Client.Tests.UI;
 
