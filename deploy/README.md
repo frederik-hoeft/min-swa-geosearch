@@ -85,7 +85,7 @@ If the non-root writeability check still reports an error, inspect `geosearch_gi
 
 ASP is built in `Release` by default. To enable Swagger locally, set `ASPNETCORE_ENVIRONMENT=Development` in `deploy/.env` and recreate the API container with `docker compose up -d --force-recreate api`; Swagger UI is then at `https://localhost:8443/swagger` and JSON at `/swagger/v1/swagger.json`. `DOTNET_BUILD_CONFIGURATION=Debug` changes the ASP build configuration but **does not** enable Swagger by itself. Do not publish Development behavior to untrusted users.
 
-`frontend` is the only published service. Nginx access logging is disabled because nearby queries can contain device coordinates. Missing `/_framework/` and `/_content/` assets return 404 rather than the SPA HTML. GeoSearch requires map tiles and browser geolocation, so UFWeb's more restrictive CSP and permissions policy cannot be reused unchanged. HTTPS is required for geolocation on non-localhost devices.
+`frontend` is the only published service. Nginx access logging is disabled because nearby queries can contain device coordinates. Missing `/_framework/` and `/_content/` assets return 404 rather than the SPA HTML. The standalone .NET 10 client relies on a publish-generated `<script type="importmap">` in `index.html` to resolve fingerprinted framework modules such as `dotnet.js`. The frontend Docker build verifies that the import map is present; do not remove the placeholder from the client `index.html`. GeoSearch requires map tiles and browser geolocation, so UFWeb's more restrictive CSP and permissions policy cannot be reused unchanged. HTTPS is required for geolocation on non-localhost devices.
 
 ### Scope
 

@@ -26,6 +26,10 @@ class DeploymentTests(unittest.TestCase):
         self.assertIn("chown 101:101", (DEPLOY / "scripts/load-cert.sh").read_text())
         self.assertIn("/out/client/wwwroot/ /usr/share/nginx/html/", web)
         self.assertIn("_framework/blazor.webassembly#[.{fingerprint}].js", html)
+        # The fingerprinted runtime's dynamic imports (notably dotnet.js) depend
+        # on the .NET 10-generated import map. Without it, nginx returns 404.
+        self.assertIn('<script type="importmap"></script>', html)
+        self.assertIn('"[^"[:space:]]*dotnet\\.js"[[:space:]]*:', web)
         self.assertFalse((DEPLOY / "scripts/materialize-static-assets.py").exists())
         ignore = (ROOT / ".dockerignore").read_text()
         for sensitive in ("**/.env", "src/GeoSearch.Web.Server/appsettings.json", "**/*.pem"):

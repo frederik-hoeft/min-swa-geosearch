@@ -6,6 +6,8 @@ RUN dotnet restore src/GeoSearch.Web.Client/GeoSearch.Web.Client.csproj
 RUN dotnet publish src/GeoSearch.Web.Client/GeoSearch.Web.Client.csproj \
         --configuration Release --no-restore --output /out/client \
     && ! grep -Fq '#[.{fingerprint}]' /out/client/wwwroot/index.html \
+    && grep -Fq '<script type="importmap">' /out/client/wwwroot/index.html \
+    && grep -Eq '"[^"[:space:]]*dotnet\.js"[[:space:]]*:' /out/client/wwwroot/index.html \
     && grep -Eq 'src="_framework/blazor\.webassembly\.[^"]+\.js"' /out/client/wwwroot/index.html
 
 FROM nginx:stable-alpine AS runtime
