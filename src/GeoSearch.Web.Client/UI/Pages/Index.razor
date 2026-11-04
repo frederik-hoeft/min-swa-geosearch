@@ -24,15 +24,8 @@
             <div class="gs-feature-line"><MudIcon Icon="@Icons.Material.Filled.NearMe" Size="Size.Small" /> Nearby features</div>
             <div class="gs-feature-line"><MudIcon Icon="@Icons.Material.Filled.Layers" Size="Size.Small" /> Map layers and results</div>
         </aside>
-        <div class="gs-map-surface" role="region" aria-label="Map placeholder">
-            <div class="gs-map-meta"><span class="gs-map-status-dot"></span> MAP VIEWER / PREVIEW</div>
-            <div class="gs-map-center">
-                <span class="gs-map-target" aria-hidden="true"><MudIcon Icon="@Icons.Material.Filled.TravelExplore" Size="Size.Large" /></span>
-                <h2>Map workspace</h2>
-                <p>Interactive MapLibre layers and GeoJSON results will appear here once the spatial API is connected.</p>
-                <span class="gs-map-stage">Map integration pending</span>
-            </div>
-            <div class="gs-map-coordinates">52.3759° N &nbsp; 9.7320° E <span>·</span> HANNOVER</div>
+        <div class="gs-map-surface">
+            <MapViewer />
         </div>
     </div>
 </section>

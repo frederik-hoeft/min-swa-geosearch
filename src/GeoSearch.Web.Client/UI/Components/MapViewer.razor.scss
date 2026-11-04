@@ -1,0 +1,77 @@
+.gs-map-viewer {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-height: inherit;
+
+    .gs-map-notice {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        text-align: center;
+        color: var(--gs-muted);
+        background: #eaf3ee;
+
+        &--error {
+            color: #703d2b;
+        }
+    }
+
+    .gs-map-loading {
+        position: absolute;
+        z-index: 1;
+        top: 1rem;
+        left: 1rem;
+        padding: 0.5rem 0.75rem;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.9);
+        color: var(--gs-muted);
+        font-size: 0.8rem;
+        pointer-events: none;
+    }
+
+    .gs-map-tile-error {
+        position: absolute;
+        z-index: 3;
+        top: 1rem;
+        left: 1rem;
+        max-width: min(22rem, calc(100% - 6rem));
+        padding: 0.75rem 1rem;
+        border-radius: 9px;
+        background: #fff9eb;
+        color: #68441d;
+        box-shadow: 0 4px 14px rgba(20, 40, 36, 0.12);
+        font-size: 0.82rem;
+
+        button {
+            display: inline-block;
+            margin-left: 0.5rem;
+            border: 0;
+            background: none;
+            color: inherit;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+    }
+
+    .gs-map-report-link {
+        position: absolute;
+        z-index: 2;
+        left: 0.6rem;
+        bottom: 0.6rem;
+        padding: 0.2rem 0.45rem;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 3px;
+        color: #263f45;
+        font-size: 0.7rem;
+        text-decoration: underline;
+    }
+
+    // MapLibre creates these elements inside the map component, outside Razor's scope.
+    ::deep .maplibregl-ctrl-attrib {
+        font-size: 11px;
+    }
+}

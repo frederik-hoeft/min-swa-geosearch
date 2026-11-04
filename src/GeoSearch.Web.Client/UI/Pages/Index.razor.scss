@@ -76,110 +76,14 @@
     color: var(--gs-green);
 }
 
+// The map viewer owns MapLibre and its controls; this page only sizes the workspace.
 .gs-map-surface {
-    position: relative;
-    isolation: isolate;
+    height: min(68vh, 660px);
     min-height: 530px;
     overflow: hidden;
     border: 1px solid #d0e1db;
     border-radius: 14px;
-    background:
-        radial-gradient(circle at 54% 51%, rgba(255,255,255,0.66), transparent 42%),
-        repeating-radial-gradient(ellipse at 62% 52%, transparent 0 37px, rgba(17, 122, 104, 0.075) 38px 40px, transparent 41px 70px),
-        linear-gradient(135deg, #e0eeea, #f1f6eb);
-}
-
-.gs-map-surface::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    background-image:
-        linear-gradient(rgba(27,93,79,0.047) 1px, transparent 1px),
-        linear-gradient(90deg,rgba(27,93,79,0.047) 1px,transparent 1px);
-    background-size: 44px 44px;
-}
-
-.gs-map-meta {
-    position: absolute;
-    top: 1.35rem;
-    left: 1.5rem;
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    color: #476d66;
-    font-size: 0.65rem;
-    font-weight: 750;
-    letter-spacing: 0.12em;
-}
-
-.gs-map-status-dot {
-    width: 7px;
-    height: 7px;
-    background: var(--gs-green);
-    border-radius: 50%;
-}
-
-.gs-map-center {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    padding: 2rem;
-    text-align: center;
-}
-
-.gs-map-target {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 5rem;
-    width: 5rem;
-    margin-bottom: 1.8rem;
-    border: 1px solid #bfdfd3;
-    background: rgba(255,255,255,0.66);
-    border-radius: 22px;
-    color: var(--gs-green);
-    box-shadow: 0 15px 40px rgba(27,93,79,0.07);
-}
-
-.gs-map-center h2 {
-    font-size: clamp(1.5rem, 2vw, 2rem);
-    color: #194a46;
-    font-weight: 720;
-    letter-spacing: -0.035em;
-}
-
-.gs-map-center p {
-    max-width: 23rem;
-    font-size: 0.88rem;
-    line-height: 1.65;
-    color: #54756e;
-}
-
-.gs-map-stage {
-    border: 1px solid #b8d9cd;
-    border-radius: 20px;
-    padding: 0.4rem 0.8rem;
-    color: #356a5f;
-    font-size: 0.72rem;
-    font-weight: 650;
-    background: rgba(255,255,255,0.55);
-}
-
-.gs-map-coordinates {
-    position: absolute;
-    bottom: 1.35rem;
-    right: 1.5rem;
-    color: #56796f;
-    font-family: var(--gs-font-mono);
-    font-size: 0.7rem;
-}
-
-.gs-map-coordinates span {
-    padding-inline: 0.4rem;
+    background: #eaf3ee;
 }
 
 @media (max-width: 900px) {
@@ -188,6 +92,7 @@
     }
 
     .gs-map-surface {
+        height: 60vh;
         min-height: 420px;
     }
 }
@@ -198,10 +103,7 @@
     }
 
     .gs-map-surface {
+        height: 55vh;
         min-height: 390px;
-    }
-
-    .gs-map-coordinates {
-        display: none;
     }
 }

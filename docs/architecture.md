@@ -26,7 +26,7 @@ Controllers validate search terms, coordinates, radii, and result limits and ret
 
 `search.api_search` delegates to the instructor's search function for full-text/fuzzy ranking. `search.api_reverse` uses the instructor's reverse function and looks up the matching indexed document to recover location and category metadata. `search.api_nearby` filters indexed POIs by category and geographic radius, calculates distances in metres, and sorts by distance. Categories and snapshot metadata come from narrow read-only projections. All GeoJSON point coordinates are `[longitude, latitude]` in EPSG:4326.
 
-The client is responsible for search interactions, map state, displaying results, and requesting device coordinates only in response to user actions. MapLibre-specific representations belong to the frontend; the shared HTTP contract remains independent of the map renderer. The current client has a browser shell and map placeholder, while interactive search and geolocation remain to be implemented.
+The client is responsible for search interactions, map state, displaying results, and requesting device coordinates only in response to user actions. MapLibre-specific representations belong to the frontend; the shared HTTP contract remains independent of the map renderer. The current client has the browser shell and an interactive MapLibre/OSM Standard basemap; free-text search, result markers, reverse geocoding, and geolocation remain separate frontend phases.
 
 ## Data ownership and access
 

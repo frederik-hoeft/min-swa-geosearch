@@ -2,7 +2,7 @@
 
 GeoSearch is a .NET 10 / Blazor WebAssembly application for [Software Architectures Lab 2](lab/lab-2.md). Its ASP.NET Core API searches the OpenStreetMap-derived Hannover dataset in PostGIS and exposes address search, reverse geocoding, nearby POIs, and category discovery as JSON/GeoJSON. The browser communicates with the API rather than accessing the database or an external geocoder.
 
-The GIS API and development/deployment infrastructure are implemented. The client currently has an application shell and map placeholder; interactive map search and browser geolocation remain to be completed. The four GIS endpoints are anonymous and read-only.
+The GIS API and development/deployment infrastructure are implemented. The client has an application shell and interactive OSM Standard basemap (MapLibre); search-result visualization and browser geolocation remain to be completed. The four GIS endpoints are anonymous and read-only.
 
 ## Run the application
 

@@ -10,6 +10,10 @@
     {
       "Source": "UI/Pages/Index.razor.scss",
       "Target": "UI/Pages/Index.razor.css"
+    },
+    {
+      "Source": "UI/Components/MapViewer.razor.scss",
+      "Target": "UI/Components/MapViewer.razor.css"
     }
   ],
   "Configurations": {
