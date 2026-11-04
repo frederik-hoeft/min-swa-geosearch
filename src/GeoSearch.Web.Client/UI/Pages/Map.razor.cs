@@ -1,4 +1,6 @@
-﻿using GeoSearch.Web.Client.UI.Components.Search;
+﻿using GeoSearch.Web.Client.Search.Model;
+using GeoSearch.Web.Client.UI.Components.Search;
+using GeoSearch.Web.Shared.GeoJson;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 
@@ -7,6 +9,7 @@ namespace GeoSearch.Web.Client.UI.Pages;
 public partial class Map : ComponentBase, IAsyncDisposable
 {
     private ElementReference _searchPanel;
+    private ElementReference _workspaceFocusTarget;
     private SearchWorkspace? _searchWorkspace;
     private IJSObjectReference? _module;
     private IJSObjectReference? _observer;
@@ -14,6 +17,7 @@ public partial class Map : ComponentBase, IAsyncDisposable
     private bool _isSearchPanelExpanded = true;
     private bool _temporaryInteractionExpanded;
     private bool _disposed;
+    private SearchMapState _searchMapState = SearchMapState.Empty;
 
     private bool IsEffectivelyExpanded => _isSearchPanelExpanded || _temporaryInteractionExpanded;
 
@@ -81,7 +85,26 @@ public partial class Map : ComponentBase, IAsyncDisposable
 
     private Task DismissSearchDraftAsync() => _searchWorkspace?.DismissDraftAsync() ?? Task.CompletedTask;
 
-    private void ExpandOnCommit() => _isSearchPanelExpanded = true;
+    private Task UpdateSearchMapState(SearchMapState state)
+    {
+        _searchMapState = state;
+        return Task.CompletedTask;
+    }
+
+    private Task OnMapFeatureSelectedAsync(GeoJsonFeature feature) =>
+        _searchWorkspace?.SelectMapFeatureAsync(feature) ?? Task.CompletedTask;
+
+    private async Task ExpandOnCommitAsync()
+    {
+        _isSearchPanelExpanded = true;
+        if (_temporaryInteractionExpanded && !_disposed)
+        {
+            // A committed search is no longer an edit. Move focus outside the
+            // mobile input overlay to dismiss the software keyboard and return
+            // the sheet to its regular (manually expanded) result height.
+            await _workspaceFocusTarget.FocusAsync(preventScroll: true);
+        }
+    }
 
     private async Task ToggleSearchPanelAsync()
     {

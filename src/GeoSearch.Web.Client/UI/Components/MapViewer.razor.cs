@@ -1,8 +1,13 @@
 ﻿using Community.Blazor.MapLibre;
 using Community.Blazor.MapLibre.Models;
 using Community.Blazor.MapLibre.Models.Control;
+using GeoSearch.Web.Client.Search.Model;
+using GeoSearch.Web.Client.UI.Components.Map;
+using GeoSearch.Web.Shared.GeoJson;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
+using MudBlazor;
+using MudBlazor.Services;
 using System.Net.Http;
 using System.Text.Json;
 
@@ -18,19 +23,32 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
     private MapLibre? _map;
     private IJSObjectReference? _browserModule;
     private MapOptions _options = new();
+    private MapResultOverlay? _resultOverlay;
+    private bool _resultOverlayReady;
+    private bool _hasOverlayError;
     private bool _styleChecked;
     private bool _browserProbeStarted;
     private bool _browserChecked;
     private bool _supportsWebGl2;
     private bool _mapLoaded;
-    private bool _isErrorListenerRegistered;
-    private bool _hasTileError;
     private bool _mapLoadTimedOut;
     private bool _disposed;
     private string? _startupError;
 
+    [Parameter]
+    public SearchMapState SearchState { get; set; } = SearchMapState.Empty;
+
+    [Parameter]
+    public bool SearchPanelExpanded { get; set; }
+
+    [Parameter]
+    public EventCallback<GeoJsonFeature> OnFeatureSelected { get; set; }
+
     [Inject]
     private IConfiguration Configuration { get; set; } = null!;
+
+    [Inject]
+    private IBrowserViewportService Viewport { get; set; } = null!;
 
     [Inject]
     private HttpClient Http { get; set; } = null!;
@@ -95,6 +113,14 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
         {
             LogMapStyleFailure(Logger, exception, styleUrl);
             _startupError = "The map style could not be loaded. Check the configured style URL and your connection.";
+        }
+    }
+
+    protected async override Task OnParametersSetAsync()
+    {
+        if (_resultOverlayReady && _resultOverlay is not null && !_disposed)
+        {
+            await UpdateOverlayAsync();
         }
     }
 
@@ -185,28 +211,6 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
         }
     }
 
-    private async Task OnStyleLoadedAsync(EventArgs _)
-    {
-        if (_map is null || _isErrorListenerRegistered || _disposed)
-        {
-            return;
-        }
-
-        try
-        {
-            // Observe subsequent tile/source failures. Errors before style.load are
-            // covered by the preflight check and bounded load watchdog above.
-            await _map.AddAsyncListener<JsonElement>("error", OnMapErrorAsync);
-            _isErrorListenerRegistered = true;
-        }
-        catch (JSException exception)
-        {
-            LogMapErrorListenerFailure(Logger, exception);
-            _startupError = "The map could not finish initializing. Reload the page to try again.";
-            await InvokeAsync(StateHasChanged);
-        }
-    }
-
     private async Task OnMapLoadedAsync(EventArgs _)
     {
         if (_map is null || _startupError is not null || _disposed)
@@ -217,20 +221,71 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
         // Add attribution first so it sits above navigation controls in the top-right stack.
         await _map.AddControl(ControlType.AttributionControl, ControlPosition.TopRight, new { compact = false });
         await _map.AddControl(ControlType.NavigationControl, ControlPosition.TopRight, new { showCompass = false });
+        try
+        {
+            _resultOverlay = new MapResultOverlay(
+                _map, SelectKnownMapFeatureAsync, GetSelectionOffsetPixelsAsync);
+            _resultOverlayReady = true;
+            await UpdateOverlayAsync();
+        }
+        catch (JSException exception)
+        {
+            LogMapOverlayFailure(Logger, exception);
+            _hasOverlayError = true;
+        }
+
         _mapLoaded = true;
         _mapLoadTimedOut = false;
         await InvokeAsync(StateHasChanged);
     }
 
-    private Task OnMapErrorAsync(JsonElement _)
+    private Task SelectKnownMapFeatureAsync(GeoJsonFeature feature)
     {
-        if (_disposed)
+        // A marker can still be visible for a frame while a new committed
+        // query is replacing its source. Never promote that stale feature.
+        string id = feature.Properties.Id;
+        bool known = SearchState.Results.Any(result => result.Properties.Id == id) ||
+                     SearchState.SelectedFeature?.Properties.Id == id;
+        return known && !_disposed
+            ? OnFeatureSelected.InvokeAsync(feature)
+            : Task.CompletedTask;
+    }
+
+    // The canvas never resizes with the search pane. On portrait phones, place
+    // a selected point in the exposed upper portion rather than behind the
+    // expanded bottom sheet. This uses MudBlazor's managed viewport service,
+    // without additional application-specific JavaScript or listeners.
+    private async Task<double> GetSelectionOffsetPixelsAsync()
+    {
+        if (!SearchPanelExpanded || _disposed || await Viewport.GetCurrentBreakpointAsync() != Breakpoint.Xs)
         {
-            return Task.CompletedTask;
+            return 0;
         }
 
-        _hasTileError = true;
-        return InvokeAsync(StateHasChanged);
+        BrowserWindowSize size = await Viewport.GetCurrentBrowserWindowSizeAsync();
+        // With the portrait bottom sheet at 68% of the map workspace,
+        // shift the point into the upper, unobstructed portion. Use a
+        // viewport-based distance without resizing MapLibre's canvas.
+        return size.Height > size.Width ? size.Height * 0.30 : 0;
+    }
+
+    private async Task UpdateOverlayAsync()
+    {
+        if (_resultOverlay is null || _disposed)
+        {
+            return;
+        }
+
+        try
+        {
+            await _resultOverlay.ApplyAsync(SearchState);
+            _hasOverlayError = false;
+        }
+        catch (JSException exception) when (!_disposed)
+        {
+            LogMapOverlayFailure(Logger, exception);
+            _hasOverlayError = true;
+        }
     }
 
     [LoggerMessage(EventId = 1, Level = LogLevel.Warning,
@@ -241,11 +296,9 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
         Message = "Could not initialize the map browser module")]
     private static partial void LogMapBrowserFailure(ILogger logger, Exception exception);
 
-    [LoggerMessage(EventId = 3, Level = LogLevel.Error,
-        Message = "Could not register map error listener")]
-    private static partial void LogMapErrorListenerFailure(ILogger logger, Exception exception);
-
-    private void DismissError() => _hasTileError = false;
+    [LoggerMessage(EventId = 4, Level = LogLevel.Error,
+        Message = "Could not synchronize map result markers")]
+    private static partial void LogMapOverlayFailure(ILogger logger, Exception exception);
 
     private void Reload() => Navigation.NavigateTo(Navigation.Uri, forceLoad: true);
 
