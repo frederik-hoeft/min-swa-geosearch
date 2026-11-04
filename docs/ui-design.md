@@ -39,7 +39,7 @@ The OSM Standard raster basemap retains its published colors in both modes; them
 
 ## Layouts and feature boundaries
 
-`MainLayout` serves ordinary pages, including the landing page at `/`. `MapLayout` serves `/map` with a viewport-bound content area. Both use `AppHeader` for branding, an Explore link, and the keyboard skip link. The GeoSearch logo links back to the landing page; a separate Home navigation item is unnecessary. The app-wide MudBlazor providers appear once at the application root: theme management in `UI/Components/ThemeHost` and the remaining providers in `UI/App.razor`.
+`MainLayout` serves ordinary pages, including the landing page at `/` and the test-evidence page at `/tests`. `MapLayout` serves `/map` with a viewport-bound content area. Both use `AppHeader` for branding, Explore and Tests navigation, and the keyboard skip link. The GeoSearch logo links back to the landing page; a separate Home navigation item is unnecessary. The app-wide MudBlazor providers appear once at the application root: theme management in `UI/Components/ThemeHost` and the remaining providers in `UI/App.razor`.
 
 The map workspace uses a permanent, full-viewport MapLibre canvas. A search pane floats **over** the map and opens expanded on desktop, tablets, and landscape phones. On these viewports, it occupies the left edge and extends downward. Collapsing it retracts the content into a compact top-left search control; the thin chevron tab below the search field expands the pane again. The chevron is a button, not a drag handle, and has an accessible name and an `aria-expanded` state.
 

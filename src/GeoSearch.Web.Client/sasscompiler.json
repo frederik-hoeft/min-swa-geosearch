@@ -16,6 +16,10 @@
       "Target": "UI/Pages/Map.razor.css"
     },
     {
+      "Source": "UI/Pages/Tests.razor.scss",
+      "Target": "UI/Pages/Tests.razor.css"
+    },
+    {
       "Source": "UI/Components/MapViewer.razor.scss",
       "Target": "UI/Components/MapViewer.razor.css"
     }

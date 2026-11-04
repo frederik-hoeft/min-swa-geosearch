@@ -1,0 +1,198 @@
+@page "/tests"
+@using GeoSearch.Web.Client.Services.Testing
+@using GeoSearch.Web.Shared.GeoJson
+
+<PageTitle>Test evidence | GeoSearch</PageTitle>
+
+<section class="gs-tests-page" aria-labelledby="tests-heading">
+    <div class="gs-tests-heading">
+        <div>
+            <p class="gs-tests-overline">LAB 02 / QUALITY EVIDENCE</p>
+            <h1 id="tests-heading">Search fixture tests</h1>
+            <p>Run the ten instructor-provided queries against the live search API, inspect the observed top-ranked results, and record response latency.</p>
+        </div>
+        <MudChip T="string" Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small">HTTP / GeoJSON</MudChip>
+    </div>
+
+    <MudGrid Spacing="2" Class="gs-tests-summary">
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Elevation="0" Class="gs-tests-stat">
+                <span>Completed fixtures</span>
+                <strong>@_results.Count / @SearchFixtureCatalog.All.Count</strong>
+                <small>Lab-defined search cases</small>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Elevation="0" Class="gs-tests-stat">
+                <span>HTTP samples</span>
+                <strong>@SuccessfulRequests / @AttemptedRequests</strong>
+                <small>Successful / attempted</small>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Elevation="0" Class="gs-tests-stat">
+                <span>Overall average</span>
+                <strong>@FormatMs(OverallAverageMs)<span class="gs-tests-unit"> ms</span></strong>
+                <small>Successful HTTP responses</small>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Elevation="0" Class="gs-tests-stat">
+                <span>Dataset snapshot</span>
+                <strong class="gs-tests-snapshot">@SnapshotLabel</strong>
+                <small>Reported by the API</small>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <MudPaper Elevation="0" Class="gs-tests-panel">
+        <div class="gs-tests-toolbar">
+            <div>
+                <h2>Fixture run</h2>
+                <p>Sequential requests, with no warm-up. Timing uses .NET <code>Stopwatch</code> and includes the entire HTTP response, but not JSON parsing or UI rendering.</p>
+            </div>
+            <div class="gs-tests-actions">
+                <MudSelect T="int" Label="Requests per query" @bind-Value="Repetitions"
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@IsRunning" Class="gs-tests-samples">
+                    <MudSelectItem T="int" Value="5">5 requests</MudSelectItem>
+                    <MudSelectItem T="int" Value="10">10 requests</MudSelectItem>
+                </MudSelect>
+                <MudButton OnClick="RunAllAsync" Disabled="@IsRunning" Variant="Variant.Filled" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.PlayArrow">Run all</MudButton>
+                @if (IsRunning)
+                {
+                    <MudButton OnClick="CancelRun" Color="Color.Secondary" Variant="Variant.Outlined">Cancel</MudButton>
+                }
+                <MudButton OnClick="CopyEvidenceAsync" Disabled="@(IsRunning || _results.Count == 0)"
+                           Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ContentCopy">Copy evidence</MudButton>
+            </div>
+        </div>
+        <div class="gs-tests-progress" aria-live="polite" role="status">
+            @StatusText
+            @if (IsRunning)
+            {
+                <MudProgressLinear Class="gs-tests-progress-bar" Value="@ProgressPercent" Color="Color.Primary" />
+            }
+        </div>
+        @if (!string.IsNullOrEmpty(CopyError))
+        {
+            <MudAlert Severity="Severity.Warning" Class="gs-tests-copy-error">@CopyError</MudAlert>
+        }
+    </MudPaper>
+
+    <MudPaper Elevation="0" Class="gs-tests-results-panel">
+        <div class="gs-tests-results-heading">
+            <h2>Observed results</h2>
+            <span>Target: search responses under 300 ms on the Hannover dataset</span>
+        </div>
+        <MudTable T="SearchFixture" Items="@SearchFixtureCatalog.All" Dense="true" Hover="true"
+                  Elevation="0" Breakpoint="Breakpoint.None" Class="gs-tests-table">
+            <HeaderContent>
+                <MudTh>Query</MudTh>
+                <MudTh>Expected</MudTh>
+                <MudTh>Observed top result</MudTh>
+                <MudTh>Latency (ms)</MudTh>
+                <MudTh>Run status</MudTh>
+            </HeaderContent>
+            <RowTemplate Context="fixture">
+                @{ SearchFixtureResult? result = GetResult(fixture); }
+                <MudTd DataLabel="Query">
+                    <div class="gs-tests-query">@fixture.Query</div>
+                    @if (fixture.KnownRankingIssue)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">Known ranking issue</MudChip>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Expected">
+                    <span class="gs-tests-expected">@fixture.Expected</span>
+                </MudTd>
+                <MudTd DataLabel="Observed top result">
+                    @if (result?.TopResult is GeoJsonProperties top)
+                    {
+                        <div class="gs-tests-observed">
+                            <strong>@top.Name</strong>
+                            <span>@top.Label</span>
+                            <small>@top.Type · @top.Category · @top.Id</small>
+                        </div>
+                    }
+                    else if (result?.SuccessfulRequests > 0)
+                    {
+                        <span class="gs-tests-empty">No matching feature</span>
+                    }
+                    else
+                    {
+                        <span class="gs-tests-empty">@(result is null ? "Not measured" : "No successful response")</span>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Latency (ms)">
+                    @if (result?.AverageMs is not null)
+                    {
+                        <div class="gs-tests-timings">
+                            <div><span>Best</span><strong>@FormatMs(result.BestMs)</strong></div>
+                            <div><span>Avg</span><strong>@FormatMs(result.AverageMs)</strong></div>
+                            <div><span>Worst</span><strong>@FormatMs(result.WorstMs)</strong></div>
+                        </div>
+                        <small class="gs-tests-median">Median: @FormatMs(result.MedianMs) ms</small>
+                    }
+                    else
+                    {
+                        <span class="gs-tests-empty">Not available</span>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Run status">
+                    @if (result is null)
+                    {
+                        <span class="gs-tests-empty">Pending</span>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@StatusColor(result)">@StatusLabel(result)</MudChip>
+                        <div class="gs-tests-count">@result.SuccessfulRequests / @result.Attempts successful
+                            @if (result.Attempts < result.RequestedSamples)
+                            {
+                                <span>(target @result.RequestedSamples)</span>
+                            }
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(result.LastError))
+                        {
+                            <small class="gs-tests-error">@result.LastError</small>
+                        }
+                        @if (result.TopResultVaried || result.SnapshotVaried)
+                        {
+                            <small class="gs-tests-error">Top result or snapshot changed between samples.</small>
+                        }
+                    }
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudPaper>
+
+    <MudPaper Elevation="0" Class="gs-tests-notes-panel">
+        <h2>Explain known ranking issues</h2>
+        <p>The lab flags these three fixtures as incorrect. Compare the observed result to the expected place or POI,
+            investigate the index and ranking, and record a short explanation for the exported evidence.</p>
+        <MudGrid Spacing="2">
+            @foreach (SearchFixture fixture in SearchFixtureCatalog.All.Where(item => item.KnownRankingIssue))
+            {
+                <MudItem xs="12" md="4">
+                    <div class="gs-tests-note">
+                        <strong>@fixture.Query</strong>
+                        <span>@(GetResult(fixture)?.TopResult?.Label ?? "No observed result yet")</span>
+                        <MudTextField T="string" Label="Explanation" Value="@GetExplanation(fixture)"
+                                      ValueChanged="@((string value) => SetExplanation(fixture, value))"
+                                      Variant="Variant.Outlined" Margin="Margin.Dense" Immediate="true" Lines="3"
+                                      Placeholder="Why did this fixture return an incorrect top result?" />
+                    </div>
+                </MudItem>
+            }
+        </MudGrid>
+    </MudPaper>
+
+    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="gs-tests-footnote">
+        These are observations, not automated ranking assertions. The lab explicitly identifies <strong>Hauptstrasse Laatzen</strong>,
+        <strong>Zoo Hannover</strong>, and <strong>Markthalle Hannover</strong> as problematic; keep the actual returned
+        results and investigate their candidate coverage, place context, and ranking rather than replacing them with expected answers.
+        Measurements require a running API and populated PostGIS database. Use <strong>Copy evidence</strong> to paste the
+        current run into <code>docs/lab-handoff.md</code>.
+    </MudAlert>
+</section>

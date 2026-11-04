@@ -17,6 +17,8 @@ python3 -m unittest discover -s deploy/tests -v
 
 The .NET tests cover GeoJSON serialization and axis ordering, HTTP parameter validation, application-service result mapping, model discovery, read-only query functions, and OpenAPI route generation. The Python suites exercise data-download and provisioning scripts using local fixtures, without fetching Geofabrik datasets or starting PostgreSQL. GitHub Actions runs lab script checks, .NET build/formatting, and .NET tests in separate jobs; the deployment Python tests can also be run locally.
 
+The dedicated `/tests` page runs the Lab 2 fixture queries against the browser-configured search API with five or ten sequential HTTP requests per query. It reports the actual top-ranked feature and latency distribution (best, average, worst, median), including errors, empty responses, and written explanations for the three known ranking issues. It is **integration evidence**, not a substitute for automated .NET tests; it requires a populated GIS database. Copy the resulting Markdown table into [the lab handoff](lab-handoff.md). The browser uses `.NET Stopwatch` around the complete HTTP response, excluding JSON deserialization, so its measurements include network/proxy overhead. No fixture results are fabricated or persisted by the page.
+
 Passing these checks establishes the relevant in-process behavior. It does not verify the SQL against PostGIS, permissions on a real database role, Nginx-to-API routing, or browser geolocation.
 
 ## Verify the running API and database
