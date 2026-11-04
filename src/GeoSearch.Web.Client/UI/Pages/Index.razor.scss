@@ -3,30 +3,119 @@
 }
 
 .gs-landing-hero {
-    max-width: 48rem;
-    padding-block: clamp(2rem, 7vw, 6rem);
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(15rem, 0.8fr);
+    min-width: 0;
+    overflow: hidden;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #122e36 0%, #104740 100%);
+    color: #f0faf7;
+}
+
+.gs-hero-content {
+    position: relative;
+    z-index: 1;
+    padding: clamp(2rem, 5vw, 5rem);
 
     h1 {
-        margin: 1rem 0 1.25rem;
-        font-size: clamp(2.25rem, 5vw, 4rem);
-        line-height: 1.12;
-        letter-spacing: -0.055em;
+        max-width: 44rem;
+        margin: 1.35rem 0;
+        font-size: clamp(2.5rem, 5vw, 4.75rem);
+        line-height: 1.06;
+        letter-spacing: -0.06em;
         font-weight: 750;
+
+        em {
+            color: #86dfc3;
+            font-style: normal;
+        }
     }
 
     p {
-        max-width: 42rem;
-        margin-bottom: 2rem;
-        color: var(--gs-muted);
-        font-size: clamp(1rem, 1.5vw, 1.15rem);
+        max-width: 34rem;
+        margin-bottom: 1.75rem;
+        color: #c2ddd7;
+        font-size: clamp(0.95rem, 1.4vw, 1.08rem);
         line-height: 1.7;
     }
+}
+
+.gs-hero-overline {
+    color: #9be7d0;
+    letter-spacing: 0.14em;
+    font-size: 0.7rem;
+    font-weight: 750;
+}
+
+.gs-hero-action {
+    min-height: 3rem;
+}
+
+.gs-hero-technologies {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 2.5rem;
+
+    span {
+        border: 1px solid rgba(187, 227, 215, 0.3);
+        border-radius: 30px;
+        padding: 0.45rem 0.75rem;
+        font-size: 0.75rem;
+        color: #cceae1;
+    }
+}
+
+.gs-hero-cartography {
+    position: relative;
+    display: grid;
+    min-width: 0;
+    min-height: 22rem;
+    place-items: center;
+    overflow: hidden;
+    background: radial-gradient(circle at 60% 50%, rgba(105, 204, 174, 0.19), transparent 58%);
+}
+
+.gs-hero-contours {
+    position: absolute;
+    inset: -35%;
+    transform: rotate(-24deg);
+    background:
+        repeating-radial-gradient(ellipse at 57% 48%, transparent 0 27px, rgba(166, 217, 200, 0.18) 28px 29px, transparent 30px 57px),
+        linear-gradient(120deg, transparent, rgba(116, 217, 184, 0.08));
+}
+
+.gs-hero-location {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    border: 1px solid rgba(173, 235, 215, 0.35);
+    border-radius: 16px;
+    padding: 1.2rem 1.75rem;
+    background: rgba(12, 57, 57, 0.78);
+    box-shadow: 0 16px 40px rgba(8, 32, 34, 0.2);
+    color: #a9edd8;
+    font-size: 0.74rem;
+    font-weight: 750;
+    letter-spacing: 0.15em;
+}
+
+.gs-hero-coordinate {
+    position: absolute;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    color: #b4d9cf;
+    font-family: var(--gs-font-mono);
+    font-size: 0.72rem;
 }
 
 .gs-landing-features {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 1rem;
+    margin-top: 1.5rem;
 
     article {
         min-width: 0;
@@ -53,8 +142,40 @@
     }
 }
 
+@media (max-width: 900px) {
+    .gs-landing-hero {
+        grid-template-columns: minmax(0, 1fr) minmax(11rem, 0.6fr);
+    }
+
+    .gs-hero-content {
+        padding: clamp(2rem, 4vw, 3rem);
+    }
+}
+
 @media (max-width: 720px) {
+    .gs-landing-hero {
+        grid-template-columns: 1fr;
+    }
+
+    .gs-hero-cartography {
+        display: none;
+    }
+
+    .gs-hero-technologies {
+        margin-top: 2rem;
+    }
+
     .gs-landing-features {
         grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 420px) {
+    .gs-hero-content {
+        padding: 1.5rem;
+
+        h1 {
+            font-size: clamp(2.1rem, 11vw, 2.75rem);
+        }
     }
 }

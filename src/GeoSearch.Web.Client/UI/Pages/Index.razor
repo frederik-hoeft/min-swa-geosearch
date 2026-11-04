@@ -4,11 +4,26 @@
 
 <section class="gs-landing-page">
     <div class="gs-landing-hero">
-        <div class="gs-page-kicker">GEOSPATIAL EXPLORATION</div>
-        <h1>Discover places on the map.</h1>
-        <p>Explore OpenStreetMap data from Niedersachsen. Search for places and addresses, inspect locations, and find nearby points of interest as the workspace evolves.</p>
-        <MudButton Href="/map" Color="Color.Primary" Variant="Variant.Filled"
-                   StartIcon="@Icons.Material.Filled.Map" Size="Size.Large">Open the map</MudButton>
+        <div class="gs-hero-content">
+            <div class="gs-hero-overline">GEOSPATIAL EXPLORATION / OPEN DATA</div>
+            <h1>Open data. <em>Real places.</em></h1>
+            <p>Explore Lower Saxony through OpenStreetMap. Navigate the region now, with address search and nearby discovery joining the workspace in the next phases.</p>
+            <MudButton Href="/map" Color="Color.Primary" Variant="Variant.Filled"
+                       StartIcon="@Icons.Material.Filled.Map" Size="Size.Large" Class="gs-hero-action">Explore the map</MudButton>
+            <div class="gs-hero-technologies" aria-label="Powered by open geospatial technologies">
+                <span>OpenStreetMap</span>
+                <span>PostGIS</span>
+                <span>MapLibre</span>
+            </div>
+        </div>
+        <div class="gs-hero-cartography" aria-hidden="true">
+            <div class="gs-hero-contours"></div>
+            <div class="gs-hero-location">
+                <MudIcon Icon="@Icons.Material.Filled.Place" Size="Size.Large" />
+                <span>HANNOVER</span>
+            </div>
+            <div class="gs-hero-coordinate">52.3759° N / 9.7320° E</div>
+        </div>
     </div>
 
     <div class="gs-landing-features" aria-label="GeoSearch capabilities">

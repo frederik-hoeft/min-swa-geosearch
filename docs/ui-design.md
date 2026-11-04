@@ -36,9 +36,11 @@ The client uses a local system sans-serif stack and monospace typography for coo
 
 `MainLayout` serves ordinary pages, including the landing page at `/`. `MapLayout` serves `/map` with a viewport-bound content area. Both use `AppHeader` for branding, Home/Explore navigation, and the keyboard skip link. App-wide MudBlazor providers appear once in `UI/App.razor`.
 
-The map workspace reserves a permanent left search sidebar and gives the remaining width and height to the map, including at narrow viewport sizes. The document itself must not scroll horizontally or vertically on `/map`: mouse-wheel movement over the map is reserved for zooming. As search results grow, only the sidebar scrolls internally. The map viewer owns the map canvas while the workspace page owns its dimensions; no fixed-height map cards or full-page mobile stacking should be introduced.
+The map workspace reserves a permanent left search sidebar on desktop and tablets, giving the remaining width and height to the map. On portrait phones (under 600px wide), the search panel docks below the map and remains visible/non-collapsible; landscape phones retain a narrow left sidebar so the map does not become too short. The map always receives the majority of available space. The document itself must not scroll horizontally or vertically on `/map`: mouse-wheel movement over the map is reserved for zooming. As search results grow, only the search pane scrolls internally. The map viewer owns the map canvas while the workspace page owns its dimensions. Do not introduce full-page stacking or nested map scroll containers.
 
 The map is rendered by `UI/Components/MapViewer`, which owns the MapLibre instance, browser capability check, map controls, and map-specific failure feedback. Its basemap style is selectable through the public client `Map:StyleUrl` setting, defaulting to the local `map-styles/osm-standard.json` style. Search remains disabled until F2 and result markers are deferred to F3. MapLibre-specific types must stay inside the map component; subsequent search features will supply GeoJSON-facing view models.
+
+The landing page takes visual cues from the repository's original pre-authentication intro: deep evergreen surfaces, subtle topographic contours, and open-geodata labels. It is a public index, not an authentication screen; the illustrative cartographic element is decorative and is not an interactive or data-backed map.
 
 ## Accessibility and verification
 

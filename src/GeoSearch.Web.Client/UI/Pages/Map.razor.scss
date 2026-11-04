@@ -1,6 +1,6 @@
 .gs-map-workspace {
     display: grid;
-    grid-template-columns: clamp(15rem, 25vw, 22rem) minmax(0, 1fr);
+    grid-template-columns: clamp(17rem, 25vw, 22rem) minmax(0, 1fr);
     width: 100%;
     height: 100%;
     min-width: 0;
@@ -61,34 +61,55 @@
     background: #eaf3ee;
 }
 
-@media (max-width: 700px) {
+// Tablet / small desktop: the sidebar stays usable without taking half the map.
+@media (min-width: 600px) and (max-width: 959px) {
     .gs-map-workspace {
-        grid-template-columns: clamp(10rem, 40vw, 15rem) minmax(0, 1fr);
-    }
-
-    .gs-search-panel {
-        padding: 1rem;
-    }
-
-    .gs-search-panel-heading {
-        display: block;
-
-        h1 {
-            font-size: 1.3rem;
-        }
-    }
-
-    .gs-coming-soon {
-        margin-top: 0.75rem;
+        grid-template-columns: clamp(15rem, 32vw, 19rem) minmax(0, 1fr);
     }
 }
 
-@media (max-width: 400px) {
+// Portrait phones: keep both surfaces permanently available, with the map
+// taking most of the viewport. Only the search panel may scroll internally.
+@media (max-width: 599px) and (orientation: portrait) {
     .gs-map-workspace {
-        grid-template-columns: 42% minmax(0, 1fr);
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: minmax(0, 1fr) min(34dvh, 18rem);
+    }
+
+    .gs-map-surface {
+        grid-row: 1;
+        grid-column: 1;
+    }
+
+    .gs-search-panel {
+        grid-row: 2;
+        grid-column: 1;
+        padding: 1rem 1.25rem;
+        border-right: 0;
+        border-top: 1px solid var(--gs-border);
+    }
+
+    .gs-search-panel-heading {
+        margin-bottom: 0.75rem;
+
+        h1 {
+            font-size: 1.25rem;
+        }
+    }
+}
+
+// Landscape phones have little vertical space: a side-by-side layout works
+// better than two shallow rows in this orientation.
+@media (max-width: 599px) and (orientation: landscape) {
+    .gs-map-workspace {
+        grid-template-columns: clamp(11rem, 37vw, 14rem) minmax(0, 1fr);
     }
 
     .gs-search-panel {
         padding: 0.75rem;
+    }
+
+    .gs-search-panel-heading {
+        margin-bottom: 0.75rem;
     }
 }
