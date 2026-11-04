@@ -50,104 +50,6 @@
     }
 }
 
-.gs-search-bar {
-    flex: 0 0 auto;
-    min-width: 0;
-}
-
-// A subtle handle rather than a second prominent button alongside the search.
-// Its wide, shallow chevron points in the direction the pane will move.
-.gs-search-toggle {
-    display: flex;
-    flex: 0 0 1.5rem;
-    align-items: center;
-    justify-content: center;
-    align-self: center;
-    width: 5rem;
-    height: 1.5rem;
-    padding: 0;
-    border: 0;
-    border-radius: 8px;
-    background: transparent;
-    color: var(--gs-muted);
-    cursor: pointer;
-
-    &:hover {
-        background: var(--gs-nav-active);
-        color: var(--gs-green);
-    }
-
-    &:focus-visible {
-        outline: 2px solid var(--gs-green);
-        outline-offset: 2px;
-    }
-
-    svg {
-        width: 2.75rem;
-        height: 0.75rem;
-    }
-}
-
-// Expanded desktop pane collapses upwards; collapsed pane expands downwards.
-.gs-search-panel--collapsed .gs-search-toggle svg {
-    transform: rotate(180deg);
-}
-
-.gs-search-panel-content {
-    flex: 1 1 auto;
-    min-height: 0;
-    margin-top: 0.65rem;
-    padding: 0.25rem 0.5rem 0.75rem;
-    overflow-x: hidden;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    opacity: 1;
-    visibility: visible;
-    transition: opacity 160ms ease-out, visibility 0s;
-}
-
-// visibility:hidden also removes collapsed content from keyboard navigation and the
-// accessibility tree. Interaction expansion can reveal it without changing the
-// manually selected collapsed state.
-.gs-search-panel--collapsed .gs-search-panel-content {
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-    transition: opacity 120ms ease-out, visibility 0s 120ms;
-}
-
-.gs-search-panel-heading {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-
-    h1 {
-        margin: 0.35rem 0 0;
-        font-size: 1.5rem;
-        letter-spacing: -0.035em;
-    }
-}
-
-.gs-coming-soon {
-    display: inline-flex;
-    align-items: center;
-    flex-shrink: 0;
-    padding: 0.35rem 0.6rem;
-    border-radius: 100px;
-    background: color-mix(in srgb, var(--mud-palette-warning) 12%, var(--mud-palette-surface));
-    color: var(--mud-palette-warning);
-    font-size: 0.7rem;
-    font-weight: 650;
-}
-
-.gs-search-hint {
-    margin: 1rem 0 0;
-    color: var(--gs-muted);
-    font-size: 0.85rem;
-    line-height: 1.6;
-}
 
 // Small non-portrait screens have little space for a full-width left pane.
 @media (min-width: bp.$tablet-min) and (max-width: bp.$tablet-max) {
@@ -178,23 +80,6 @@
             height: 5.8rem;
         }
     }
-
-    .gs-search-toggle {
-        order: -1;
-    }
-
-    // Expanded mobile pane collapses downwards; collapsed pane expands upwards.
-    .gs-search-panel--expanded .gs-search-toggle svg {
-        transform: rotate(180deg);
-    }
-
-    .gs-search-panel--collapsed .gs-search-toggle svg {
-        transform: none;
-    }
-
-    .gs-search-panel-heading h1 {
-        font-size: 1.25rem;
-    }
 }
 
 @media (max-width: bp.$phone-max) and (orientation: landscape) {
@@ -218,24 +103,13 @@
         height: 100%;
         border-radius: 0;
     }
-
-    .gs-search-panel--collapsed.gs-search-panel--temporarily-expanded .gs-search-panel-content {
-        opacity: 1;
-        visibility: visible;
-        pointer-events: auto;
-        transition: opacity 160ms ease-out, visibility 0s;
-    }
-}
-
-@media (max-width: bp.$phone-max) and (orientation: portrait) {
-    .gs-search-panel--temporarily-expanded.gs-search-panel--collapsed .gs-search-toggle svg {
-        transform: rotate(180deg);
-    }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .gs-search-panel,
-    .gs-search-panel-content {
-        transition: none;
-    }
+    .gs-search-panel { transition: none; }
+}
+
+// Collapsed desktop search must still expose autocomplete outside the small panel.
+.gs-search-panel:has(.gs-suggestions) {
+    overflow: visible;
 }

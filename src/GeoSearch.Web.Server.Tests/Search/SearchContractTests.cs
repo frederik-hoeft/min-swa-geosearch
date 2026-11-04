@@ -36,6 +36,26 @@ public sealed class SearchContractTests
     }
 
     [TestMethod]
+    public void GeoJsonFeatureCollectionRoundTripsWithPointCoordinates()
+    {
+        GeoJsonFeatureCollection original = new("2026-10-28", [new GeoJsonFeature(
+            new GeoJsonPoint(9.71497, 52.36677),
+            new GeoJsonProperties("pois:123", "Markt-Apotheke", "Markt-Apotheke, Hannover",
+                "poi", "Apotheke", 0.18f, null))]);
+
+        string json = JsonSerializer.Serialize(original);
+        GeoJsonFeatureCollection? parsed = JsonSerializer.Deserialize<GeoJsonFeatureCollection>(json);
+
+        Assert.IsNotNull(parsed);
+        Assert.HasCount(1, parsed.Features);
+        GeoJsonPoint point = parsed.Features[0].Geometry;
+        Assert.AreEqual("Point", point.Type);
+        Assert.AreEqual(9.71497, point.Coordinates[0]);
+        Assert.AreEqual(52.36677, point.Coordinates[1]);
+        Assert.AreEqual("pois:123", parsed.Features[0].Properties.Id);
+    }
+
+    [TestMethod]
     public void ReverseAndNearbyResponseCanExpressDistanceWithoutSearchScore()
     {
         GeoJsonProperties properties = new("id", "name", "label", "poi", "Apotheke", null, 192.5);

@@ -1,0 +1,43 @@
+@using GeoSearch.Web.Client.Search.Model
+
+<div class="gs-suggestions" id="map-search-suggestions" role="listbox" aria-label="Search suggestions">
+    @for (int i = 0; i < Suggestions.Count; i++)
+    {
+        SearchSuggestion suggestion = Suggestions[i];
+        int index = i;
+        <button type="button" id="map-search-suggestion-@index" role="option"
+                class="gs-suggestion @(HighlightedIndex == index ? "gs-suggestion--active" : "")"
+                aria-selected="@(HighlightedIndex == index ? "true" : "false")"
+                @onmousedown:preventDefault="true" @onclick="() => OnSelected.InvokeAsync(suggestion)">
+            @switch (suggestion)
+            {
+                case LiteralQuerySuggestion query:
+                    <MudIcon Icon="@Icons.Material.Filled.Search" Size="Size.Small" />
+                    <span><strong>Search for "@query.Query"</strong><small>Search all matching places</small></span>
+                    break;
+                case PlaceSuggestion place:
+                    <MudIcon Icon="@Icons.Material.Filled.Place" Size="Size.Small" />
+                    <span><strong>@place.Feature.Properties.Label</strong><small>Place · @place.Feature.Properties.Type</small></span>
+                    break;
+            }
+        </button>
+    }
+    @if (InputHint is { } hint)
+    {
+        <div class="gs-suggestion-message" role="status">@hint</div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<SearchSuggestion> Suggestions { get; set; } = [];
+
+    [Parameter]
+    public int HighlightedIndex { get; set; }
+
+    [Parameter]
+    public string? InputHint { get; set; }
+
+    [Parameter]
+    public EventCallback<SearchSuggestion> OnSelected { get; set; }
+}

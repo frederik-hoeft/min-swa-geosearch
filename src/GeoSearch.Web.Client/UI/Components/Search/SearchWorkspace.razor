@@ -1,0 +1,37 @@
+@using GeoSearch.Web.Client.Search.Model
+
+<div class="gs-search-bar">
+    <div class="gs-search-input-wrap">
+        <MudIcon Icon="@Icons.Material.Filled.Search" Size="Size.Small" Class="gs-search-input-icon" />
+        <input class="gs-search-input" type="text" inputmode="search" autocomplete="off" spellcheck="false"
+               aria-label="Search places and addresses" role="combobox" aria-autocomplete="list"
+               aria-expanded="@(ShowSuggestions ? "true" : "false")" aria-controls="@(ShowSuggestions ? "map-search-suggestions" : null)"
+               aria-activedescendant="@ActiveSuggestionId" placeholder="Search places and addresses"
+               value="@_searchState.DisplayText" @oninput="OnSearchInput" @onkeydown="OnSearchKeyDownAsync" />
+        @if (!string.IsNullOrEmpty(_searchState.DisplayText) || _searchState.Panel is not IdleSearchPanel)
+        {
+            <button type="button" class="gs-search-clear" @onclick="ClearSearch" aria-label="Clear search and selection"
+                    title="Clear search and selection">
+                <MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" />
+            </button>
+        }
+    </div>
+    @if (ShowSuggestions)
+    {
+        <SearchSuggestionList Suggestions="Suggestions" HighlightedIndex="_searchState.HighlightedIndex"
+                              InputHint="@SearchInputHint" OnSelected="ChooseSuggestionAsync" />
+    }
+</div>
+<button type="button" class="gs-search-toggle" @onclick="OnToggle"
+        aria-controls="map-search-content" aria-expanded="@(IsEffectivelyExpanded ? "true" : "false")"
+        aria-label="@(IsEffectivelyExpanded ? "Collapse search panel" : "Expand search panel")"
+        title="@(IsEffectivelyExpanded ? "Collapse search panel" : "Expand search panel")">
+    <svg viewBox="0 0 48 12" width="48" height="12" aria-hidden="true" focusable="false">
+        <path d="M4 9 L24 3 L44 9" fill="none" stroke="currentColor" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+</button>
+<div id="map-search-content" class="gs-search-panel-content" aria-live="polite" aria-atomic="false">
+    <SearchContextPanel Panel="_searchState.Panel" OnPlaceSelected="SelectPlaceAsync"
+                        OnBack="BackToPrevious" OnRetry="RetrySearchAsync" OnShowMore="ShowMoreAsync" />
+</div>
