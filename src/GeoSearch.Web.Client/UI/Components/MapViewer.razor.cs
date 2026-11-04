@@ -1,4 +1,4 @@
-using System.Net.Http;
+﻿using System.Net.Http;
 using System.Text.Json;
 using Community.Blazor.MapLibre;
 using Community.Blazor.MapLibre.Models;
@@ -10,9 +10,9 @@ namespace GeoSearch.Web.Client.UI.Components;
 
 public partial class MapViewer : ComponentBase, IAsyncDisposable
 {
-    private const string DefaultStyleUrl = "map-styles/osm-standard.json";
-    private static readonly TimeSpan StyleCheckTimeout = TimeSpan.FromSeconds(10);
-    private static readonly TimeSpan MapLoadTimeout = TimeSpan.FromSeconds(30);
+    private const string DEFAULT_STYLE_URL = "map-styles/osm-standard.json";
+    private static readonly TimeSpan s_styleCheckTimeout = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan s_mapLoadTimeout = TimeSpan.FromSeconds(30);
 
     private readonly CancellationTokenSource _lifetime = new();
     private MapLibre? _map;
@@ -46,7 +46,7 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
 
     protected async override Task OnInitializedAsync()
     {
-        string styleUrl = Configuration["Map:StyleUrl"] ?? DefaultStyleUrl;
+        string styleUrl = Configuration["Map:StyleUrl"] ?? DEFAULT_STYLE_URL;
         _options = new MapOptions
         {
             Style = styleUrl,
@@ -64,7 +64,7 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
         try
         {
             using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
-            timeout.CancelAfter(StyleCheckTimeout);
+            timeout.CancelAfter(s_styleCheckTimeout);
             Uri styleUri = new(new Uri(Navigation.BaseUri), styleUrl);
             if (styleUri.Scheme is not ("http" or "https"))
             {
@@ -136,7 +136,7 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
     {
         try
         {
-            await Task.Delay(MapLoadTimeout, _lifetime.Token);
+            await Task.Delay(s_mapLoadTimeout, _lifetime.Token);
             if (!_mapLoaded && !_hasTileError && _startupError is null && !_disposed)
             {
                 await InvokeAsync(() =>
