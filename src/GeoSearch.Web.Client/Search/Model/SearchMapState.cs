@@ -17,6 +17,10 @@ public sealed record SearchMapState(IReadOnlyList<GeoJsonFeature> Results, GeoJs
         while (panel is PlaceSearchPanel place)
         {
             selected ??= place.Feature;
+            if (!place.ShowReturnResults)
+            {
+                return new SearchMapState([], selected);
+            }
             panel = place.ReturnTo;
         }
 

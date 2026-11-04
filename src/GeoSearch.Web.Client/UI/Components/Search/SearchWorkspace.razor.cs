@@ -187,7 +187,7 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
     private Task ChooseSuggestionAsync(SearchSuggestion suggestion) => suggestion switch
     {
         LiteralQuerySuggestion query => CommitLiteralAsync(query.Query),
-        PlaceSuggestion place => SelectPlaceAsync(place.Feature),
+        PlaceSuggestion place => SelectAutocompletePlaceAsync(place.Feature),
         _ => Task.CompletedTask // Nearby actions are not surfaced until F5 has an editor.
     };
 
@@ -244,13 +244,17 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
         }
     }
 
-    private async Task SelectPlaceAsync(GeoJsonFeature feature)
+    private Task SelectAutocompletePlaceAsync(GeoJsonFeature feature) => SelectPlaceCoreAsync(feature, showReturnResults: false);
+
+    private Task SelectPlaceAsync(GeoJsonFeature feature) => SelectPlaceCoreAsync(feature, showReturnResults: true);
+
+    private async Task SelectPlaceCoreAsync(GeoJsonFeature feature, bool showReturnResults)
     {
         ++_draftRevision;
         ++_committedRevision;
         StopDebounce();
         _previewLoading = false;
-        _searchState = _searchState.CommitPlace(feature);
+        _searchState = _searchState.CommitPlace(feature, showReturnResults);
         await OnCommitted.InvokeAsync();
         await NotifyMapStateChangedAsync();
     }

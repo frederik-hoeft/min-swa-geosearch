@@ -24,11 +24,12 @@ internal sealed record ExploreSearchState(
     public ExploreSearchState CommitQuery(string query) =>
         this with { DisplayText = query, CommittedText = query, IsEditing = false, HighlightedIndex = -1, Panel = new ForwardSearchPanel(query, new LoadingSearch()) };
 
-    public ExploreSearchState CommitPlace(GeoJsonFeature feature)
+    public ExploreSearchState CommitPlace(GeoJsonFeature feature, bool showReturnResults = true)
     {
         // A new inspection replaces the foreground one. Back always targets the
         // real committed results (or idle), never a chain of prior inspections.
-        if (Panel is PlaceSearchPanel current && current.Feature.Properties.Id == feature.Properties.Id)
+        if (Panel is PlaceSearchPanel current && current.Feature.Properties.Id == feature.Properties.Id &&
+            current.ShowReturnResults == showReturnResults)
         {
             // A marker can be clicked while an autocomplete draft is open.
             // Even a re-selection must abandon that draft and show committed details.
@@ -44,7 +45,7 @@ internal sealed record ExploreSearchState(
         SearchPanelState returnTo = Panel is PlaceSearchPanel previous ? previous.ReturnTo : Panel;
         string returnText = Panel is PlaceSearchPanel place ? place.ReturnText : CommittedText;
         return new(feature.Properties.Label, feature.Properties.Label, false, -1,
-            new PlaceSearchPanel(feature, returnTo, returnText));
+            new PlaceSearchPanel(feature, returnTo, returnText, showReturnResults));
     }
 
     public ExploreSearchState RequestMore(string query, int limit) =>

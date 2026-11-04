@@ -1,6 +1,6 @@
 @using Community.Blazor.MapLibre
 
-<div class="gs-map-viewer" role="region" aria-label="Interactive OpenStreetMap map">
+<div class="gs-map-viewer @(_isResultHovered ? "gs-map-viewer--marker-hover" : "")" role="region" aria-label="Interactive OpenStreetMap map">
     @if (_startupError is not null)
     {
         <div class="gs-map-notice gs-map-notice--error" role="alert">

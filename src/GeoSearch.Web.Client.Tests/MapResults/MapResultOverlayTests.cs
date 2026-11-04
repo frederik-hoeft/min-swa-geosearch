@@ -67,6 +67,64 @@ public sealed class MapResultOverlayTests
     }
 
     [TestMethod]
+    public void ClickedMapLibreFeatureIdIsReadWithoutRequiringFullEventBinding()
+    {
+        using JsonDocument clicked = JsonDocument.Parse("""
+            {
+              "type": "click", "lngLat": { "lng": 9.732, "lat": 52.376 },
+              "features": [
+                { "type": "Feature", "id": "osm:1", "properties": { "id": "osm:1" } }
+              ]
+            }
+            """);
+
+        Assert.AreEqual("osm:1", MapResultOverlay.ClickedFeatureId(clicked.RootElement));
+    }
+
+    [TestMethod]
+    public void ClickedMapLibreFeatureIdSupportsPropertyFallbackAndMissingFeatures()
+    {
+        using JsonDocument fallback = JsonDocument.Parse("""
+            {"features": [{"properties": {"id": "osm:2"}}]}
+            """);
+        using JsonDocument empty = JsonDocument.Parse("""{"type":"click"}""");
+        using JsonDocument numeric = JsonDocument.Parse("""{"features":[{"id":123}]}""");
+
+        using JsonDocument coerced = JsonDocument.Parse("""
+            {"features":[{"id":42,"properties":{"id":"osm:2"}}]}
+            """);
+
+        Assert.AreEqual("osm:2", MapResultOverlay.ClickedFeatureId(fallback.RootElement));
+        Assert.AreEqual("osm:2", MapResultOverlay.ClickedFeatureId(coerced.RootElement));
+        Assert.AreEqual("123", MapResultOverlay.ClickedFeatureId(numeric.RootElement));
+        Assert.IsNull(MapResultOverlay.ClickedFeatureId(empty.RootElement));
+    }
+
+    [TestMethod]
+    public void CustomPinSymbolUsesBottomAnchorAndFullVisibility()
+    {
+        // The renderer uses SymbolLayer rather than CircleLayer; its click targets
+        // correspond to the actual rendered pin imagery.
+        Community.Blazor.MapLibre.Models.Layers.SymbolLayer layer = new()
+        {
+            Id = "test",
+            Source = "test",
+            Layout = new Community.Blazor.MapLibre.Models.Layers.SymbolLayerLayout
+            {
+                IconImage = "pin",
+                IconAnchor = "bottom",
+                IconAllowOverlap = true,
+                IconIgnorePlacement = true
+            }
+        };
+
+        using JsonDocument json = JsonDocument.Parse(JsonSerializer.Serialize<Community.Blazor.MapLibre.Models.Layers.Layer>(layer));
+        Assert.AreEqual("symbol", json.RootElement.GetProperty("type").GetString());
+        Assert.AreEqual("bottom", json.RootElement.GetProperty("layout").GetProperty("icon-anchor").GetString());
+        Assert.AreEqual("pin", json.RootElement.GetProperty("layout").GetProperty("icon-image").GetString());
+    }
+
+    [TestMethod]
     public void SelectedMarkerIsExcludedFromResultLayerAndInvalidCoordinatesAreIgnored()
     {
         GeoJsonFeature first = Feature("osm:1", 9.732, 52.376);

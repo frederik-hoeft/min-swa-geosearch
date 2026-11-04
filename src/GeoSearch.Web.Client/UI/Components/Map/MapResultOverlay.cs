@@ -1,14 +1,14 @@
 ﻿using Community.Blazor.MapLibre;
 using Community.Blazor.MapLibre.Models;
 using Community.Blazor.MapLibre.Models.Camera;
-using Community.Blazor.MapLibre.Models.Event;
 using Community.Blazor.MapLibre.Models.Feature;
-using Community.Blazor.MapLibre.Models.LayerFeatures;
+using Community.Blazor.MapLibre.Models.Image;
 using Community.Blazor.MapLibre.Models.Layers;
 using Community.Blazor.MapLibre.Models.Sources;
 using GeoSearch.Web.Client.Search.Model;
 using GeoSearch.Web.Shared.GeoJson;
 using OneOf;
+using System.Text.Json;
 
 namespace GeoSearch.Web.Client.UI.Components.Map;
 
@@ -17,12 +17,15 @@ namespace GeoSearch.Web.Client.UI.Components.Map;
 /// and a foreground inspected place. Search state and HTTP never live here.
 /// </summary>
 internal sealed class MapResultOverlay(
-    MapLibre map, Func<GeoJsonFeature, Task> onSelected, Func<Task<PointLike?>> selectionOffset)
+    MapLibre map, Func<GeoJsonFeature, Task> onSelected, Func<Task<PointLike?>> selectionOffset,
+    Func<bool, Task> onHoverChanged, string resultIconUrl, string selectedIconUrl)
 {
     private const string RESULTS_SOURCE = "gs-search-results";
     private const string SELECTED_SOURCE = "gs-search-selection";
-    private const string RESULTS_LAYER = "gs-search-result-circles";
-    private const string SELECTED_LAYER = "gs-search-selected-circle";
+    private const string RESULTS_LAYER = "gs-search-result-pins";
+    private const string SELECTED_LAYER = "gs-search-selected-pin";
+    private const string RESULTS_ICON = "gs-search-pin-image";
+    private const string SELECTED_ICON = "gs-search-selected-image";
     private const double DETAIL_ZOOM = 14.5;
 
     private readonly SemaphoreSlim _sync = new(1, 1);
@@ -31,40 +34,47 @@ internal sealed class MapResultOverlay(
 
     public async Task InitializeAsync()
     {
+        // Blazor.MapLibre can load PNG icon assets directly into its sprite registry.
+        // Keep the features as GeoJSON rather than creating DOM markers/callbacks
+        // for each result; both sources and listeners survive query changes.
+        StyleImageMetadata imageMetadata = new() { PixelRatio = 2 };
+        await map.AddImage(RESULTS_ICON, resultIconUrl, imageMetadata);
+        await map.AddImage(SELECTED_ICON, selectedIconUrl, imageMetadata);
         await map.AddSource(RESULTS_SOURCE, EmptySource());
         await map.AddSource(SELECTED_SOURCE, EmptySource());
-        await map.AddLayer(new CircleLayer
+        await map.AddLayer(new SymbolLayer
         {
             Id = RESULTS_LAYER,
             Source = RESULTS_SOURCE,
-            Paint = new CircleLayerPaint
-            {
-                CircleRadius = 7,
-                CircleColor = "#087e6c",
-                CircleStrokeColor = "#ffffff",
-                CircleStrokeWidth = 2
-            }
+            Layout = PinLayout(RESULTS_ICON)
         });
-        await map.AddLayer(new CircleLayer
+        await map.AddLayer(new SymbolLayer
         {
             Id = SELECTED_LAYER,
             Source = SELECTED_SOURCE,
-            Paint = new CircleLayerPaint
-            {
-                CircleRadius = 11,
-                CircleColor = "#df903b",
-                CircleStrokeColor = "#122e36",
-                CircleStrokeWidth = 3
-            }
+            Layout = PinLayout(SELECTED_ICON, 0.65)
         });
 
-        // Two stable subscriptions, not one .NET callback per marker per query.
-        // A selected feature is excluded from the ordinary source, so a click
-        // cannot select the same feature through both layer listeners.
-        await map.OnClick(RESULTS_LAYER, OnMarkerClickedAsync);
-        await map.OnClick(SELECTED_LAYER, OnMarkerClickedAsync);
+        // The wrapper serializes browser events before handing them to .NET.
+        // Read the minimal ID from JSON rather than binding the entire event
+        // (including optional vendor-specific fields) to a rigid .NET model.
+        await map.AddAsyncListener<JsonElement>("click", OnMarkerClickedAsync, RESULTS_LAYER);
+        await map.AddAsyncListener<JsonElement>("click", OnMarkerClickedAsync, SELECTED_LAYER);
+        await map.AddAsyncListener<JsonElement>("mouseenter", OnHoverEnteredAsync, RESULTS_LAYER);
+        await map.AddAsyncListener<JsonElement>("mouseenter", OnHoverEnteredAsync, SELECTED_LAYER);
+        await map.AddAsyncListener<JsonElement>("mouseleave", OnHoverLeftAsync, RESULTS_LAYER);
+        await map.AddAsyncListener<JsonElement>("mouseleave", OnHoverLeftAsync, SELECTED_LAYER);
         _initialized = true;
     }
+
+    private static SymbolLayerLayout PinLayout(string iconId, double size = 0.5) => new()
+    {
+        IconImage = iconId,
+        IconSize = size,
+        IconAnchor = "bottom",
+        IconAllowOverlap = true,
+        IconIgnorePlacement = true
+    };
 
     public async Task ApplyAsync(SearchMapState state)
     {
@@ -104,9 +114,10 @@ internal sealed class MapResultOverlay(
         }
     }
 
-    private async Task OnMarkerClickedAsync(MapMouseEvent args)
+    private async Task OnMarkerClickedAsync(JsonElement clicked)
     {
-        if (args.Features.FirstOrDefault() is not LayerFeatureFeature { Id: { } id })
+        string? id = ClickedFeatureId(clicked);
+        if (id is null)
         {
             return;
         }
@@ -119,6 +130,53 @@ internal sealed class MapResultOverlay(
             await onSelected(feature);
         }
     }
+
+    private Task OnHoverEnteredAsync(JsonElement _) => onHoverChanged(true);
+
+    private Task OnHoverLeftAsync(JsonElement _) => onHoverChanged(false);
+
+    internal static string? ClickedFeatureId(JsonElement clicked)
+    {
+        if (clicked.ValueKind != JsonValueKind.Object ||
+            !clicked.TryGetProperty("features", out JsonElement features) ||
+            features.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        foreach (JsonElement feature in features.EnumerateArray())
+        {
+            if (feature.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            // Our API ID is mirrored in properties.id. Prefer it to the
+            // renderer's feature.id, which some GeoJSON pipelines may coerce.
+            if (feature.TryGetProperty("properties", out JsonElement properties) &&
+                properties.ValueKind == JsonValueKind.Object &&
+                properties.TryGetProperty("id", out JsonElement propertyId) &&
+                ReadId(propertyId) is { Length: > 0 } id)
+            {
+                return id;
+            }
+
+            if (feature.TryGetProperty("id", out JsonElement featureId) &&
+                ReadId(featureId) is { Length: > 0 } fallbackId)
+            {
+                return fallbackId;
+            }
+        }
+
+        return null;
+    }
+
+    private static string? ReadId(JsonElement value) => value.ValueKind switch
+    {
+        JsonValueKind.String => value.GetString(),
+        JsonValueKind.Number => value.GetRawText(),
+        _ => null
+    };
 
     private static bool SameFeature(GeoJsonFeature? first, GeoJsonFeature? second) =>
         first?.Properties.Id == second?.Properties.Id &&

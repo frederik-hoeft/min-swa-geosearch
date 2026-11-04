@@ -53,6 +53,25 @@ public sealed class SearchMapStateTests
     }
 
     [TestMethod]
+    public void AutocompleteSelectionHidesUnrelatedCommittedMarkersButBackRestoresThem()
+    {
+        GeoJsonFeatureCollection oldResults = ExploreSearchStateTests.Collection("Hannover");
+        GeoJsonFeature newPlace = new(new GeoJsonPoint(9.85, 52.45),
+            new GeoJsonProperties("osm:other", "other", "Other place", "poi", "", null, null));
+        ExploreSearchState original = ExploreSearchState.Initial.CommitQuery("hannover")
+            .WithForwardResult("hannover", new ReadySearch(oldResults));
+
+        // A new autocomplete place is a distinct semantic selection. Keep the
+        // return target, but do not display the old query's markers as current.
+        ExploreSearchState details = original.Edit("other").CommitPlace(newPlace, showReturnResults: false);
+        SearchMapState map = SearchMapState.FromPanel(details.Panel);
+        Assert.HasCount(0, map.Results);
+        Assert.AreSame(newPlace, map.SelectedFeature);
+        Assert.AreSame(original.Panel, details.Back().Panel);
+        Assert.AreSame(oldResults.Features, SearchMapState.FromPanel(details.Back().Panel).Results);
+    }
+
+    [TestMethod]
     public void SelectingAnotherMarkerReplacesInspectionWithoutStackingBackTargets()
     {
         GeoJsonFeatureCollection collection = new("snapshot", [

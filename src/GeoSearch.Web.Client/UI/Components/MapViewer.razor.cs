@@ -26,6 +26,7 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
     private MapResultOverlay? _resultOverlay;
     private bool _resultOverlayReady;
     private bool _hasOverlayError;
+    private bool _isResultHovered;
     private bool _styleChecked;
     private bool _browserProbeStarted;
     private bool _browserChecked;
@@ -247,7 +248,10 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
         await _map.AddControl(ControlType.NavigationControl, ControlPosition.TopRight, new { showCompass = false });
         try
         {
-            _resultOverlay = new MapResultOverlay(_map, SelectKnownMapFeatureAsync, GetSelectionOffsetAsync);
+            _resultOverlay = new MapResultOverlay(
+                _map, SelectKnownMapFeatureAsync, GetSelectionOffsetAsync, OnResultHoverChangedAsync,
+                Navigation.ToAbsoluteUri("map-icons/search-pin.png").ToString(),
+                Navigation.ToAbsoluteUri("map-icons/selected-pin.png").ToString());
             await _resultOverlay.InitializeAsync();
             _resultOverlayReady = true;
             await UpdateOverlayAsync();
@@ -273,6 +277,17 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
         return known && !_disposed
             ? OnFeatureSelected.InvokeAsync(feature)
             : Task.CompletedTask;
+    }
+
+    private Task OnResultHoverChangedAsync(bool hovered)
+    {
+        if (_disposed || _isResultHovered == hovered)
+        {
+            return Task.CompletedTask;
+        }
+
+        _isResultHovered = hovered;
+        return InvokeAsync(StateHasChanged);
     }
 
     // The canvas never resizes with the search pane. On portrait phones, place
