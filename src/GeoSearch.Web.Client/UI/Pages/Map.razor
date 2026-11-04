@@ -14,7 +14,7 @@
                           Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
                           Immediate="true" @bind-Value="_searchQuery" />
         </div>
-        <button type="button" class="gs-search-toggle" @onclick="ToggleSearchPanel"
+        <button type="button" class="gs-search-toggle" @onclick="ToggleSearchPanelAsync"
                 aria-controls="map-search-content" aria-expanded="@(IsEffectivelyExpanded ? "true" : "false")"
                 aria-label="@(IsEffectivelyExpanded ? "Collapse search panel" : "Expand search panel")"
                 title="@(IsEffectivelyExpanded ? "Collapse search panel" : "Expand search panel")">

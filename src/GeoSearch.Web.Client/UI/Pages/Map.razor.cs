@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Components;
+﻿using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 
 namespace GeoSearch.Web.Client.UI.Pages;
@@ -47,7 +47,7 @@ public partial class Map : ComponentBase, IAsyncDisposable
         return InvokeAsync(StateHasChanged);
     }
 
-    private async Task ToggleSearchPanel()
+    private async Task ToggleSearchPanelAsync()
     {
         _isSearchPanelExpanded = !IsEffectivelyExpanded;
         if (_temporaryInteractionExpanded)

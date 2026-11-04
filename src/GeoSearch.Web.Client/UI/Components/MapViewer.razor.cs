@@ -1,10 +1,10 @@
-﻿using System.Net.Http;
-using System.Text.Json;
-using Community.Blazor.MapLibre;
+﻿using Community.Blazor.MapLibre;
 using Community.Blazor.MapLibre.Models;
 using Community.Blazor.MapLibre.Models.Control;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
+using System.Net.Http;
+using System.Text.Json;
 
 namespace GeoSearch.Web.Client.UI.Components;
 
