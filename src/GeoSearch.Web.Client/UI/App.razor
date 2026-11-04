@@ -1,6 +1,7 @@
 @using GeoSearch.Web.Client.Services.Theming
 
-<MudThemeProvider Theme="@GeoSearchMudTheme.Theme" IsDarkMode="false" ObserveSystemDarkModeChange="false" />
+<MudThemeProvider @ref="_themeProvider" Theme="@GeoSearchMudTheme.Theme"
+                  IsDarkMode="@ThemePreferences.IsDarkMode" ObserveSystemDarkModeChange="false" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />

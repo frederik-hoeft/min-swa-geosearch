@@ -122,7 +122,7 @@
     article {
         min-width: 0;
         padding: clamp(1.25rem, 2.5vw, 2rem);
-        background: #fff;
+        background: var(--mud-palette-surface);
         border: 1px solid var(--gs-border);
         border-radius: 14px;
     }

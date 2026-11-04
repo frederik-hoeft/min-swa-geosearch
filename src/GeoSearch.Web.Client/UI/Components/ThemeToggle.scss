@@ -1,0 +1,9 @@
+.gs-theme-toggle.mud-icon-button {
+    border: 1px solid var(--gs-border);
+    border-radius: 10px;
+    color: var(--gs-green);
+
+    &:hover {
+        background: var(--gs-nav-active);
+    }
+}

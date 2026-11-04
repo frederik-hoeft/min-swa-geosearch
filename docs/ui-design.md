@@ -21,17 +21,19 @@ Write source SCSS in expanded form: four-space indentation, one property declara
 
 ## Design tokens
 
-| Role | Light value | Purpose |
-| --- | --- | --- |
-| Primary | `#117A68` | Actions, active navigation, map emphasis |
-| Ink | `#192C32` | Headings and high-contrast text |
-| Muted text | `#61747A` | Supporting descriptions |
-| Background | `#F3F7F6` | Workspace canvas |
-| Surface | `#FFFFFF` | Cards, forms, app bar |
-| Divider | `#DCE6E3` | Subtle visual boundaries |
-| Warm accent | `#D4A153` | Secondary emphasis |
+| Role | Light value | Dark value | Purpose |
+| --- | --- | --- | --- |
+| Primary | `#117A68` | `#69D3B4` | Actions, active navigation, map emphasis |
+| Ink | `#192C32` | `#EBF5F2` | Headings and high-contrast text |
+| Muted text | `#61747A` | `#AFC5C4` | Supporting descriptions |
+| Background | `#F3F7F6` | `#101E24` | Workspace canvas |
+| Surface | `#FFFFFF` | `#1D3036` | Cards, forms, app bar |
+| Divider | `#DCE6E3` | `#355056` | Subtle visual boundaries |
+| Warm accent | `#D4A153` | `#E2B86F` | Secondary emphasis |
 
-The client uses a local system sans-serif stack and monospace typography for coordinates. Dark palette values exist for a future theme switch, but the application currently starts in light mode. A user-selectable theme should be owned by a dedicated service rather than by individual pages.
+The client uses a local system sans-serif stack and monospace typography for coordinates. `ThemePreferenceService` owns the light/dark preference and synchronizes it with the application-wide `MudThemeProvider`. The app follows the browser's color scheme until the user selects a theme with the header toggle. That selection is persisted in browser local storage and takes precedence over subsequent system changes; if storage is unavailable, the toggle remains usable for the current session. Custom SCSS tokens derive their colors from the active MudBlazor palette so that the landing cards, navigation, and map workspace match the selected theme.
+
+The OSM Standard raster basemap retains its published colors in both modes; theme switching affects application chrome and map notices, not third-party map tiles or attribution.
 
 ## Layouts and feature boundaries
 

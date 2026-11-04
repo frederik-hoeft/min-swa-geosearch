@@ -56,6 +56,7 @@ internal static class GeoSearchMudTheme
                 Error = "#FF9698",
                 TextPrimary = "#EBF5F2",
                 TextSecondary = "#AFC5C4",
+                TextDisabled = "#81999A",
                 Background = "#101E24",
                 BackgroundGray = "#1B3036",
                 Surface = "#1D3036",
@@ -66,6 +67,7 @@ internal static class GeoSearchMudTheme
                 LinesDefault = "#355056",
                 LinesInputs = "#527278",
                 Divider = "#355056",
+                TableHover = "#274148",
             },
             Typography = new Typography
             {
