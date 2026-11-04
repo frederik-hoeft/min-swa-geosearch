@@ -11,6 +11,46 @@ This deployment follows the same **separate frontend, ASP, and database** patter
 
 Nginx and ASP share the `frontend` Docker network. ASP and PostGIS share the separate `database` network; Nginx cannot connect directly to PostGIS. All browser requests share the same HTTPS origin: `/api/*` and `/swagger` are proxied to ASP; everything else is served statically, with a fallback to `index.html` for client-side routes. No browser CORS setting or API base-URL override is needed.
 
+## Recommended acceptance-test setup: Docker-outside-of-Docker (DooD)
+
+**Supported and recommended for local acceptance testing:** open the repository in the VS Code devcontainer, then run the deployment commands **inside that devcontainer** using its Docker CLI and the **host's Docker daemon** (DooD). This is not Docker-in-Docker: the devcontainer does not run a second daemon. The host only needs Docker Engine/Compose, a working browser, and enough storage for the GIS data; the .NET SDK, GDAL, and build tooling are provided by the devcontainer and/or image build stages. Running the same commands directly on the Docker host is supported as well.
+
+1. On the host, start Docker and the devcontainer. In the devcontainer terminal at `/workspace`, verify that the CLI can reach the host daemon:
+
+   ```sh
+   docker info --format 'Docker server: {{.ServerVersion}}'
+   docker compose version
+   docker ps
+   ```
+
+2. Follow [First-time setup](#first-time-setup) **from the devcontainer terminal** to create `deploy/.env`, generate or supply a TLS certificate, run `load-cert.sh`, and provision PostGIS using `provision.sh`. The two environment files have different purposes: `.devcontainer/.env` configures the *development* stack; `deploy/.env` configures this *acceptance/deployment* stack. Keep their secrets separate.
+
+3. Build and start the independent deployment project (Compose project name `geosearch`, distinct from the `geospatial-search` devcontainer stack):
+
+   ```sh
+   cd /workspace/deploy
+   docker compose config --quiet
+   docker compose up -d --build
+   docker compose ps
+   docker compose logs --tail=50 frontend api postgis
+   ```
+
+4. **Open the application from a browser on the Docker daemon host**, normally at `https://localhost:8443/` (or the port specified by `GEOSEARCH_HTTPS_PORT`). Test that the Blazor app boots without missing `/_framework/` modules, and that `/api/health` and a real `/api/search` request work **through Nginx**, not via the API container directly. From a shell **on that host**, a quick smoke test is:
+
+   ```sh
+   curl -kfsS https://localhost:8443/api/health
+   curl -kfsS 'https://localhost:8443/api/search?q=Limmerstr%2012%20Hannover&limit=5'
+   ```
+
+   `-k` bypasses certificate verification **for this curl smoke test only**. It does not establish browser trust. For actual browser/geolocation acceptance tests, trust the local certificate in the browser/OS or supply a trusted certificate. Check the search UI, result markers, nearby results, OSM attribution, and both granted and denied geolocation paths **once those frontend features are implemented**. Swagger is available at `/swagger` only when `ASPNETCORE_ENVIRONMENT=Development`; a Debug image build alone does not enable it.
+
+### DooD boundaries and common pitfalls
+
+- **The Docker daemon owns volumes and resolves bind-mount paths.** `/workspace` inside the devcontainer is not necessarily a path on the host daemon's filesystem. Do not mount `deploy/certs/` or `lab/data/` directly into deployment containers; the existing `load-cert.sh` and `provision.sh` transfer TLS material and download GIS inputs into Docker-managed named volumes instead. Image build contexts are sent by the Docker client and do not need a corresponding host checkout path.
+- **`localhost` is relative to where the command runs.** The published HTTPS port binds to `127.0.0.1` on the **Docker daemon host** by default. `curl https://localhost:8443` *inside* the devcontainer may contact the wrong network namespace even while `docker compose ps` works. Use the host browser/terminal, or an explicitly configured secure host tunnel if using a remote daemon; do not expose the test port publicly merely to work around this.
+- **State is independent of the devcontainer stack.** The `geosearch_postgis-data`, `geosearch_gis-data`, and `geosearch_tls-certs` volumes belong to this deployment project. `docker compose down` stops this stack without deleting them. `docker compose down -v` **destroys** them, including the imported data and TLS material. Do not rerun provisioning for routine application rebuilds because it replaces imported GIS data and rebuilds the search index.
+- **DooD grants powerful host access.** Access to the Docker daemon socket effectively grants administrative control over the daemon host. Use this workflow only from a trusted, local devcontainer with trusted repository content, and do not expose the Docker API/socket over a public network. This recommendation is for **local acceptance tests**, not a hardened Internet-facing production deployment.
+
 ## First-time setup
 
 1. Configure the one deployment environment file:
