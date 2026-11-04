@@ -108,27 +108,60 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
         }
 
         _browserProbeStarted = true;
+        IJSObjectReference? module = null;
         try
         {
-            _browserModule = await JsRuntime.InvokeAsync<IJSObjectReference>("import", "./UI/Components/MapViewer.razor.js");
-            _supportsWebGl2 = await _browserModule.InvokeAsync<bool>("supportsWebGl2");
-            _browserChecked = true;
-            await InvokeAsync(StateHasChanged);
-            if (_supportsWebGl2)
-            {
-                _ = WatchMapLoadAsync();
-            }
-        }
-        catch (Exception exception)
-        {
+            // Own the imported module locally until the probe completes. Navigation
+            // can dispose the component while either JS interop call is pending.
+            module = await JsRuntime.InvokeAsync<IJSObjectReference>("import", "./UI/Components/MapViewer.razor.js");
             if (_disposed)
             {
                 return;
             }
 
-            LogMapBrowserFailure(Logger, exception);
-            _startupError = "The map could not start. Check your browser settings and reload the page.";
+            bool supportsWebGl2 = await module.InvokeAsync<bool>("supportsWebGl2");
+            if (_disposed)
+            {
+                return;
+            }
+
+            // No await separates the disposal check from the ownership transfer.
+            _browserModule = module;
+            module = null;
+            _supportsWebGl2 = supportsWebGl2;
+            _browserChecked = true;
             await InvokeAsync(StateHasChanged);
+            if (_supportsWebGl2 && !_disposed)
+            {
+                _ = WatchMapLoadAsync();
+            }
+        }
+        catch (JSDisconnectedException) when (_disposed)
+        {
+            // The browser disconnected while initialization was in flight.
+        }
+        catch (Exception exception)
+        {
+            if (!_disposed)
+            {
+                LogMapBrowserFailure(Logger, exception);
+                _startupError = "The map could not start. Check your browser settings and reload the page.";
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        finally
+        {
+            if (module is not null)
+            {
+                try
+                {
+                    await module.DisposeAsync();
+                }
+                catch (JSDisconnectedException)
+                {
+                    // The browser has already released the module.
+                }
+            }
         }
     }
 
@@ -218,6 +251,11 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        if (_disposed)
+        {
+            return;
+        }
+
         _disposed = true;
         await _lifetime.CancelAsync();
         _lifetime.Dispose();
