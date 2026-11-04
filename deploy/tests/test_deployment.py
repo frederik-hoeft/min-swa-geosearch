@@ -70,6 +70,20 @@ class DeploymentTests(unittest.TestCase):
         self.assertNotIn("./certs:/run/tls", text)
         self.assertFalse((DEPLOY / "compose.https.yaml").exists())
 
+    def test_api_runtime_environment_is_decoupled_from_devcontainer(self) -> None:
+        """The DooD shell exports Development; it must not change a Production API."""
+        compose = (DEPLOY / "compose.yaml").read_text()
+        devcontainer = (ROOT / ".devcontainer/docker-compose.yml").read_text()
+        env_example = (DEPLOY / ".env.example").read_text()
+        self.assertIn("ASPNETCORE_ENVIRONMENT: Development", devcontainer)
+        self.assertIn("ASPNETCORE_ENVIRONMENT: ${GEOSEARCH_API_ENVIRONMENT:-Production}", compose)
+        self.assertNotIn("ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT", compose)
+        self.assertIn("GEOSEARCH_API_ENVIRONMENT=Production", env_example)
+        self.assertNotIn("\nASPNETCORE_ENVIRONMENT=", env_example)
+        # The image default also remains production, while the Compose mapping
+        # is authoritative when the API is deployed via the stack.
+        self.assertIn("ASPNETCORE_ENVIRONMENT=Production", (DEPLOY / "Dockerfile.api").read_text())
+
     def test_provisioning_rejects_missing_env_and_is_ordered_and_fail_fast(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

@@ -42,7 +42,7 @@ Nginx and ASP share the `frontend` Docker network. ASP and PostGIS share the sep
    curl -kfsS 'https://localhost:8443/api/search?q=Limmerstr%2012%20Hannover&limit=5'
    ```
 
-   `-k` bypasses certificate verification **for this curl smoke test only**. It does not establish browser trust. For actual browser/geolocation acceptance tests, trust the local certificate in the browser/OS or supply a trusted certificate. Check the search UI, result markers, nearby results, OSM attribution, and both granted and denied geolocation paths **once those frontend features are implemented**. Swagger is available at `/swagger` only when `ASPNETCORE_ENVIRONMENT=Development`; a Debug image build alone does not enable it.
+   `-k` bypasses certificate verification **for this curl smoke test only**. It does not establish browser trust. For actual browser/geolocation acceptance tests, trust the local certificate in the browser/OS or supply a trusted certificate. Check the search UI, result markers, nearby results, OSM attribution, and both granted and denied geolocation paths **once those frontend features are implemented**. Swagger is available at `/swagger` only when `GEOSEARCH_API_ENVIRONMENT=Development` in `deploy/.env`; a Debug image build alone does not enable it. This deployment-specific key avoids inheriting the devcontainer's `ASPNETCORE_ENVIRONMENT=Development` during Compose interpolation.
 
 ### DooD boundaries and common pitfalls
 
@@ -96,7 +96,7 @@ Nginx and ASP share the `frontend` Docker network. ASP and PostGIS share the sep
 
 ## Where configuration belongs
 
-- **`deploy/.env`** (Git-ignored): deployment-specific PostgreSQL admin/reader passwords, published HTTPS port/bind address, and ASP environment/build mode. Values are interpolated into `compose.yaml`; only the services that need each secret receive it.
+- **`deploy/.env`** (Git-ignored): deployment-specific PostgreSQL admin/reader passwords, published HTTPS port/bind address, and `GEOSEARCH_API_ENVIRONMENT` (runtime) / `DOTNET_BUILD_CONFIGURATION` (build). The Compose service maps `GEOSEARCH_API_ENVIRONMENT` to the container's `ASPNETCORE_ENVIRONMENT`; the development container's own `ASPNETCORE_ENVIRONMENT` must not determine the deployed API mode. Values are interpolated into `compose.yaml`; only the services that need each secret receive it.
 - **`deploy/compose.yaml`**: image builds, private service DNS names, networks, volumes and non-secret application settings. The database/admin secret is passed to PostGIS and `gis-tools`; the API receives **only the read-only login**.
 - **`deploy/nginx/nginx.conf`**: TLS termination, static file routing, `/api/*` and `/swagger*` reverse proxy. Do not put PostgreSQL or application secrets here.
 - **`deploy/certs/` and the `tls-certs` volume**: keep the source certificate and private key on the Docker client host; run `./deploy/scripts/load-cert.sh` to stream them securely into the Docker-managed volume. The frontend mounts it read-only. Do not use a source-code bind mount for TLS files, because the Docker daemon may not see the devcontainer's `/workspace` path.
@@ -123,7 +123,15 @@ The development container's `lab/data/` and the deployment's `gis-data` are inte
 
 If the non-root writeability check still reports an error, inspect `geosearch_gis-data` with `docker volume inspect geosearch_gis-data` and verify that the Docker daemon has sufficient disk space. The provisioning script already attempts to correct volume ownership; **do not change ownership of the repository checkout**. The preflight does not touch the database or import tables.
 
-ASP is built in `Release` by default. To enable Swagger locally, set `ASPNETCORE_ENVIRONMENT=Development` in `deploy/.env` and recreate the API container with `docker compose up -d --force-recreate api`; Swagger UI is then at `https://localhost:8443/swagger` and JSON at `/swagger/v1/swagger.json`. `DOTNET_BUILD_CONFIGURATION=Debug` changes the ASP build configuration but **does not** enable Swagger by itself. Do not publish Development behavior to untrusted users.
+ASP is built in `Release` by default and runs in `Production` by default. The **deployed API runtime** is controlled by `GEOSEARCH_API_ENVIRONMENT` in `deploy/.env`, independently of the devcontainer's `ASPNETCORE_ENVIRONMENT=Development`. To enable Swagger locally, set `GEOSEARCH_API_ENVIRONMENT=Development` in `deploy/.env` and recreate the API container with `docker compose up -d --force-recreate api`; Swagger UI is then at `https://localhost:8443/swagger` and JSON at `/swagger/v1/swagger.json`. `DOTNET_BUILD_CONFIGURATION=Debug` changes the ASP build configuration but **does not** enable Swagger by itself. Do not publish Development behavior to untrusted users.
+
+When updating from earlier deployment versions, **replace** `ASPNETCORE_ENVIRONMENT=Production` in your existing ignored `deploy/.env` with `GEOSEARCH_API_ENVIRONMENT=Production` (or `Development` for local Swagger testing). Before recreating, verify the effective API environment without printing other configuration or secrets:
+
+```sh
+docker compose config --format json | python3 -c 'import json,sys; print(json.load(sys.stdin)["services"]["api"]["environment"]["ASPNETCORE_ENVIRONMENT"])'
+```
+
+The value should match `GEOSEARCH_API_ENVIRONMENT`, regardless of the devcontainer environment. After `docker compose up -d --force-recreate api`, confirm with `docker compose exec api printenv ASPNETCORE_ENVIRONMENT` or check the API startup logs. Note that Docker Compose generally gives *shell* values precedence over `.env`; use the dedicated variable to avoid collisions with the devcontainer, and do not export a conflicting `GEOSEARCH_API_ENVIRONMENT` value in your shell. A custom `DOTNET_ENVIRONMENT` inside the API container would also affect the .NET host environment, so leave that unset in this deployment.
 
 `frontend` is the only published service. Nginx access logging is disabled because nearby queries can contain device coordinates. Missing `/_framework/` and `/_content/` assets return 404 rather than the SPA HTML. The standalone .NET 10 client relies on a publish-generated `<script type="importmap">` in `index.html` to resolve fingerprinted framework modules such as `dotnet.js`. The frontend Docker build verifies that the import map is present; do not remove the placeholder from the client `index.html`. GeoSearch requires map tiles and browser geolocation, so UFWeb's more restrictive CSP and permissions policy cannot be reused unchanged. HTTPS is required for geolocation on non-localhost devices.
 

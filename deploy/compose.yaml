@@ -32,7 +32,8 @@ services:
         BUILD_CONFIGURATION: ${DOTNET_BUILD_CONFIGURATION:-Release}
     restart: unless-stopped
     environment:
-      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      # Avoid inheriting ASPNETCORE_ENVIRONMENT=Development from the DooD devcontainer.
+      ASPNETCORE_ENVIRONMENT: ${GEOSEARCH_API_ENVIRONMENT:-Production}
       ASPNETCORE_HTTP_PORTS: "8080"
       ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
       ConnectionStrings__Search: "Host=postgis;Port=5432;Database=lab1;Username=geosearch_reader;Password=${GEOSEARCH_READER_PASSWORD:?Set GEOSEARCH_READER_PASSWORD in deploy/.env}"
