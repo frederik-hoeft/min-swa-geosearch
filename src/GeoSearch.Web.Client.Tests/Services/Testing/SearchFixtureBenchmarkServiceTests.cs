@@ -117,6 +117,85 @@ public sealed class SearchFixtureBenchmarkServiceTests
     }
 
     [TestMethod]
+    public async Task MixedMatchResultsRetainAnObservedTopResultRegardlessOfResponseOrderAsync()
+    {
+        foreach (bool emptyFirst in new[] { false, true })
+        {
+            int calls = 0;
+            using HttpClient client = CreateClient((_, _) =>
+            {
+                calls++;
+                bool empty = emptyFirst ? calls == 1 : calls == 5;
+                return Task.FromResult(empty
+                    ? new HttpResponseMessage(HttpStatusCode.OK)
+                    {
+                        Content = JsonContent.Create(new GeoJsonFeatureCollection("2026-10-28", [])),
+                    }
+                    : GeoJsonResponse("poi:matched", "Lindener Rathaus"));
+            });
+
+            SearchFixtureBenchmarkService service = new(client);
+            SearchFixtureResult result = await service.RunAsync(SearchFixtureCatalog.All[2], 5);
+
+            Assert.AreEqual(5, result.SuccessfulRequests);
+            Assert.AreEqual(1, result.EmptyResponses);
+            Assert.AreEqual("poi:matched", result.TopResult?.Id);
+            Assert.IsTrue(result.HasMixedMatches);
+            Assert.IsTrue(result.TopResultVaried);
+            Assert.AreEqual("Mixed matches", result.StatusLabel);
+
+            SearchFixtureEvidence evidence = new(5, new DateTimeOffset(2026, 11, 4, 20, 0, 0, TimeSpan.FromHours(1)),
+                new DateTimeOffset(2026, 11, 4, 20, 1, 0, TimeSpan.FromHours(1)), TimeSpan.FromSeconds(1), false, [result]);
+            string markdown = evidence.ToMarkdown();
+            StringAssert.Contains(markdown, "poi:matched", StringComparison.Ordinal);
+            StringAssert.Contains(markdown, "1/5 successful responses returned no matches", StringComparison.Ordinal);
+        }
+    }
+
+    [TestMethod]
+    public async Task ConsistentlyEmptyResponsesRemainNoMatchesAsync()
+    {
+        using HttpClient client = CreateClient((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = JsonContent.Create(new GeoJsonFeatureCollection("2026-10-28", [])),
+        }));
+        SearchFixtureBenchmarkService service = new(client);
+
+        SearchFixtureResult result = await service.RunAsync(SearchFixtureCatalog.All[0], 5);
+
+        Assert.AreEqual(5, result.SuccessfulRequests);
+        Assert.AreEqual(5, result.EmptyResponses);
+        Assert.IsNull(result.TopResult);
+        Assert.IsFalse(result.HasMixedMatches);
+        Assert.IsFalse(result.TopResultVaried);
+        Assert.AreEqual("No matches", result.StatusLabel);
+    }
+
+    [TestMethod]
+    public void ExportUsesRecordedRunMetadataAfterSelectedSampleCountChanges()
+    {
+        int selectedSamples = 5;
+        DateTimeOffset startedAt = new(2026, 11, 4, 20, 15, 0, TimeSpan.FromHours(1));
+        DateTimeOffset completedAt = startedAt.AddSeconds(12);
+        SearchFixtureResult result = new(SearchFixtureCatalog.All[0], selectedSamples, 5, [10, 11, 12, 13, 14],
+            new GeoJsonProperties("addr:1", "Limmerstraße 12", "Limmerstraße 12, Hannover", "address", "Adresse", 1, null),
+            "2026-10-28", 0, 0, null, false, false);
+        SearchFixtureEvidence recorded = new(selectedSamples, startedAt, completedAt, TimeSpan.FromSeconds(12), false, [result]);
+
+        // Changing the selector or copying later must not alter already-captured evidence.
+        selectedSamples = 100;
+        string exported = recorded.ToMarkdown();
+
+        Assert.AreEqual(100, selectedSamples);
+        StringAssert.Contains(exported, "2026-11-04 20:15:00 +01:00", StringComparison.Ordinal);
+        StringAssert.Contains(exported, "2026-11-04 20:15:12 +01:00", StringComparison.Ordinal);
+        StringAssert.Contains(exported, "5 requested per fixture", StringComparison.Ordinal);
+        StringAssert.Contains(exported, "5/5 (target 5)", StringComparison.Ordinal);
+        Assert.IsFalse(exported.Contains("100 requested", StringComparison.Ordinal));
+        Assert.AreEqual(exported, recorded.ToMarkdown());
+    }
+
+    [TestMethod]
     public async Task InvalidGeoJsonIsAnErrorNotSuccessfulLatencyAsync()
     {
         using HttpClient client = CreateClient((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)

@@ -3,8 +3,6 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using MudBlazor;
 using System.Diagnostics;
-using System.Globalization;
-using System.Text;
 
 namespace GeoSearch.Web.Client.UI.Pages;
 
@@ -13,7 +11,7 @@ public sealed partial class Tests : ComponentBase, IDisposable
 {
     private readonly Dictionary<string, SearchFixtureResult> _results = new(StringComparer.Ordinal);
     private CancellationTokenSource? _runCancellation;
-    private TimeSpan? _lastRunDuration;
+    private SearchFixtureEvidence? _lastRun;
     private string? ActiveQuery { get; set; }
     private string? CopyError { get; set; }
     private bool IsRunning { get; set; }
@@ -71,33 +69,19 @@ public sealed partial class Tests : ComponentBase, IDisposable
 
     private SearchFixtureResult? GetResult(SearchFixture fixture) => _results.GetValueOrDefault(fixture.Query);
 
-    private static string FormatMs(double? duration) => duration?.ToString("F1", CultureInfo.InvariantCulture) ?? "—";
+    private static string FormatMs(double? duration) => SearchFixtureEvidence.FormatMs(duration);
 
-    private static string FormatDuration(TimeSpan? elapsed) => elapsed switch
-    {
-        null => "—",
-        { TotalMinutes: >= 1 } time => $"{(int)time.TotalMinutes}m {time.Seconds:D2}s",
-        { } time => $"{time.TotalSeconds.ToString("F1", CultureInfo.InvariantCulture)} s",
-    };
+    private static string FormatDuration(TimeSpan? elapsed) => SearchFixtureEvidence.FormatDuration(elapsed);
 
     private static Color StatusColor(SearchFixtureResult result) => result switch
     {
         { SuccessfulRequests: 0 } => Color.Error,
         { FailedRequests: > 0 } => Color.Warning,
+        { HasMixedMatches: true } => Color.Warning,
         { TopResultVaried: true } or { SnapshotVaried: true } => Color.Warning,
         { EmptyResponses: > 0 } => Color.Info,
         { WorstMs: >= 300 } => Color.Warning,
         _ => Color.Success,
-    };
-
-    private static string StatusLabel(SearchFixtureResult result) => result switch
-    {
-        { SuccessfulRequests: 0 } => "Failed",
-        { FailedRequests: > 0 } => "Partial",
-        { TopResultVaried: true } or { SnapshotVaried: true } => "Inconsistent",
-        { EmptyResponses: > 0 } => "No/variable matches",
-        { WorstMs: >= 300 } => "E2E ≥ 300 ms",
-        _ => "Measured",
     };
 
     private async Task RunAllAsync()
@@ -108,11 +92,13 @@ public sealed partial class Tests : ComponentBase, IDisposable
         }
 
         _results.Clear();
-        _lastRunDuration = null;
+        _lastRun = null;
         CopyError = null;
         WasCanceled = false;
         IsRunning = true;
         _runCancellation = new CancellationTokenSource();
+        int requestedSamples = Repetitions;
+        DateTimeOffset startedAt = DateTimeOffset.Now;
         Stopwatch runStopwatch = Stopwatch.StartNew();
 
         try
@@ -121,7 +107,7 @@ public sealed partial class Tests : ComponentBase, IDisposable
             {
                 ActiveQuery = fixture.Query;
                 await InvokeAsync(StateHasChanged);
-                SearchFixtureResult result = await Benchmark.RunAsync(fixture, Repetitions, _runCancellation.Token);
+                SearchFixtureResult result = await Benchmark.RunAsync(fixture, requestedSamples, _runCancellation.Token);
                 _results[fixture.Query] = result;
                 await InvokeAsync(StateHasChanged);
             }
@@ -133,7 +119,8 @@ public sealed partial class Tests : ComponentBase, IDisposable
         finally
         {
             runStopwatch.Stop();
-            _lastRunDuration = runStopwatch.Elapsed;
+            _lastRun = new SearchFixtureEvidence(requestedSamples, startedAt, DateTimeOffset.Now,
+                runStopwatch.Elapsed, WasCanceled, _results.Values);
             ActiveQuery = null;
             IsRunning = false;
             _runCancellation.Dispose();
@@ -148,7 +135,7 @@ public sealed partial class Tests : ComponentBase, IDisposable
         CopyError = null;
         try
         {
-            await JS.InvokeVoidAsync("navigator.clipboard.writeText", BuildEvidence());
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", _lastRun?.ToMarkdown() ?? string.Empty);
             Snackbar.Add("Test evidence copied to clipboard.", Severity.Success);
         }
         catch (JSException)
@@ -156,57 +143,6 @@ public sealed partial class Tests : ComponentBase, IDisposable
             CopyError = "Clipboard access was denied. Use HTTPS or localhost, then allow clipboard access and retry.";
         }
     }
-
-    private string BuildEvidence()
-    {
-        StringBuilder output = new();
-        output.AppendLine("## Lab 2 search fixture observations");
-        output.AppendLine();
-        output.AppendLine(CultureInfo.InvariantCulture, $"Measured: {DateTimeOffset.Now:yyyy-MM-dd HH:mm zzz}; browser-to-API, sequential HTTP requests, {Repetitions} requested per fixture; no warm-up.");
-        output.AppendLine(CultureInfo.InvariantCulture, $"Snapshot: {SnapshotLabel}; successful requests: {SuccessfulRequests}/{AttemptedRequests}; overall average: {FormatMs(OverallAverageMs)} ms; total runtime: {FormatDuration(_lastRunDuration)}.");
-        output.AppendLine("Per-request timing: end-to-end browser-to-API HTTP (including browser, network, reverse proxy and TLS overhead where applicable), excluding JSON parsing and UI rendering. Total runtime: wall-clock duration for the full run, including processing between requests. Failed requests are excluded from per-request latency statistics. Not a raw backend benchmark.");
-        output.AppendLine();
-        output.AppendLine("| Query | Expected | Observed top result (name / type / ID) | Best (ms) | Average (ms) | Worst (ms) | Median (ms) | Requests | Snapshot | Notes |");
-        output.AppendLine("| --- | --- | --- | ---: | ---: | ---: | ---: | --- | --- | --- |");
-
-        foreach (SearchFixture fixture in SearchFixtureCatalog.All)
-        {
-            SearchFixtureResult? result = GetResult(fixture);
-            string top = result?.TopResult is { } feature
-                ? $"{feature.Name} ({feature.Label}) / {feature.Type} / {feature.Id}"
-                : result?.SuccessfulRequests > 0 ? "No matches" : "Not measured";
-            string note = result is null ? "Pending" : StatusLabel(result);
-            if (fixture.KnownRankingIssue)
-            {
-                note += "; lab-identified ranking issue";
-            }
-
-            if (result?.TopResultVaried == true)
-            {
-                note += "; top result varied between samples";
-            }
-
-            if (result?.SnapshotVaried == true)
-            {
-                note += "; snapshot varied between samples";
-            }
-
-            if (result?.LastError is { } error)
-            {
-                note += $"; {error}";
-            }
-
-            output.AppendLine(CultureInfo.InvariantCulture, $"| {EscapeCell(fixture.Query)} | {EscapeCell(fixture.Expected)} | {EscapeCell(top)} | "
-                + $"{FormatMs(result?.BestMs)} | {FormatMs(result?.AverageMs)} | {FormatMs(result?.WorstMs)} | "
-                + $"{FormatMs(result?.MedianMs)} | {result?.SuccessfulRequests ?? 0}/{result?.Attempts ?? 0} (target {result?.RequestedSamples ?? Repetitions}) | "
-                + $"{EscapeCell(result?.Snapshot ?? "—")} | {EscapeCell(note)} |");
-        }
-
-        return output.ToString();
-    }
-
-    private static string EscapeCell(string value) => value.Replace("|", "\\|", StringComparison.Ordinal)
-        .Replace("\r", " ", StringComparison.Ordinal).Replace("\n", " ", StringComparison.Ordinal);
 
     public void Dispose()
     {

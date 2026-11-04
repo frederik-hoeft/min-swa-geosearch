@@ -32,7 +32,7 @@
         </MudPaper>
         <MudPaper Elevation="0" Class="gs-tests-stat">
             <span>Total runtime</span>
-            <strong>@FormatDuration(_lastRunDuration)</strong>
+            <strong>@FormatDuration(_lastRun?.TotalRuntime)</strong>
             <small>Full fixture run (wall clock)</small>
         </MudPaper>
         <MudPaper Elevation="0" Class="gs-tests-stat">
@@ -112,6 +112,10 @@
                             <strong>@top.Name</strong>
                             <span>@top.Label</span>
                             <small>@top.Type · @top.Category · @top.Id</small>
+                            @if (result.HasMixedMatches)
+                            {
+                                <small class="gs-tests-error">Some requests returned no matches.</small>
+                            }
                         </div>
                     }
                     else if (result?.SuccessfulRequests > 0)
@@ -145,7 +149,7 @@
                     }
                     else
                     {
-                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@StatusColor(result)">@StatusLabel(result)</MudChip>
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@StatusColor(result)">@result.StatusLabel</MudChip>
                         <div class="gs-tests-count">@result.SuccessfulRequests / @result.Attempts successful
                             @if (result.Attempts < result.RequestedSamples)
                             {
@@ -155,6 +159,10 @@
                         @if (!string.IsNullOrWhiteSpace(result.LastError))
                         {
                             <small class="gs-tests-error">@result.LastError</small>
+                        }
+                        @if (result.EmptyResponses > 0)
+                        {
+                            <small class="gs-tests-error">@result.EmptyResponses / @result.SuccessfulRequests successful responses returned no matches.</small>
                         }
                         @if (result.TopResultVaried || result.SnapshotVaried)
                         {

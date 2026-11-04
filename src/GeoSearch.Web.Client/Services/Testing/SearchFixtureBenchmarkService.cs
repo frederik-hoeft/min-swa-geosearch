@@ -112,7 +112,13 @@ public sealed class SearchFixtureBenchmarkService(HttpClient httpClient)
                     hasInitialResult = true;
                 }
 
-                topResult = currentTop;
+                // Keep the last observed match when a later successful response has no results.
+                // Empty samples are counted separately and reported as a mixed outcome.
+                if (currentTop is not null)
+                {
+                    topResult = currentTop;
+                }
+
                 snapshot = collection.Snapshot;
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)

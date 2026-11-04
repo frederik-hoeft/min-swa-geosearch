@@ -18,6 +18,19 @@ public sealed record SearchFixtureResult(
 {
     public int SuccessfulRequests => LatenciesMs.Count;
 
+    public bool HasMixedMatches => EmptyResponses > 0 && EmptyResponses < SuccessfulRequests;
+
+    public string StatusLabel => this switch
+    {
+        { SuccessfulRequests: 0 } => "Failed",
+        { FailedRequests: > 0 } => "Partial",
+        { HasMixedMatches: true } => "Mixed matches",
+        { TopResultVaried: true } or { SnapshotVaried: true } => "Inconsistent",
+        { EmptyResponses: > 0 } => "No matches",
+        { WorstMs: >= 300 } => "E2E ≥ 300 ms",
+        _ => "Measured",
+    };
+
     public double? BestMs => SuccessfulRequests == 0 ? null : LatenciesMs.Min();
 
     public double? WorstMs => SuccessfulRequests == 0 ? null : LatenciesMs.Max();
