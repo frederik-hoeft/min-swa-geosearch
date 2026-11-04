@@ -28,7 +28,9 @@ Search ranking, reverse geocoding, distance filtering, and result ordering execu
 
 ## Search results and latency
 
-Run the [ten fixture queries](../lab/lab-2.md#test-your-search-with-ten-fixture-queries) against the populated deployment through Nginx. Record the observed **top result**, its type or ID, and HTTP response time for each query, including results that differ from the expected answer. Use a consistent measurement method and report whether the time includes browser/network overhead or measures the API directly.
+Open `/tests` in the browser after starting the populated deployment through Nginx. Select 5, 10, 25, or 100 requests per fixture, click **Run all**, and use **Copy evidence** to obtain a Markdown table with the actual top result, type/ID, snapshot, best/average/worst/median response latencies, and any failures. The three lab-identified ranking issues are marked in the table and in the export. Paste the measured output below, replacing the placeholders, before submission. The page sends the exact [ten fixture queries](../lab/lab-2.md#test-your-search-with-ten-fixture-queries) directly to `GET /api/search?limit=1`, independently of the map UI. It measures sequential full-body HTTP responses with `Stopwatch` in Blazor WebAssembly; it includes browser/network/proxy/TLS overhead where applicable but excludes JSON parsing, with no warm-up. The page also records total wall-clock runtime for the batch, including processing between requests. This is demo-oriented end-to-end timing, not a substitute for the dedicated benchmark harness.
+
+Record the observed **top result**, its type or ID, and HTTP response time for each query, including results that differ from the expected answer. Use a consistent measurement method and report whether the time includes browser/network overhead or measures the API directly.
 
 | Query | Observed top result (name, type/ID) | Median HTTP latency (ms) |
 | --- | --- | --- |

@@ -1,0 +1,186 @@
+@page "/tests"
+@using GeoSearch.Web.Client.Services.Testing
+@using GeoSearch.Web.Shared.GeoJson
+
+<PageTitle>Test evidence | GeoSearch</PageTitle>
+
+<section class="gs-tests-page" aria-labelledby="tests-heading">
+    <div class="gs-tests-heading">
+        <div>
+            <p class="gs-tests-overline">LAB 02 / QUALITY EVIDENCE</p>
+            <h1 id="tests-heading">Search fixture tests</h1>
+            <p>Run the ten instructor-provided queries against the live search API, inspect the observed top-ranked results, and record response latency.</p>
+        </div>
+        <MudChip T="string" Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small">HTTP / GeoJSON</MudChip>
+    </div>
+
+    <div class="gs-tests-summary">
+        <MudPaper Elevation="0" Class="gs-tests-stat">
+            <span>Completed fixtures</span>
+            <strong>@_results.Count / @SearchFixtureCatalog.All.Count</strong>
+            <small>Lab-defined search cases</small>
+        </MudPaper>
+        <MudPaper Elevation="0" Class="gs-tests-stat">
+            <span>HTTP samples</span>
+            <strong>@SuccessfulRequests / @AttemptedRequests</strong>
+            <small>Successful / attempted</small>
+        </MudPaper>
+        <MudPaper Elevation="0" Class="gs-tests-stat">
+            <span>Overall average</span>
+            <strong>@FormatMs(OverallAverageMs)<span class="gs-tests-unit"> ms</span></strong>
+            <small>Successful HTTP responses</small>
+        </MudPaper>
+        <MudPaper Elevation="0" Class="gs-tests-stat">
+            <span>Total runtime</span>
+            <strong>@FormatDuration(_lastRun?.TotalRuntime)</strong>
+            <small>Full fixture run (wall clock)</small>
+        </MudPaper>
+        <MudPaper Elevation="0" Class="gs-tests-stat">
+            <span>Dataset snapshot</span>
+            <strong class="gs-tests-snapshot">@SnapshotLabel</strong>
+            <small>Reported by the API</small>
+        </MudPaper>
+    </div>
+
+    <MudPaper Elevation="0" Class="gs-tests-panel">
+        <div class="gs-tests-toolbar">
+            <div>
+                <h2>Fixture run</h2>
+                <p>Sequential requests without warm-up. Per-request timing uses .NET <code>Stopwatch</code> for the full HTTP response (excluding JSON parsing); total runtime measures the entire run.</p>
+            </div>
+            <div class="gs-tests-actions">
+                <MudSelect T="int" Label="Requests per query" @bind-Value="Repetitions"
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@IsRunning" Class="gs-tests-samples">
+                    <MudSelectItem T="int" Value="5">5 requests</MudSelectItem>
+                    <MudSelectItem T="int" Value="10">10 requests</MudSelectItem>
+                    <MudSelectItem T="int" Value="25">25 requests</MudSelectItem>
+                    <MudSelectItem T="int" Value="100">100 requests</MudSelectItem>
+                </MudSelect>
+                <MudButton OnClick="RunAllAsync" Disabled="@IsRunning" Variant="Variant.Filled" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.PlayArrow">Run all</MudButton>
+                @if (IsRunning)
+                {
+                    <MudButton OnClick="CancelRun" Color="Color.Secondary" Variant="Variant.Outlined">Cancel</MudButton>
+                }
+                <MudButton OnClick="CopyEvidenceAsync" Disabled="@(IsRunning || _results.Count == 0)"
+                           Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ContentCopy">Copy evidence</MudButton>
+            </div>
+        </div>
+        <div class="gs-tests-progress" aria-live="polite" role="status">
+            @StatusText
+            @if (IsRunning)
+            {
+                <MudProgressLinear Class="gs-tests-progress-bar" Value="@ProgressPercent" Color="Color.Primary" />
+            }
+        </div>
+        @if (!string.IsNullOrEmpty(CopyError))
+        {
+            <MudAlert Severity="Severity.Warning" Class="gs-tests-copy-error">@CopyError</MudAlert>
+        }
+    </MudPaper>
+
+    <MudPaper Elevation="0" Class="gs-tests-results-panel">
+        <div class="gs-tests-results-heading">
+            <h2>Observed results</h2>
+            <span>Lab target: backend search under 300 ms on the Hannover dataset</span>
+        </div>
+        <MudTable T="SearchFixture" Items="@SearchFixtureCatalog.All" Dense="true" Hover="true"
+                  Elevation="0" Breakpoint="Breakpoint.None" Class="gs-tests-table">
+            <HeaderContent>
+                <MudTh Class="gs-tests-col-query">Query</MudTh>
+                <MudTh Class="gs-tests-col-expected">Expected</MudTh>
+                <MudTh Class="gs-tests-col-observed">Observed top result</MudTh>
+                <MudTh Class="gs-tests-col-latency">Latency (ms)</MudTh>
+                <MudTh Class="gs-tests-col-status">Run status</MudTh>
+            </HeaderContent>
+            <RowTemplate Context="fixture">
+                @{ SearchFixtureResult? result = GetResult(fixture); }
+                <MudTd DataLabel="Query" Class="gs-tests-col-query">
+                    <div class="gs-tests-query">@fixture.Query</div>
+                    @if (fixture.KnownRankingIssue)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">Known ranking issue</MudChip>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Expected" Class="gs-tests-col-expected">
+                    <span class="gs-tests-expected">@fixture.Expected</span>
+                </MudTd>
+                <MudTd DataLabel="Observed top result" Class="gs-tests-col-observed">
+                    @if (result?.TopResult is GeoJsonProperties top)
+                    {
+                        <div class="gs-tests-observed">
+                            <strong>@top.Name</strong>
+                            <span>@top.Label</span>
+                            <small>@top.Type · @top.Category · @top.Id</small>
+                            @if (result.HasMixedMatches)
+                            {
+                                <small class="gs-tests-error">Some requests returned no matches.</small>
+                            }
+                        </div>
+                    }
+                    else if (result?.SuccessfulRequests > 0)
+                    {
+                        <span class="gs-tests-empty">No matching feature</span>
+                    }
+                    else
+                    {
+                        <span class="gs-tests-empty">@(result is null ? "Not measured" : "No successful response")</span>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Latency (ms)" Class="gs-tests-col-latency">
+                    @if (result?.AverageMs is not null)
+                    {
+                        <div class="gs-tests-timings">
+                            <div><span>Best</span><strong>@FormatMs(result.BestMs)</strong></div>
+                            <div><span>Avg</span><strong>@FormatMs(result.AverageMs)</strong></div>
+                            <div><span>Worst</span><strong>@FormatMs(result.WorstMs)</strong></div>
+                        </div>
+                        <small class="gs-tests-median">Median: @FormatMs(result.MedianMs) ms</small>
+                    }
+                    else
+                    {
+                        <span class="gs-tests-empty">Not available</span>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Run status" Class="gs-tests-col-status">
+                    @if (result is null)
+                    {
+                        <span class="gs-tests-empty">Pending</span>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@StatusColor(result)">@result.StatusLabel</MudChip>
+                        <div class="gs-tests-count">@result.SuccessfulRequests / @result.Attempts successful
+                            @if (result.Attempts < result.RequestedSamples)
+                            {
+                                <span>(target @result.RequestedSamples)</span>
+                            }
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(result.LastError))
+                        {
+                            <small class="gs-tests-error">@result.LastError</small>
+                        }
+                        @if (result.EmptyResponses > 0)
+                        {
+                            <small class="gs-tests-error">@result.EmptyResponses / @result.SuccessfulRequests successful responses returned no matches.</small>
+                        }
+                        @if (result.TopResultVaried || result.SnapshotVaried)
+                        {
+                            <small class="gs-tests-error">Top result or snapshot changed between samples.</small>
+                        }
+                    }
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudPaper>
+
+    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Class="gs-tests-footnote">
+        This page provides live, end-to-end browser-to-API observations, <strong>not a raw backend benchmark</strong>.
+        Per-request timings include browser HTTP handling, network overhead, reverse proxying and TLS termination where applicable,
+        but exclude JSON deserialization and UI rendering. Total runtime measures the entire sequential fixture run, including
+        processing between requests. For reproducible performance measurements, use the dedicated benchmark harness with more iterations.
+        The lab identifies <strong>Hauptstrasse Laatzen</strong>, <strong>Zoo Hannover</strong>, and
+        <strong>Markthalle Hannover</strong> as known ranking issues; the page always reports their actual top results.
+        Use <strong>Copy evidence</strong> to export observations into <code>docs/lab-handoff.md</code>.
+    </MudAlert>
+</section>
