@@ -51,8 +51,3 @@ if (app.Environment.IsDevelopment())
 app.MapControllers();
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
 await app.RunAsync();
-
-// Expose the conventional entry point to integration test hosts in a later iteration.
-public partial class Program
-{
-}
