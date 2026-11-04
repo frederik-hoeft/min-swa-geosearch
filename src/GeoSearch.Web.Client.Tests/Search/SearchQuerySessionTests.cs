@@ -79,6 +79,29 @@ public sealed class SearchQuerySessionTests
     }
 
     [TestMethod]
+    public async Task FailedPreviewCanBeRequestedAgainWithoutExplicitRefreshAsync()
+    {
+        using PendingHandler handler = new();
+        using HttpClient client = new(handler) { BaseAddress = new Uri("https://example.test/") };
+        using SearchQuerySession session = new(new SearchApiClient(client));
+
+        Task<SearchFetchResult> preview = session.FetchAsync("Apotheke");
+        handler.Complete("""{"error":"Temporary outage"}""", HttpStatusCode.ServiceUnavailable);
+        Assert.IsInstanceOfType<SearchFailure>(await preview);
+
+        // Returning to the same draft query must retry HTTP, not replay a cached failure.
+        Task<SearchFetchResult> again = session.FetchAsync("Apotheke");
+        Assert.AreNotSame(preview, again);
+        Assert.AreEqual(2, handler.RequestCount);
+        handler.Complete("""{"type":"FeatureCollection","snapshot":"test","features":[]}""");
+        Assert.IsInstanceOfType<SearchSuccess>(await again);
+
+        // A successful snapshot remains available to the literal-query commit.
+        Assert.AreSame(again, session.FetchAsync("Apotheke"));
+        Assert.AreEqual(2, handler.RequestCount);
+    }
+
+    [TestMethod]
     public async Task DisposingSessionCancelsPendingRequestAsync()
     {
         using PendingHandler handler = new();
