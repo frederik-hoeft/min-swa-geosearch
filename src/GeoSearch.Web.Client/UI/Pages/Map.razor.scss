@@ -103,6 +103,9 @@
     transition: opacity 160ms ease-out, visibility 0s;
 }
 
+// visibility:hidden also removes collapsed content from keyboard navigation and the
+// accessibility tree. Unlike an inert attribute, it can be overridden by CSS
+// while the search field temporarily opens the sheet on mobile.
 .gs-search-panel--collapsed .gs-search-panel-content {
     opacity: 0;
     visibility: hidden;
@@ -195,6 +198,28 @@
     .gs-search-panel {
         width: clamp(11rem, 37vw, 14rem);
         padding-inline: 0.6rem;
+    }
+}
+
+// Focusing the search field temporarily fills the *mobile* workspace, putting
+// the field directly below the app bar and safely above the software keyboard.
+// This is purely presentational: the manual expanded/collapsed class is preserved
+// and automatically takes effect again as soon as the field loses focus.
+// Include compact landscape phones with a coarse pointer; tablets and desktop
+// keep their normal left-column behavior even while typing.
+@media (max-width: 599px),
+       (max-width: 959px) and (max-height: 500px) and (pointer: coarse) {
+    .gs-search-panel:has(.gs-search-bar input:focus) {
+        width: 100%;
+        height: 100%;
+        border-radius: 0;
+    }
+
+    .gs-search-panel--collapsed:has(.gs-search-bar input:focus) .gs-search-panel-content {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        transition: opacity 160ms ease-out, visibility 0s;
     }
 }
 

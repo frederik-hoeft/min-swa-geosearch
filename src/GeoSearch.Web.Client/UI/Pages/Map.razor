@@ -12,7 +12,7 @@
         <div class="gs-search-bar">
             <MudTextField T="string" Label="Search" Variant="Variant.Outlined"
                           Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
-                          Disabled="true" />
+                          Immediate="true" @bind-Value="_searchQuery" />
         </div>
         <button type="button" class="gs-search-toggle" @onclick="ToggleSearchPanel"
                 aria-controls="map-search-content" aria-expanded="@(_isSearchPanelExpanded ? "true" : "false")"
@@ -23,8 +23,7 @@
                       stroke-linecap="round" stroke-linejoin="round" />
             </svg>
         </button>
-        <div id="map-search-content" class="gs-search-panel-content"
-             aria-hidden="@(_isSearchPanelExpanded ? "false" : "true")" inert="@(!_isSearchPanelExpanded)">
+        <div id="map-search-content" class="gs-search-panel-content">
             <div class="gs-search-panel-heading">
                 <div>
                     <span class="gs-section-label">DISCOVERY</span>
