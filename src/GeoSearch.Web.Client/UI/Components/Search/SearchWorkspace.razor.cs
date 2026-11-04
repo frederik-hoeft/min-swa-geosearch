@@ -319,13 +319,28 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
     }
 
     // Map marker selection reuses the known feature; no new HTTP or reverse request.
-    public Task SelectMapFeatureAsync(GeoJsonFeature feature)
+    public async Task SelectMapFeatureAsync(GeoJsonFeature feature)
     {
+        if (_disposed)
+        {
+            return;
+        }
+
         SearchMapState map = SearchMapState.FromPanel(_searchState.Panel);
         string id = feature.Properties.Id;
-        return map.Results.Any(result => result.Properties.Id == id) || map.SelectedFeature?.Properties.Id == id
-            ? SelectPlaceAsync(feature)
-            : Task.CompletedTask;
+        if (!map.Results.Any(result => result.Properties.Id == id) && map.SelectedFeature?.Properties.Id != id)
+        {
+            return;
+        }
+
+        await SelectPlaceAsync(feature);
+        // This method is invoked through @ref by Map, not by a SearchWorkspace UI
+        // event. Parent callbacks update the map, but do not guarantee that Blazor
+        // renders this child's updated details state when its parameters are unchanged.
+        if (!_disposed)
+        {
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     private Task NotifyMapStateChangedAsync() => OnMapStateChanged.InvokeAsync(SearchMapState.FromPanel(_searchState.Panel));

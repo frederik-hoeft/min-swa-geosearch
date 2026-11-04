@@ -106,6 +106,10 @@
 .gs-map-viewer ::deep .maplibregl-marker.gs-search-marker {
     --gs-marker-fill: var(--mud-palette-primary);
     --gs-marker-ring: var(--mud-palette-surface);
+    // Match the host element to the custom button so MapLibre's bottom anchor
+    // coincides with the pin tip instead of the default marker dimensions.
+    width: 2.25rem;
+    height: 3rem;
 
     &--selected {
         --gs-marker-fill: var(--mud-palette-tertiary);
@@ -114,35 +118,27 @@
     }
 
     .gs-map-pin {
-        position: relative;
         display: block;
-        width: 2.7rem;
-        height: 3.2rem;
+        width: 2.25rem;
+        height: 3rem;
         padding: 0;
-        border: none;
+        border: 0;
         background: transparent;
         color: var(--gs-marker-fill);
         cursor: pointer;
-        filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.3));
+        filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.25));
         transition: scale 150ms ease, filter 150ms ease;
 
-        &::after {
-            content: "";
-            position: absolute;
-            z-index: 0;
-            bottom: 0;
-            left: 50%;
-            width: 0;
-            height: 0;
-            transform: translateX(-50%);
-            border-right: 0.7rem solid transparent;
-            border-left: 0.7rem solid transparent;
-            border-top: 1.1rem solid var(--gs-marker-fill);
+        svg {
+            display: block;
+            width: 100%;
+            height: 100%;
+            overflow: visible;
         }
 
         &:hover, &:focus-visible {
             scale: 1.12;
-            filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.4));
+            filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.35));
         }
 
         &:focus-visible {
@@ -152,26 +148,15 @@
         }
     }
 
-    .gs-map-pin__head {
-        position: absolute;
-        z-index: 1;
-        top: 0;
-        left: 50%;
-        display: grid;
-        place-items: center;
-        width: 2.7rem;
-        height: 2.7rem;
-        transform: translateX(-50%);
-        border: 3px solid var(--gs-marker-ring);
-        border-radius: 50%;
-        background: var(--gs-marker-fill);
+    .gs-map-pin__shape {
+        fill: var(--gs-marker-fill);
+        stroke: var(--gs-marker-ring);
+        stroke-width: 2;
+        stroke-linejoin: round;
     }
 
     .gs-map-pin__center {
-        width: 0.7rem;
-        height: 0.7rem;
-        border-radius: 50%;
-        background: var(--gs-marker-ring);
+        fill: var(--gs-marker-ring);
     }
 }
 

@@ -57,6 +57,8 @@ public sealed class MapResultOverlayTests
         Assert.IsNotNull(marker.Extensions);
         StringAssert.Contains(marker.Extensions.HtmlContent, "<button", StringComparison.Ordinal);
         StringAssert.Contains(marker.Extensions.HtmlContent, "type=\"button\"", StringComparison.Ordinal);
+        StringAssert.Contains(marker.Extensions.HtmlContent, "viewBox=\"0 0 36 48\"", StringComparison.Ordinal);
+        StringAssert.Contains(marker.Extensions.HtmlContent, "gs-map-pin__shape", StringComparison.Ordinal);
         StringAssert.Contains(marker.Extensions.HtmlContent, "aria-label=", StringComparison.Ordinal);
         Assert.IsNotNull(marker.OnClickAsync);
         marker.OnClickAsync(new MarkerEvent()).GetAwaiter().GetResult();

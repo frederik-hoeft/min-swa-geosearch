@@ -122,7 +122,7 @@ internal sealed class MapResultOverlay(
             {
                 // This is a real button, with native keyboard activation and an
                 // accessible label. User-provided labels are HTML-encoded.
-                HtmlContent = $"<button class=\"gs-map-pin\" type=\"button\" aria-label=\"Show {label} on map\" title=\"{label}\"><span class=\"gs-map-pin__head\" aria-hidden=\"true\"><span class=\"gs-map-pin__center\"></span></span></button>"
+                HtmlContent = $"<button class=\"gs-map-pin\" type=\"button\" aria-label=\"Show {label} on map\" title=\"{label}\"><svg viewBox=\"0 0 36 48\" aria-hidden=\"true\" focusable=\"false\"><path class=\"gs-map-pin__shape\" d=\"M18 1.5C9 1.5 1.5 9 1.5 18c0 11.2 12 24.5 16.5 28.5C22.5 42.5 34.5 29.2 34.5 18 34.5 9 27 1.5 18 1.5Z\"/><circle class=\"gs-map-pin__center\" cx=\"18\" cy=\"18\" r=\"6\"/></svg></button>"
             },
             // The wrapper's onMarker click path serializes a small payload,
             // unlike the map-level event handler that serializes a circular Map.
