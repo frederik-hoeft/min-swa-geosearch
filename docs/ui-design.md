@@ -33,11 +33,13 @@ Write source SCSS in expanded form: four-space indentation, one property declara
 
 The client uses a local system sans-serif stack and monospace typography for coordinates. `ThemePreferenceService` owns the light/dark preference and synchronizes it with the application-wide `MudThemeProvider`. The app follows the browser's color scheme until the user selects a theme with the header toggle. That selection is persisted in browser local storage and takes precedence over subsequent system changes; if storage is unavailable, the toggle remains usable for the current session. Custom SCSS tokens derive their colors from the active MudBlazor palette so that the landing cards, navigation, and map workspace match the selected theme.
 
+`ThemeHost` connects this preference to `MudThemeProvider` and holds the main UI behind an opaque loading surface until the saved preference and current system scheme are known. Its browser `prefers-color-scheme` observer only reports changes; it never mutates MudBlazor's internal state, so an explicit user selection remains authoritative. The observer is released when the service is disposed.
+
 The OSM Standard raster basemap retains its published colors in both modes; theme switching affects application chrome and map notices, not third-party map tiles or attribution.
 
 ## Layouts and feature boundaries
 
-`MainLayout` serves ordinary pages, including the landing page at `/`. `MapLayout` serves `/map` with a viewport-bound content area. Both use `AppHeader` for branding, an Explore link, and the keyboard skip link. The GeoSearch logo links back to the landing page; a separate Home navigation item is unnecessary. App-wide MudBlazor providers appear once in `UI/App.razor`.
+`MainLayout` serves ordinary pages, including the landing page at `/`. `MapLayout` serves `/map` with a viewport-bound content area. Both use `AppHeader` for branding, an Explore link, and the keyboard skip link. The GeoSearch logo links back to the landing page; a separate Home navigation item is unnecessary. The app-wide MudBlazor providers appear once at the application root: theme management in `UI/Components/ThemeHost` and the remaining providers in `UI/App.razor`.
 
 The map workspace uses a permanent, full-viewport MapLibre canvas. A search pane floats **over** the map and opens expanded on desktop, tablets, and landscape phones. On these viewports, it occupies the left edge and extends downward. Collapsing it retracts the content into a compact top-left search control; the thin chevron tab below the search field expands the pane again. The chevron is a button, not a drag handle, and has an accessible name and an `aria-expanded` state.
 

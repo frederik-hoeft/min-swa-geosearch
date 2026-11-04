@@ -57,3 +57,16 @@ pre {
 #main-content:focus {
     outline: none;
 }
+
+// An opaque neutral surface hides the app's initial (light) MudBlazor palette
+// until the saved or system preference is known. Also used before WASM starts.
+.gs-theme-loading {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: grid;
+    place-items: center;
+    background: #22343a;
+    color: #e8f3f0;
+    font-family: var(--gs-font-sans);
+}

@@ -1,5 +1,4 @@
 ﻿using GeoSearch.Web.Client.Services.Theming;
-using Microsoft.JSInterop;
 
 namespace GeoSearch.Web.Client.Tests;
 
@@ -9,98 +8,80 @@ public sealed class ThemePreferenceServiceTests
     [TestMethod]
     public async Task SystemPreferenceIsUsedWhenNoExplicitThemeIsSavedAsync()
     {
-        MemoryStorageJsRuntime storage = new() { StoredTheme = "unrecognized" };
-        ThemePreferenceService service = new(storage);
+        await using SimulatedBrowser browser = new() { StoredTheme = "unrecognized", SystemDarkMode = true };
+        await using ThemePreferenceService service = new(browser);
         int changes = 0;
         service.Changed += (_, _) => changes++;
 
-        await service.InitializeAsync(systemDarkMode: true);
+        await service.InitializeAsync();
+        Assert.IsTrue(service.IsInitialized);
         Assert.IsTrue(service.IsDarkMode);
-        Assert.AreEqual(1, changes);
+        Assert.IsTrue(browser.IsObserving);
 
-        service.ApplySystemPreference(systemDarkMode: false);
+        browser.ChangeSystemTheme(false);
         Assert.IsFalse(service.IsDarkMode);
-        Assert.AreEqual(2, changes);
 
-        service.ApplySystemPreference(systemDarkMode: false);
-        Assert.AreEqual(2, changes);
+        int changesAfterUpdate = changes;
+        browser.ChangeSystemTheme(false);
+        Assert.AreEqual(changesAfterUpdate, changes);
     }
 
     [TestMethod]
     public async Task SavedPreferenceOverridesSystemAndTogglePersistsAcrossSessionsAsync()
     {
-        MemoryStorageJsRuntime storage = new() { StoredTheme = "light" };
-        ThemePreferenceService service = new(storage);
+        await using SimulatedBrowser browser = new() { StoredTheme = "light", SystemDarkMode = true };
+        await using ThemePreferenceService service = new(browser);
 
-        await service.InitializeAsync(systemDarkMode: true);
+        await service.InitializeAsync();
         Assert.IsFalse(service.IsDarkMode);
 
         await service.ToggleAsync();
         Assert.IsTrue(service.IsDarkMode);
-        Assert.AreEqual("dark", storage.StoredTheme);
+        Assert.AreEqual("dark", browser.StoredTheme);
 
-        service.ApplySystemPreference(systemDarkMode: false);
+        browser.ChangeSystemTheme(false);
         Assert.IsTrue(service.IsDarkMode);
 
-        ThemePreferenceService nextSession = new(storage);
-        await nextSession.InitializeAsync(systemDarkMode: false);
+        await using ThemePreferenceService nextSession = new(browser);
+        await nextSession.InitializeAsync();
         Assert.IsTrue(nextSession.IsDarkMode);
     }
 
     [TestMethod]
     public async Task StorageFailuresDoNotPreventTogglingAsync()
     {
-        MemoryStorageJsRuntime storage = new() { Unavailable = true };
-        ThemePreferenceService service = new(storage);
+        await using SimulatedBrowser browser = new() { StorageUnavailable = true };
+        await using ThemePreferenceService service = new(browser);
 
-        await service.InitializeAsync(systemDarkMode: false);
+        await service.InitializeAsync();
         await service.ToggleAsync();
 
         Assert.IsTrue(service.IsDarkMode);
-        service.ApplySystemPreference(systemDarkMode: false);
+        browser.ChangeSystemTheme(false);
         Assert.IsTrue(service.IsDarkMode);
     }
 
     [TestMethod]
     public async Task UserSelectionDuringInitializationIsNotOverwrittenAsync()
     {
-        MemoryStorageJsRuntime storage = new() { StoredTheme = "light" };
-        ThemePreferenceService service = new(storage);
+        await using SimulatedBrowser browser = new() { StoredTheme = "light" };
+        await using ThemePreferenceService service = new(browser);
 
         await service.ToggleAsync();
-        await service.InitializeAsync(systemDarkMode: false);
+        await service.InitializeAsync();
 
         Assert.IsTrue(service.IsDarkMode);
     }
 
-    private sealed class MemoryStorageJsRuntime : IJSRuntime
+    [TestMethod]
+    public async Task ObserverIsRemovedWhenServiceIsDisposedAsync()
     {
-        public string? StoredTheme { get; set; }
+        await using SimulatedBrowser browser = new();
+        ThemePreferenceService service = new(browser);
+        await service.InitializeAsync();
+        Assert.IsTrue(browser.IsObserving);
 
-        public bool Unavailable { get; set; }
-
-        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
-            => InvokeAsync<TValue>(identifier, CancellationToken.None, args);
-
-        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
-        {
-            if (Unavailable)
-            {
-                throw new JSException("Storage unavailable");
-            }
-
-            if (identifier == "localStorage.getItem")
-            {
-                return ValueTask.FromResult((TValue)(object?)StoredTheme!);
-            }
-
-            if (identifier == "localStorage.setItem")
-            {
-                StoredTheme = (string)args![1]!;
-                return ValueTask.FromResult(default(TValue)!);
-            }
-
-            throw new InvalidOperationException($"Unexpected JavaScript call: {identifier}");
-        }
+        await service.DisposeAsync();
+        Assert.IsFalse(browser.IsObserving);
     }
 }

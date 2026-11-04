@@ -2,20 +2,31 @@
 
 namespace GeoSearch.Web.Client.Services.Theming;
 
-/// <summary>Owns the active theme and the browser's optional explicit preference.</summary>
-public sealed class ThemePreferenceService(IJSRuntime jsRuntime)
+/// <summary>Owns the effective theme, the user's optional override, and browser color-scheme updates.</summary>
+public sealed class ThemePreferenceService(IJSRuntime jsRuntime) : IAsyncDisposable
 {
     private const string STORAGE_KEY = "geosearch.theme";
+    private const string OBSERVER_MODULE = "./js/theme-preference.js";
 
     private bool? _userPreference;
+    private IJSObjectReference? _module;
+    private IJSObjectReference? _observer;
+    private DotNetObjectReference<ThemePreferenceService>? _callbackReference;
 
     public bool IsDarkMode { get; private set; }
 
+    public bool IsInitialized { get; private set; }
+
     public event EventHandler? Changed;
 
-    /// <summary>Restores the explicit preference, or follows the browser's color scheme.</summary>
-    public async Task InitializeAsync(bool systemDarkMode)
+    /// <summary>Restores the saved selection and subscribes to browser color-scheme changes.</summary>
+    public async Task InitializeAsync()
     {
+        if (IsInitialized)
+        {
+            return;
+        }
+
         string? storedPreference = null;
 
         try
@@ -28,20 +39,39 @@ public sealed class ThemePreferenceService(IJSRuntime jsRuntime)
         }
 
         // A user click during initialization takes precedence over a stale storage read.
-        if (_userPreference is not null)
-        {
-            return;
-        }
-
-        _userPreference = storedPreference switch
+        _userPreference ??= storedPreference switch
         {
             "dark" => true,
             "light" => false,
             _ => null,
         };
 
-        SetDarkMode(_userPreference ?? systemDarkMode);
+        try
+        {
+            _module = await jsRuntime.InvokeAsync<IJSObjectReference>("import", OBSERVER_MODULE);
+            _callbackReference = DotNetObjectReference.Create(this);
+            _observer = await _module.InvokeAsync<IJSObjectReference>("observeSystemDarkMode", _callbackReference);
+
+            // Read *after* subscribing, so a system change during async initialization isn't missed.
+            ApplySystemPreference(await _observer.InvokeAsync<bool>("getCurrentDarkMode"));
+        }
+        catch (JSException)
+        {
+            // A browser without a usable observer can still use the saved/manual selection.
+        }
+
+        if (_userPreference is not null)
+        {
+            SetDarkMode(_userPreference.Value);
+        }
+
+        IsInitialized = true;
+        Changed?.Invoke(this, EventArgs.Empty);
     }
+
+    /// <summary>Receives browser color-scheme notifications without mutating MudBlazor's internal state.</summary>
+    [JSInvokable]
+    public void OnSystemDarkModeChanged(bool systemDarkMode) => ApplySystemPreference(systemDarkMode);
 
     /// <summary>Follows system changes until the user explicitly selects a theme.</summary>
     public void ApplySystemPreference(bool systemDarkMode)
@@ -77,5 +107,30 @@ public sealed class ThemePreferenceService(IJSRuntime jsRuntime)
 
         IsDarkMode = isDarkMode;
         Changed?.Invoke(this, EventArgs.Empty);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_observer is not null)
+            {
+                await _observer.InvokeVoidAsync("dispose");
+                await _observer.DisposeAsync();
+            }
+
+            if (_module is not null)
+            {
+                await _module.DisposeAsync();
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+            // The browser may already be navigating away.
+        }
+        finally
+        {
+            _callbackReference?.Dispose();
+        }
     }
 }
