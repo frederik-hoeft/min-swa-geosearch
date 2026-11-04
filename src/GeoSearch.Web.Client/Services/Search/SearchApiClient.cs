@@ -1,5 +1,6 @@
 ﻿using GeoSearch.Web.Shared.Api;
 using GeoSearch.Web.Shared.GeoJson;
+using GeoSearch.Web.Shared.Web;
 using System.Net.Http.Json;
 using System.Text.Json;
 
@@ -12,7 +13,11 @@ public sealed class SearchApiClient(HttpClient httpClient)
     {
         try
         {
-            Uri uri = new($"api/search?q={Uri.EscapeDataString(query)}&limit={limit}", UriKind.Relative);
+            Uri uri = SimpleUriBuilder.Create("api")
+                .AppendPath("search")
+                .AppendQuery("q", query)
+                .AppendQuery("limit", limit)
+                .BuildUri(UriKind.Relative);
             using HttpResponseMessage response = await httpClient.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
@@ -22,13 +27,13 @@ public sealed class SearchApiClient(HttpClient httpClient)
                     error = await response.Content.ReadFromJsonAsync<ApiError>(cancellationToken);
                 }
 
-                return new SearchFetchResult.Failure(error?.Error ?? $"Search failed (HTTP {(int)response.StatusCode}).");
+                return new SearchFailure(error?.Error ?? $"Search failed (HTTP {(int)response.StatusCode}).");
             }
 
             GeoJsonFeatureCollection? collection = await response.Content.ReadFromJsonAsync<GeoJsonFeatureCollection>(cancellationToken);
             return collection is null
-                ? new SearchFetchResult.Failure("Search returned an empty response.")
-                : new SearchFetchResult.Success(collection);
+                ? new SearchFailure("Search returned an empty response.")
+                : new SearchSuccess(collection);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -36,29 +41,23 @@ public sealed class SearchApiClient(HttpClient httpClient)
         }
         catch (OperationCanceledException)
         {
-            return new SearchFetchResult.Failure("Search timed out. Please retry.");
+            return new SearchFailure("Search timed out. Please retry.");
         }
         catch (HttpRequestException)
         {
-            return new SearchFetchResult.Failure("Could not reach the search service. Check your connection and retry.");
+            return new SearchFailure("Could not reach the search service. Check your connection and retry.");
         }
         catch (JsonException)
         {
-            return new SearchFetchResult.Failure("Search returned an invalid response.");
+            return new SearchFailure("Search returned an invalid response.");
         }
         catch (NotSupportedException)
         {
-            return new SearchFetchResult.Failure("Search returned an unsupported response.");
+            return new SearchFailure("Search returned an unsupported response.");
         }
     }
 
     // F5 consumes this catalog. F2 does not expose category suggestions without a nearby editor.
     public Task<IReadOnlyList<string>?> GetCategoriesAsync(CancellationToken cancellationToken) =>
-        httpClient.GetFromJsonAsync<IReadOnlyList<string>>("api/categories", cancellationToken);
-}
-
-internal abstract record SearchFetchResult
-{
-    public sealed record Success(GeoJsonFeatureCollection Collection) : SearchFetchResult;
-    public sealed record Failure(string Message) : SearchFetchResult;
+        httpClient.GetFromJsonAsync<IReadOnlyList<string>>(SimpleUriBuilder.Create("api").AppendPath("categories").BuildUri(UriKind.Relative), cancellationToken);
 }

@@ -6,7 +6,7 @@
 /// </summary>
 internal sealed class SearchQuerySession(SearchApiClient apiClient) : IDisposable
 {
-    private const int MaxEntries = 16;
+    private const int MAX_ENTRIES = 16;
     private readonly CancellationTokenSource _lifetime = new();
     private readonly Dictionary<(string Query, int Limit), Task<SearchFetchResult>> _requests = [];
     private bool _disposed;
@@ -20,7 +20,7 @@ internal sealed class SearchQuerySession(SearchApiClient apiClient) : IDisposabl
             return existing;
         }
 
-        if (_requests.Count >= MaxEntries)
+        if (_requests.Count >= MAX_ENTRIES)
         {
             // Keep a small cache for active interactions, not an unbounded browser history.
             (string Query, int Limit) first = _requests.Keys.First();

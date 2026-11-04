@@ -1,139 +1,16 @@
-@using GeoSearch.Web.Client.Search
-@using GeoSearch.Web.Shared.GeoJson
+@using GeoSearch.Web.Client.UI.Components.Search
 @page "/map"
 @layout MapLayout
 
 <PageTitle>Explore | GeoSearch</PageTitle>
 
 <section class="gs-map-workspace" aria-label="Map exploration workspace">
-    <div class="gs-map-surface" @onclick="DismissDraft">
+    <div class="gs-map-surface" @onclick="DismissSearchDraftAsync">
         <MapViewer />
     </div>
     <aside @ref="_searchPanel" class="gs-search-panel @(_isSearchPanelExpanded ? "gs-search-panel--expanded" : "gs-search-panel--collapsed") @(_temporaryInteractionExpanded ? "gs-search-panel--temporarily-expanded" : "")"
            aria-label="Search workspace">
-        <div class="gs-search-bar">
-            <div class="gs-search-input-wrap">
-                <MudIcon Icon="@Icons.Material.Filled.Search" Size="Size.Small" Class="gs-search-input-icon" />
-                <input class="gs-search-input" type="text" inputmode="search" autocomplete="off" spellcheck="false"
-                       aria-label="Search places and addresses" role="combobox" aria-autocomplete="list"
-                       aria-expanded="@(ShowSuggestions ? "true" : "false")" aria-controls="@(ShowSuggestions ? "map-search-suggestions" : null)"
-                       aria-activedescendant="@ActiveSuggestionId" placeholder="Search places and addresses"
-                       value="@_searchState.DisplayText" @oninput="OnSearchInput" @onkeydown="OnSearchKeyDownAsync" />
-                @if (!string.IsNullOrEmpty(_searchState.DisplayText) || _searchState.Panel is not SearchPanelState.Idle)
-                {
-                    <button type="button" class="gs-search-clear" @onclick="ClearSearch" aria-label="Clear search and selection"
-                            title="Clear search and selection">
-                        <MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" />
-                    </button>
-                }
-            </div>
-            @if (ShowSuggestions)
-            {
-                <div class="gs-suggestions" id="map-search-suggestions" role="listbox" aria-label="Search suggestions">
-                    @for (int i = 0; i < Suggestions.Count; i++)
-                    {
-                        SearchSuggestion suggestion = Suggestions[i];
-                        int index = i;
-                        <button type="button" id="@SuggestionId(index)" role="option"
-                                class="gs-suggestion @(_searchState.HighlightedIndex == index ? "gs-suggestion--active" : "")"
-                                aria-selected="@(_searchState.HighlightedIndex == index ? "true" : "false")"
-                                @onmousedown:preventDefault="true"
-                                @onclick="() => ChooseSuggestionAsync(suggestion)">
-                            @switch (suggestion)
-                            {
-                                case SearchSuggestion.LiteralQuery query:
-                                    <MudIcon Icon="@Icons.Material.Filled.Search" Size="Size.Small" />
-                                    <span><strong>Search for "@query.Query"</strong><small>Search all matching places</small></span>
-                                    break;
-                                case SearchSuggestion.Place place:
-                                    <MudIcon Icon="@Icons.Material.Filled.Place" Size="Size.Small" />
-                                    <span><strong>@place.Feature.Properties.Label</strong><small>Place · @place.Feature.Properties.Type</small></span>
-                                    break;
-                            }
-                        </button>
-                    }
-                    @if (SearchInputHint is { } hint)
-                    {
-                        <div class="gs-suggestion-message" role="status">@hint</div>
-                    }
-                </div>
-            }
-        </div>
-        <button type="button" class="gs-search-toggle" @onclick="ToggleSearchPanelAsync"
-                aria-controls="map-search-content" aria-expanded="@(IsEffectivelyExpanded ? "true" : "false")"
-                aria-label="@(IsEffectivelyExpanded ? "Collapse search panel" : "Expand search panel")"
-                title="@(IsEffectivelyExpanded ? "Collapse search panel" : "Expand search panel")">
-            <svg viewBox="0 0 48 12" width="48" height="12" aria-hidden="true" focusable="false">
-                <path d="M4 9 L24 3 L44 9" fill="none" stroke="currentColor" stroke-width="2.5"
-                      stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-        </button>
-        <div id="map-search-content" class="gs-search-panel-content" aria-live="polite" aria-atomic="false">
-            @switch (_searchState.Panel)
-            {
-                case SearchPanelState.Idle:
-                    <div class="gs-search-panel-heading">
-                        <div><span class="gs-section-label">DISCOVERY</span><h1>Explore</h1></div>
-                    </div>
-                    <p class="gs-search-hint">Search for a place or address. Choose a suggestion or press Enter to see full results.</p>
-                    <p class="gs-search-hint">Nearby discovery will be added in a later phase.</p>
-                    break;
-                case SearchPanelState.Forward forward:
-                    <div class="gs-search-panel-heading">
-                        <div><span class="gs-section-label">SEARCH RESULTS</span><h1>@forward.Query</h1></div>
-                    </div>
-                    @switch (forward.Results)
-                    {
-                        case SearchLoadState.Loading:
-                            <p role="status" class="gs-search-hint">Searching...</p>
-                            break;
-                        case SearchLoadState.Failed failure:
-                            <div role="alert" class="gs-search-feedback">
-                                <p>@failure.Message</p>
-                                <MudButton OnClick="RetrySearchAsync" Variant="Variant.Outlined" Color="Color.Primary">Retry</MudButton>
-                            </div>
-                            break;
-                        case SearchLoadState.Ready ready:
-                            @if (ready.Collection.Features.Count == 0)
-                            {
-                                <p class="gs-search-hint" role="status">No results found for "@forward.Query".</p>
-                            }
-                            else
-                            {
-                                <p class="gs-results-count">@ready.Collection.Features.Count result(s), ranked by relevance</p>
-                                <div class="gs-results-list">
-                                    @foreach (GeoJsonFeature feature in ready.Collection.Features)
-                                    {
-                                        <button type="button" class="gs-result" @onclick="() => SelectPlace(feature)">
-                                            <MudIcon Icon="@Icons.Material.Filled.Place" Size="Size.Small" />
-                                            <span><strong>@feature.Properties.Label</strong><small>@feature.Properties.Type</small></span>
-                                        </button>
-                                    }
-                                </div>
-                                @if (forward.Limit < 20 && ready.Collection.Features.Count >= forward.Limit)
-                                {
-                                    <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="ShowMoreAsync">Show more</MudButton>
-                                }
-                            }
-                            break;
-                    }
-                    break;
-                case SearchPanelState.Place place:
-                    <button type="button" class="gs-results-back" @onclick="BackToPrevious">
-                        <MudIcon Icon="@Icons.Material.Filled.ArrowBack" Size="Size.Small" /> Back
-                    </button>
-                    <span class="gs-section-label">PLACE DETAILS</span>
-                    <h1 class="gs-detail-title">@place.Feature.Properties.Label</h1>
-                    <dl class="gs-place-details">
-                        <dt>Type</dt><dd>@place.Feature.Properties.Type</dd>
-                        @if (!string.IsNullOrWhiteSpace(place.Feature.Properties.Category))
-                        {
-                            <dt>Category</dt><dd>@place.Feature.Properties.Category</dd>
-                        }
-                    </dl>
-                    <p class="gs-search-hint">Map highlighting and navigation will be added in F3.</p>
-                    break;
-            }
-        </div>
+        <SearchWorkspace @ref="_searchWorkspace" IsEffectivelyExpanded="IsEffectivelyExpanded"
+                         OnToggle="ToggleSearchPanelAsync" OnCommitted="ExpandOnCommit" />
     </aside>
 </section>

@@ -1,7 +1,6 @@
 ﻿using GeoSearch.Web.Client.Services.Search;
 using GeoSearch.Web.Shared.GeoJson;
 using System.Net;
-using System.Text;
 
 namespace GeoSearch.Web.Client.Tests.Search;
 
@@ -22,7 +21,7 @@ public sealed class SearchQuerySessionTests
         Assert.AreEqual(1, handler.RequestCount);
         Assert.AreEqual("/api/search?q=Apotheke&limit=10", handler.LastRequest?.RequestUri?.PathAndQuery);
         handler.Complete("""{"type":"FeatureCollection","snapshot":"test","features":[]}""");
-        Assert.IsInstanceOfType<SearchFetchResult.Success>(await commit);
+        Assert.IsInstanceOfType<SearchSuccess>(await commit);
     }
 
     [TestMethod]
@@ -52,8 +51,8 @@ public sealed class SearchQuerySessionTests
             """);
 
         SearchFetchResult result = await request;
-        Assert.IsInstanceOfType<SearchFetchResult.Success>(result);
-        GeoJsonFeature feature = ((SearchFetchResult.Success)result).Collection.Features[0];
+        Assert.IsInstanceOfType<SearchSuccess>(result);
+        GeoJsonFeature feature = ((SearchSuccess)result).Collection.Features[0];
         Assert.AreEqual("Markt-Apotheke, Hannover", feature.Properties.Label);
         Assert.AreEqual(9.71497, feature.Geometry.Coordinates[0]);
         Assert.AreEqual(52.36677, feature.Geometry.Coordinates[1]);
@@ -69,14 +68,14 @@ public sealed class SearchQuerySessionTests
         Task<SearchFetchResult> first = session.FetchAsync("a&b");
         handler.Complete("""{"error":"Invalid query"}""", HttpStatusCode.BadRequest);
         SearchFetchResult failure = await first;
-        Assert.IsInstanceOfType<SearchFetchResult.Failure>(failure);
-        Assert.AreEqual("Invalid query", ((SearchFetchResult.Failure)failure).Message);
+        Assert.IsInstanceOfType<SearchFailure>(failure);
+        Assert.AreEqual("Invalid query", ((SearchFailure)failure).Message);
         Assert.AreEqual("/api/search?q=a%26b&limit=10", handler.LastRequest?.RequestUri?.PathAndQuery);
 
         Task<SearchFetchResult> retry = session.RefreshAsync("a&b");
         Assert.AreEqual(2, handler.RequestCount);
         handler.Complete("""{"type":"FeatureCollection","snapshot":"test","features":[]}""");
-        Assert.IsInstanceOfType<SearchFetchResult.Success>(await retry);
+        Assert.IsInstanceOfType<SearchSuccess>(await retry);
     }
 
     [TestMethod]
@@ -89,35 +88,5 @@ public sealed class SearchQuerySessionTests
         Task<SearchFetchResult> pending = session.FetchAsync("test");
         session.Dispose();
         await Assert.ThrowsExactlyAsync<TaskCanceledException>(async () => await pending);
-    }
-
-    private sealed class PendingHandler : HttpMessageHandler
-    {
-        private TaskCompletionSource<HttpResponseMessage> _response = CreateResponseSource();
-
-        public int RequestCount { get; private set; }
-        public HttpRequestMessage? LastRequest { get; private set; }
-
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            RequestCount++;
-            LastRequest = request;
-            return _response.Task.WaitAsync(cancellationToken);
-        }
-
-        public void Complete(string json, HttpStatusCode status = HttpStatusCode.OK)
-        {
-            // The HttpClient caller owns and disposes the response once delivered.
-#pragma warning disable CA2000
-            _response.TrySetResult(new HttpResponseMessage(status)
-            {
-                Content = new StringContent(json, Encoding.UTF8, "application/json")
-            });
-#pragma warning restore CA2000
-            _response = CreateResponseSource();
-        }
-
-        private static TaskCompletionSource<HttpResponseMessage> CreateResponseSource() =>
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
     }
 }

@@ -1,13 +1,35 @@
 ﻿using GeoSearch.Web.Client.Search;
+using GeoSearch.Web.Client.Search.Model;
 using GeoSearch.Web.Client.Services.Search;
 using GeoSearch.Web.Shared.GeoJson;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 
-namespace GeoSearch.Web.Client.UI.Pages;
+namespace GeoSearch.Web.Client.UI.Components.Search;
 
-public partial class Map
+public sealed partial class SearchWorkspace : ComponentBase, IDisposable
 {
+    private bool _disposed;
+
+    [Parameter]
+    public EventCallback OnCommitted { get; set; }
+
+    [Parameter]
+    public EventCallback OnToggle { get; set; }
+
+    [Parameter]
+    public bool IsEffectivelyExpanded { get; set; }
+
+    protected override void OnInitialized() => _searchSession = new SearchQuerySession(SearchApi);
+
+    public void Dispose()
+    {
+        _disposed = true;
+        StopDebounce();
+        _searchSession?.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
     private ExploreSearchState _searchState = ExploreSearchState.Initial;
     private SearchFetchResult? _preview;
     private string? _previewQuery;
@@ -32,10 +54,10 @@ public partial class Map
                 return [];
             }
 
-            List<SearchSuggestion> suggestions = [new SearchSuggestion.LiteralQuery(query)];
-            if (_previewQuery == query && _preview is SearchFetchResult.Success success)
+            List<SearchSuggestion> suggestions = [new LiteralQuerySuggestion(query)];
+            if (_previewQuery == query && _preview is SearchSuccess success)
             {
-                suggestions.AddRange(success.Collection.Features.Take(3).Select(feature => new SearchSuggestion.Place(feature)));
+                suggestions.AddRange(success.Collection.Features.Take(3).Select(feature => new PlaceSuggestion(feature)));
             }
 
             return suggestions;
@@ -51,20 +73,20 @@ public partial class Map
         get
         {
             string query = _searchState.DisplayText.Trim();
-            if (query.Length < SearchQueryPolicy.MinimumLength)
+            if (query.Length < SearchQueryPolicy.MINIMUM_LENGTH)
             {
-                return $"Enter at least {SearchQueryPolicy.MinimumLength} characters to search.";
+                return $"Enter at least {SearchQueryPolicy.MINIMUM_LENGTH} characters to search.";
             }
-            if (query.Length > SearchQueryPolicy.MaximumLength)
+            if (query.Length > SearchQueryPolicy.MAXIMUM_LENGTH)
             {
-                return $"Search text must be at most {SearchQueryPolicy.MaximumLength} characters.";
+                return $"Search text must be at most {SearchQueryPolicy.MAXIMUM_LENGTH} characters.";
             }
             if (_previewQuery == query)
             {
                 return _preview switch
                 {
-                    SearchFetchResult.Failure error => error.Message,
-                    SearchFetchResult.Success { Collection.Features.Count: 0 } => "No matching places. You can still search the literal text.",
+                    SearchFailure error => error.Message,
+                    SearchSuccess { Collection.Features.Count: 0 } => "No matching places. You can still search the literal text.",
                     _ => null
                 };
             }
@@ -99,7 +121,7 @@ public partial class Map
     {
         try
         {
-            await Task.Delay(SearchQueryPolicy.DebounceMilliseconds, cancellationToken);
+            await Task.Delay(SearchQueryPolicy.DEBOUNCE_MILLISECONDS, cancellationToken);
             if (_disposed || cancellationToken.IsCancellationRequested)
             {
                 return;
@@ -149,9 +171,9 @@ public partial class Map
             case "Escape":
                 if (_searchState.IsEditing)
                 {
-                    DismissDraft();
+                    AbandonDraft();
                 }
-                else if (_searchState.Panel is SearchPanelState.Place)
+                else if (_searchState.Panel is PlaceSearchPanel)
                 {
                     BackToPrevious();
                 }
@@ -161,8 +183,8 @@ public partial class Map
 
     private Task ChooseSuggestionAsync(SearchSuggestion suggestion) => suggestion switch
     {
-        SearchSuggestion.LiteralQuery query => CommitLiteralAsync(query.Query),
-        SearchSuggestion.Place place => SelectPlaceAsync(place.Feature),
+        LiteralQuerySuggestion query => CommitLiteralAsync(query.Query),
+        PlaceSuggestion place => SelectPlaceAsync(place.Feature),
         _ => Task.CompletedTask // Nearby actions are not surfaced until F5 has an editor.
     };
 
@@ -178,9 +200,10 @@ public partial class Map
         _previewLoading = false;
         long revision = ++_committedRevision;
         _searchState = _searchState.CommitQuery(query);
-        if (_previewQuery == query && _preview is SearchFetchResult.Success cached)
+        await OnCommitted.InvokeAsync();
+        if (_previewQuery == query && _preview is SearchSuccess cached)
         {
-            _searchState = _searchState.WithForwardResult(query, new SearchLoadState.Ready(cached.Collection));
+            _searchState = _searchState.WithForwardResult(query, new ReadySearch(cached.Collection));
             return;
         }
 
@@ -202,8 +225,8 @@ public partial class Map
 
             SearchLoadState status = result switch
             {
-                SearchFetchResult.Success success => new SearchLoadState.Ready(success.Collection),
-                SearchFetchResult.Failure failure => new SearchLoadState.Failed(failure.Message),
+                SearchSuccess success => new ReadySearch(success.Collection),
+                SearchFailure failure => new FailedSearch(failure.Message),
                 _ => throw new InvalidOperationException("Unexpected search outcome.")
             };
             _searchState = _searchState.WithForwardResult(query, status);
@@ -215,22 +238,28 @@ public partial class Map
         }
     }
 
-    private Task SelectPlaceAsync(GeoJsonFeature feature)
-    {
-        SelectPlace(feature);
-        return Task.CompletedTask;
-    }
-
-    private void SelectPlace(GeoJsonFeature feature)
+    private async Task SelectPlaceAsync(GeoJsonFeature feature)
     {
         ++_draftRevision;
         ++_committedRevision;
         StopDebounce();
         _previewLoading = false;
         _searchState = _searchState.CommitPlace(feature);
+        await OnCommitted.InvokeAsync();
     }
 
-    private void DismissDraft()
+    public Task DismissDraftAsync()
+    {
+        if (_disposed || !_searchState.IsEditing)
+        {
+            return Task.CompletedTask;
+        }
+
+        AbandonDraft();
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private void AbandonDraft()
     {
         if (!_searchState.IsEditing)
         {
@@ -260,11 +289,11 @@ public partial class Map
         _searchState = _searchState.Clear();
     }
 
-    private Task RetrySearchAsync() => _searchState.Panel is SearchPanelState.Forward forward
+    private Task RetrySearchAsync() => _searchState.Panel is ForwardSearchPanel forward
         ? RestartCommittedAsync(forward.Query, 10)
         : Task.CompletedTask;
 
-    private Task ShowMoreAsync() => _searchState.Panel is SearchPanelState.Forward forward
+    private Task ShowMoreAsync() => _searchState.Panel is ForwardSearchPanel forward
         ? RestartCommittedAsync(forward.Query, 20)
         : Task.CompletedTask;
 

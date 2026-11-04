@@ -1,4 +1,4 @@
-﻿using GeoSearch.Web.Client.Services.Search;
+﻿using GeoSearch.Web.Client.UI.Components.Search;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 
@@ -7,6 +7,7 @@ namespace GeoSearch.Web.Client.UI.Pages;
 public partial class Map : ComponentBase, IAsyncDisposable
 {
     private ElementReference _searchPanel;
+    private SearchWorkspace? _searchWorkspace;
     private IJSObjectReference? _module;
     private IJSObjectReference? _observer;
     private DotNetObjectReference<Map>? _self;
@@ -18,11 +19,6 @@ public partial class Map : ComponentBase, IAsyncDisposable
 
     [Inject]
     private IJSRuntime JsRuntime { get; set; } = null!;
-
-    protected override void OnInitialized()
-    {
-        _searchSession = new SearchQuerySession(SearchApi);
-    }
 
     protected async override Task OnAfterRenderAsync(bool firstRender)
     {
@@ -83,6 +79,10 @@ public partial class Map : ComponentBase, IAsyncDisposable
         return InvokeAsync(StateHasChanged);
     }
 
+    private Task DismissSearchDraftAsync() => _searchWorkspace?.DismissDraftAsync() ?? Task.CompletedTask;
+
+    private void ExpandOnCommit() => _isSearchPanelExpanded = true;
+
     private async Task ToggleSearchPanelAsync()
     {
         _isSearchPanelExpanded = !IsEffectivelyExpanded;
@@ -101,8 +101,6 @@ public partial class Map : ComponentBase, IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         _disposed = true;
-        StopDebounce();
-        _searchSession?.Dispose();
         IJSObjectReference? observer = _observer;
         IJSObjectReference? module = _module;
         DotNetObjectReference<Map>? self = _self;

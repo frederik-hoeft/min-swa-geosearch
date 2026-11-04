@@ -1,4 +1,5 @@
 ﻿using GeoSearch.Web.Client.Search;
+using GeoSearch.Web.Client.Search.Model;
 using GeoSearch.Web.Shared.GeoJson;
 
 namespace GeoSearch.Web.Client.Tests.Search;
@@ -11,7 +12,7 @@ public sealed class ExploreSearchStateTests
     {
         GeoJsonFeatureCollection collection = Collection("place-a");
         ExploreSearchState committed = ExploreSearchState.Initial.CommitQuery("hannover")
-            .WithForwardResult("hannover", new SearchLoadState.Ready(collection));
+            .WithForwardResult("hannover", new ReadySearch(collection));
 
         ExploreSearchState editing = committed.Edit("apothe");
         Assert.IsTrue(editing.IsEditing);
@@ -29,11 +30,11 @@ public sealed class ExploreSearchStateTests
     {
         GeoJsonFeatureCollection collection = Collection("market");
         ExploreSearchState search = ExploreSearchState.Initial.CommitQuery("hanno")
-            .WithForwardResult("hanno", new SearchLoadState.Ready(collection));
+            .WithForwardResult("hanno", new ReadySearch(collection));
 
         ExploreSearchState details = search.Edit("other").CommitPlace(collection.Features[0]);
         Assert.AreEqual("market", details.DisplayText);
-        Assert.IsInstanceOfType<SearchPanelState.Place>(details.Panel);
+        Assert.IsInstanceOfType<PlaceSearchPanel>(details.Panel);
 
         ExploreSearchState back = details.Back();
         Assert.AreSame(search.Panel, back.Panel);
@@ -45,35 +46,16 @@ public sealed class ExploreSearchStateTests
     {
         GeoJsonFeatureCollection collection = Collection("first");
         ExploreSearchState newer = ExploreSearchState.Initial.CommitQuery("first").CommitQuery("second");
-        Assert.AreSame(newer, newer.WithForwardResult("first", new SearchLoadState.Ready(collection)));
-        Assert.AreSame(newer, newer.WithForwardResult("first", new SearchLoadState.Failed("old error")));
+        Assert.AreSame(newer, newer.WithForwardResult("first", new ReadySearch(collection)));
+        Assert.AreSame(newer, newer.WithForwardResult("first", new FailedSearch("old error")));
 
         ExploreSearchState place = newer.CommitPlace(collection.Features[0]);
-        Assert.AreSame(place, place.WithForwardResult("second", new SearchLoadState.Ready(collection)));
-        Assert.IsInstanceOfType<SearchPanelState.Idle>(place.Clear().Panel);
+        Assert.AreSame(place, place.WithForwardResult("second", new ReadySearch(collection)));
+        Assert.IsInstanceOfType<IdleSearchPanel>(place.Clear().Panel);
     }
 
     internal static GeoJsonFeatureCollection Collection(string label) => new("test", [
         new GeoJsonFeature(new GeoJsonPoint(9.7, 52.3),
             new GeoJsonProperties("osm:1", label, label, "place", "", null, null))
     ]);
-}
-
-[TestClass]
-public sealed class SearchQueryPolicyTests
-{
-    [TestMethod]
-    [DataRow("ab", false)]
-    [DataRow("abc", true)]
-    [DataRow("apotheke", true)]
-    [DataRow("", false)]
-    public void RejectsShortQueries(string value, bool expected) =>
-        Assert.AreEqual(expected, SearchQueryPolicy.IsValid(value));
-
-    [TestMethod]
-    public void RejectsOverlongQueries()
-    {
-        Assert.IsTrue(SearchQueryPolicy.IsValid(new string('a', 200)));
-        Assert.IsFalse(SearchQueryPolicy.IsValid(new string('a', 201)));
-    }
 }

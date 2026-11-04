@@ -5,3 +5,7 @@
 @use "../Components/ThemeToggle";
 @use "../Layout/MainLayout";
 @use "../Layout/MapLayout";
+
+@use "../Components/Search/SearchWorkspace";
+@use "../Components/Search/SearchSuggestionList";
+@use "../Components/Search/SearchContextPanel";

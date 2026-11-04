@@ -1,0 +1,82 @@
+@use "../../Styles/core/breakpoints" as bp;
+
+.gs-suggestions {
+    position: absolute;
+    z-index: 12;
+    top: 4.4rem;
+    right: 0.85rem;
+    left: 0.85rem;
+    max-height: min(24rem, 55vh);
+    overflow: auto;
+    border: 1px solid var(--gs-border);
+    border-radius: 8px;
+    background: var(--mud-palette-surface);
+    box-shadow: 0 8px 25px color-mix(in srgb, var(--gs-ink) 18%, transparent);
+    overscroll-behavior: contain;
+}
+
+
+.gs-suggestion {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.75rem;
+    box-sizing: border-box;
+    width: 100%;
+    padding: 0.8rem;
+    border: 0;
+    border-bottom: 1px solid var(--gs-border);
+    background: transparent;
+    color: var(--gs-ink);
+    text-align: left;
+    cursor: pointer;
+
+    &:hover,
+    &:focus-visible,
+    &.gs-suggestion--active {
+        background: var(--gs-nav-active);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--gs-green);
+        outline-offset: -2px;
+    }
+
+    span {
+        flex: 1 1 0;
+        min-width: 0;
+        text-align: left;
+    }
+
+    strong,
+    small {
+        display: block;
+        overflow-wrap: anywhere;
+    }
+
+    strong {
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+
+    small {
+        margin-top: 0.2rem;
+        color: var(--gs-muted);
+        font-size: 0.75rem;
+    }
+}
+
+.gs-suggestion-message {
+    padding: 0.7rem 0.85rem;
+    color: var(--gs-muted);
+    font-size: 0.8rem;
+}
+
+@media (max-width: bp.$phone-max) and (orientation: portrait) {
+    .gs-suggestions {
+        top: 5.45rem;
+        right: 1.25rem;
+        left: 1.25rem;
+        max-height: 55vh;
+    }
+}

@@ -1,0 +1,152 @@
+@use "../../Styles/core/breakpoints" as bp;
+
+.gs-search-bar {
+    flex: 0 0 auto;
+    min-width: 0;
+}
+
+// A subtle handle rather than a second prominent button alongside the search.
+// Its wide, shallow chevron points in the direction the pane will move.
+.gs-search-toggle {
+    display: flex;
+    flex: 0 0 1.5rem;
+    align-items: center;
+    justify-content: center;
+    align-self: center;
+    width: 5rem;
+    height: 1.5rem;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--gs-muted);
+    cursor: pointer;
+
+    &:hover {
+        background: var(--gs-nav-active);
+        color: var(--gs-green);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--gs-green);
+        outline-offset: 2px;
+    }
+
+    svg {
+        width: 2.75rem;
+        height: 0.75rem;
+    }
+}
+
+// Expanded desktop pane collapses upwards; collapsed pane expands downwards.
+.gs-search-panel--collapsed .gs-search-toggle svg {
+    transform: rotate(180deg);
+}
+
+.gs-search-panel-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    margin-top: 0.65rem;
+    padding: 0.25rem 0.5rem 0.75rem;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 160ms ease-out, visibility 0s;
+}
+
+// visibility:hidden also removes collapsed content from keyboard navigation and the
+// accessibility tree. Interaction expansion can reveal it without changing the
+// manually selected collapsed state.
+.gs-search-panel--collapsed .gs-search-panel-content {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 120ms ease-out, visibility 0s 120ms;
+}
+
+
+@media (max-width: bp.$phone-max) and (orientation: portrait) {
+    .gs-search-toggle { order: -1; }
+
+    // Expanded mobile pane collapses downwards; collapsed pane expands upwards.
+    .gs-search-panel--expanded .gs-search-toggle svg { transform: rotate(180deg); }
+    .gs-search-panel--collapsed .gs-search-toggle svg { transform: none; }
+    .gs-search-panel--temporarily-expanded.gs-search-panel--collapsed .gs-search-toggle svg { transform: rotate(180deg); }
+}
+
+@media (max-width: bp.$phone-max),
+       (max-width: bp.$tablet-max) and (max-height: bp.$short-touch-viewport-max) and (pointer: coarse) {
+    .gs-search-panel--collapsed.gs-search-panel--temporarily-expanded .gs-search-panel-content {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        transition: opacity 160ms ease-out, visibility 0s;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .gs-search-panel-content { transition: none; }
+}
+
+// Custom combobox keeps typed suggestion identity and request handoff under Blazor
+// control. Colors follow the active MudBlazor theme rather than a light-only palette.
+.gs-search-input-wrap {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    height: 3.5rem;
+    padding: 0 0.65rem;
+    border: 1px solid var(--gs-border);
+    border-radius: 6px;
+    background: var(--mud-palette-surface);
+    color: var(--gs-ink);
+
+    &:focus-within {
+        border-color: var(--gs-green);
+        outline: 1px solid var(--gs-green);
+    }
+}
+
+.gs-search-input-icon {
+    color: var(--gs-muted);
+}
+
+.gs-search-input {
+    flex: 1;
+    width: 100%;
+    min-width: 0;
+    padding: 0.8rem 0.6rem;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--gs-ink);
+    font: inherit;
+
+    &::placeholder {
+        color: var(--gs-muted);
+    }
+}
+
+.gs-search-clear {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 2.2rem;
+    height: 2.2rem;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--gs-muted);
+    cursor: pointer;
+
+    &:hover {
+        background: var(--gs-nav-active);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--gs-green);
+    }
+}
