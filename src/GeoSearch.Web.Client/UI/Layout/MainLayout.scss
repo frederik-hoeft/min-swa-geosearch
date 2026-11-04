@@ -3,20 +3,27 @@
     box-shadow: none;
 
     .mud-toolbar {
-        padding: 0 clamp(1rem, 3vw, 3rem);
-        gap: 2rem;
+        padding: 0 clamp(0.75rem, 3vw, 3rem);
+        gap: clamp(0.75rem, 3vw, 2rem);
     }
 
-    .gs-primary-nav .mud-nav-link {
-        min-height: 2.75rem;
-        padding: 0.5rem 0.875rem;
-        border-radius: 8px;
-        color: var(--gs-muted);
-        font-weight: 600;
+    .gs-primary-nav {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        min-width: 0;
 
-        &.active {
-            background: #e6f3ee;
-            color: var(--gs-green-deep);
+        .mud-nav-link {
+            min-height: 2.75rem;
+            padding: 0.5rem 0.875rem;
+            border-radius: 8px;
+            color: var(--gs-muted);
+            font-weight: 600;
+
+            &.active {
+                background: #e6f3ee;
+                color: var(--gs-green-deep);
+            }
         }
     }
 }
@@ -31,19 +38,17 @@
     padding: clamp(1.5rem, 4vw, 3.5rem);
 }
 
-@media (max-width: 760px) {
-    .gs-appbar.mud-appbar .mud-toolbar {
-        gap: 0.75rem;
-    }
-}
-
 @media (max-width: 540px) {
-    .gs-appbar.mud-appbar .mud-toolbar {
-        padding-inline: 0.75rem;
-    }
+    .gs-appbar.mud-appbar {
+        .mud-toolbar {
+            gap: 0.5rem;
+        }
 
-    .gs-primary-nav {
-        display: none;
+        .gs-primary-nav .mud-nav-link {
+            min-width: 0;
+            padding: 0.35rem 0.5rem;
+            font-size: 0.8rem;
+        }
     }
 }
 
@@ -61,4 +66,10 @@
 
 .gs-skip-link:focus {
     transform: translateY(0);
+}
+
+@media (max-width: 420px) {
+    .gs-appbar.mud-appbar .gs-brand-name {
+        display: none;
+    }
 }

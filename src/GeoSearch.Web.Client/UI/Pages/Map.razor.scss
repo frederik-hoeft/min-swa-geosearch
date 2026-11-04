@@ -1,0 +1,94 @@
+.gs-map-workspace {
+    display: grid;
+    grid-template-columns: clamp(15rem, 25vw, 22rem) minmax(0, 1fr);
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.gs-search-panel {
+    min-width: 0;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 1.5rem;
+    border-right: 1px solid var(--gs-border);
+    background: #fff;
+}
+
+.gs-search-panel-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+
+    h1 {
+        margin: 0.35rem 0 0;
+        font-size: 1.5rem;
+        letter-spacing: -0.035em;
+    }
+}
+
+.gs-coming-soon {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    border-radius: 100px;
+    padding: 0.35rem 0.6rem;
+    background: #fbf3e4;
+    color: #8b682d;
+    font-size: 0.7rem;
+    font-weight: 650;
+}
+
+.gs-search-hint {
+    margin: 1rem 0 0;
+    color: var(--gs-muted);
+    font-size: 0.85rem;
+    line-height: 1.6;
+}
+
+.gs-map-surface {
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    background: #eaf3ee;
+}
+
+@media (max-width: 700px) {
+    .gs-map-workspace {
+        grid-template-columns: clamp(10rem, 40vw, 15rem) minmax(0, 1fr);
+    }
+
+    .gs-search-panel {
+        padding: 1rem;
+    }
+
+    .gs-search-panel-heading {
+        display: block;
+
+        h1 {
+            font-size: 1.3rem;
+        }
+    }
+
+    .gs-coming-soon {
+        margin-top: 0.75rem;
+    }
+}
+
+@media (max-width: 400px) {
+    .gs-map-workspace {
+        grid-template-columns: 42% minmax(0, 1fr);
+    }
+
+    .gs-search-panel {
+        padding: 0.75rem;
+    }
+}

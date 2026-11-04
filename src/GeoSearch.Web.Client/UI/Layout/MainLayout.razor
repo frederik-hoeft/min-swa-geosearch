@@ -1,14 +1,7 @@
 @inherits LayoutComponentBase
 
-<a href="#main-content" class="gs-skip-link">Skip to main content</a>
-
 <MudLayout>
-    <MudAppBar Elevation="0" Fixed="true" Class="gs-appbar">
-        <AppBrand />
-        <nav class="gs-primary-nav" aria-label="Primary navigation">
-            <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Map">Explore</MudNavLink>
-        </nav>
-    </MudAppBar>
+    <AppHeader />
     <MudMainContent Class="gs-main-content">
         <main id="main-content" tabindex="-1" class="gs-main">
             @Body

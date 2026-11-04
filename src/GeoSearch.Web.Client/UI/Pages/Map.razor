@@ -1,0 +1,23 @@
+@page "/map"
+@layout MapLayout
+
+<PageTitle>Explore | GeoSearch</PageTitle>
+
+<section class="gs-map-workspace" aria-label="Map exploration workspace">
+    <aside class="gs-search-panel" aria-label="Search workspace">
+        <div class="gs-search-panel-heading">
+            <div>
+                <span class="gs-section-label">DISCOVERY</span>
+                <h1>Explore</h1>
+            </div>
+            <span class="gs-coming-soon">In development</span>
+        </div>
+        <MudTextField T="string" Label="Search" Variant="Variant.Outlined"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                      Disabled="true" Class="gs-search-input" />
+        <p class="gs-search-hint">Place, address, and nearby search will appear here.</p>
+    </aside>
+    <div class="gs-map-surface">
+        <MapViewer />
+    </div>
+</section>
