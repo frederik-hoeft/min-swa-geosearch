@@ -51,6 +51,12 @@ The map is rendered by `UI/Components/MapViewer`, which owns the MapLibre instan
 
 The landing page takes visual cues from the repository's original pre-authentication intro: deep evergreen surfaces, subtle topographic contours, and open-geodata labels. It is a public index, not an authentication screen; the illustrative cartographic element is decorative and is not an interactive or data-backed map.
 
+## Unified discovery interaction (F2–F6)
+
+The [frontend interaction contract](internal/frontend/f5-interaction-contract.md) governs behavior across **F2–F6**, even though its name reflects the F5 design exercise. Keep one search field, typed autocomplete suggestions (draft), and one contextual panel (committed discovery or foreground inspection), rather than separate free-text/nearby/reverse tabs or a reverse popup. Typing changes suggestions, not the committed results. A selected literal query adopts the autocomplete request/snapshot; category selection opens an explicit nearby draft; a background-map click temporarily shows reverse details in the same panel with Back. Map selection, marker overlays, and camera effects derive from typed state and never drive query execution merely because the viewport moved.
+
+On mobile the existing keyboard-driven temporary full-height expansion supports autocomplete, while committed details can use the ordinary collapsible bottom sheet so the map remains visible. The exact autocomplete overlay treatment, MudBlazor combobox adapter, selected-place detail fields, and manual **Search this area** prompt placement require the F5 prototype described in [section 10](internal/frontend/f5-interaction-contract.md#10-decisions-to-validate-in-an-f5-prototype). Do not change F1's map/overlay ownership to implement the new search flow.
+
 ## Accessibility and verification
 
 Use semantic headings, explicit form labels, keyboard-operable controls, clear error announcements, and visible focus states. On route changes, Blazor focuses the `main` landmark (not the page heading); only the programmatically focused landmark suppresses its browser outline, while buttons and fields retain visible focus. Convey operational status through text or icons as well as color. Verify layouts at desktop and mobile widths in a browser; the .NET build verifies Razor and SCSS compilation but not visual correctness.
