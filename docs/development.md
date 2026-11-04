@@ -47,6 +47,12 @@ cp src/GeoSearch.Web.Client/appsettings.Development.example.json \
 
 The example uses the Windows API launch-profile origin `https://localhost:5100/`. The client uses `Api:BaseUrl` when configured and otherwise defaults to the browser's own origin. The [single-origin Docker deployment](../deploy/README.md) uses that fallback and does not need an API base-URL override. Browser configuration is public and must never contain database secrets.
 
+## Basemap provider and tile policy
+
+The MapLibre client loads the versioned, local style at `wwwroot/map-styles/osm-standard.json` by default. It contains a raster source using `https://tile.openstreetmap.org/{z}/{x}/{y}.png` (OSM Standard/osm-carto). Change the **public** `Map:StyleUrl` client setting to a compatible MapLibre style URL to replace the provider or to use a self-hosted style. Neither the API nor PostGIS proxies the tiles.
+
+The [OSM Foundation tile usage policy](https://operations.osmfoundation.org/policies/tiles/) applies: request tiles only for the human-visible viewport; do not prefetch, bulk-download, or create offline packs from the OSMF server; preserve normal browser caching and the deployment's `strict-origin-when-cross-origin` referrer policy; and keep source attribution clearly readable and linked to the [OSM copyright/license page](https://www.openstreetmap.org/copyright). Public OSMF tiles are a best-effort lab/development dependency, not a guaranteed production CDN. For production or offline usage, use an appropriate licensed tile provider or host tiles generated from downloadable OSM data. The map is available independently of the search API; browser support requires WebGL2.
+
 ## Run and debug
 
 The API and Blazor client have separate HTTPS launch profiles. For Windows Visual Studio debugging, leave the devcontainer running for PostgreSQL and GIS tools, trust the SDK development certificate with `dotnet dev-certs https --trust`, and start both web projects. The API listens at `https://localhost:5100` and the client at `https://localhost:5200`; the API's Development CORS policy allows the client origin.

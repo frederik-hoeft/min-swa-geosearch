@@ -1,207 +1,183 @@
-.gs-explore-page {
+@use "../Styles/core/breakpoints" as bp;
+
+.gs-landing-page {
     min-width: 0;
 }
 
-.gs-explore-heading {
-    margin-bottom: clamp(1.5rem, 3vw, 2.5rem);
-}
-
-.gs-explore-grid {
+.gs-landing-hero {
     display: grid;
-    grid-template-columns: minmax(280px, 345px) minmax(0, 1fr);
-    min-height: min(68vh, 660px);
-    gap: 1.25rem;
-}
-
-.gs-search-panel {
-    border: 1px solid var(--gs-border);
-    border-radius: 14px;
-    background: #fff;
-    padding: 1.65rem;
-}
-
-.gs-panel-heading {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    align-items: center;
-    margin-bottom: 1.4rem;
-}
-
-.gs-coming-soon {
-    display: inline-flex;
-    align-items: center;
-    color: #8b682d;
-    background: #fbf3e4;
-    border-radius: 100px;
-    padding: 0.35rem 0.6rem;
-    font-size: 0.7rem;
-    font-weight: 650;
-    white-space: nowrap;
-}
-
-.gs-search-panel h2 {
-    font-size: 1.45rem;
-    letter-spacing: -0.035em;
-    margin-bottom: 0.6rem;
-    font-weight: 700;
-}
-
-.gs-search-panel p {
-    font-size: 0.85rem;
-    line-height: 1.6;
-    color: var(--gs-muted);
-}
-
-.gs-search-input {
-    margin-top: 1.25rem;
-}
-
-.gs-search-divider {
-    height: 1px;
-    background: var(--gs-border);
-    margin: 2rem 0 1.25rem;
-}
-
-.gs-feature-line {
-    display: flex;
-    align-items: center;
-    gap: 0.7rem;
-    padding-top: 1.1rem;
-    font-size: 0.84rem;
-    color: #425f65;
-}
-
-.gs-feature-line .mud-icon-root {
-    color: var(--gs-green);
-}
-
-.gs-map-surface {
-    position: relative;
-    isolation: isolate;
-    min-height: 530px;
+    grid-template-columns: minmax(0, 1.4fr) minmax(15rem, 0.8fr);
+    min-width: 0;
     overflow: hidden;
-    border: 1px solid #d0e1db;
-    border-radius: 14px;
-    background:
-        radial-gradient(circle at 54% 51%, rgba(255,255,255,0.66), transparent 42%),
-        repeating-radial-gradient(ellipse at 62% 52%, transparent 0 37px, rgba(17, 122, 104, 0.075) 38px 40px, transparent 41px 70px),
-        linear-gradient(135deg, #e0eeea, #f1f6eb);
+    border-radius: 20px;
+    background: linear-gradient(135deg, #122e36 0%, #104740 100%);
+    color: #f0faf7;
 }
 
-.gs-map-surface::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    background-image:
-        linear-gradient(rgba(27,93,79,0.047) 1px, transparent 1px),
-        linear-gradient(90deg,rgba(27,93,79,0.047) 1px,transparent 1px);
-    background-size: 44px 44px;
+.gs-hero-content {
+    position: relative;
+    z-index: 1;
+    padding: clamp(2rem, 5vw, 5rem);
+
+    h1 {
+        max-width: 44rem;
+        margin: 1.35rem 0;
+        font-size: clamp(2.5rem, 5vw, 4.75rem);
+        line-height: 1.06;
+        letter-spacing: -0.06em;
+        font-weight: 750;
+
+        em {
+            color: #86dfc3;
+            font-style: normal;
+        }
+    }
+
+    p {
+        max-width: 34rem;
+        margin-bottom: 1.75rem;
+        color: #c2ddd7;
+        font-size: clamp(0.95rem, 1.4vw, 1.08rem);
+        line-height: 1.7;
+    }
 }
 
-.gs-map-meta {
-    position: absolute;
-    top: 1.35rem;
-    left: 1.5rem;
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    color: #476d66;
-    font-size: 0.65rem;
+.gs-hero-overline {
+    color: #9be7d0;
+    letter-spacing: 0.14em;
+    font-size: 0.7rem;
     font-weight: 750;
-    letter-spacing: 0.12em;
 }
 
-.gs-map-status-dot {
-    width: 7px;
-    height: 7px;
-    background: var(--gs-green);
-    border-radius: 50%;
+.gs-hero-action {
+    min-height: 3rem;
 }
 
-.gs-map-center {
+.gs-hero-technologies {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 2.5rem;
+
+    span {
+        border: 1px solid rgba(187, 227, 215, 0.3);
+        border-radius: 30px;
+        padding: 0.45rem 0.75rem;
+        font-size: 0.75rem;
+        color: #cceae1;
+    }
+}
+
+.gs-hero-cartography {
+    position: relative;
+    display: grid;
+    min-width: 0;
+    min-height: 22rem;
+    place-items: center;
+    overflow: hidden;
+    background: radial-gradient(circle at 60% 50%, rgba(105, 204, 174, 0.19), transparent 58%);
+}
+
+.gs-hero-contours {
     position: absolute;
-    inset: 0;
+    inset: -35%;
+    transform: rotate(-24deg);
+    background:
+        repeating-radial-gradient(ellipse at 57% 48%, transparent 0 27px, rgba(166, 217, 200, 0.18) 28px 29px, transparent 30px 57px),
+        linear-gradient(120deg, transparent, rgba(116, 217, 184, 0.08));
+}
+
+.gs-hero-location {
+    position: relative;
     display: flex;
     flex-direction: column;
-    justify-content: center;
     align-items: center;
-    padding: 2rem;
-    text-align: center;
+    gap: 0.6rem;
+    border: 1px solid rgba(173, 235, 215, 0.35);
+    border-radius: 16px;
+    padding: 1.2rem 1.75rem;
+    background: rgba(12, 57, 57, 0.78);
+    box-shadow: 0 16px 40px rgba(8, 32, 34, 0.2);
+    color: #a9edd8;
+    font-size: 0.74rem;
+    font-weight: 750;
+    letter-spacing: 0.15em;
 }
 
-.gs-map-target {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 5rem;
-    width: 5rem;
-    margin-bottom: 1.8rem;
-    border: 1px solid #bfdfd3;
-    background: rgba(255,255,255,0.66);
-    border-radius: 22px;
-    color: var(--gs-green);
-    box-shadow: 0 15px 40px rgba(27,93,79,0.07);
-}
-
-.gs-map-center h2 {
-    font-size: clamp(1.5rem, 2vw, 2rem);
-    color: #194a46;
-    font-weight: 720;
-    letter-spacing: -0.035em;
-}
-
-.gs-map-center p {
-    max-width: 23rem;
-    font-size: 0.88rem;
-    line-height: 1.65;
-    color: #54756e;
-}
-
-.gs-map-stage {
-    border: 1px solid #b8d9cd;
-    border-radius: 20px;
-    padding: 0.4rem 0.8rem;
-    color: #356a5f;
-    font-size: 0.72rem;
-    font-weight: 650;
-    background: rgba(255,255,255,0.55);
-}
-
-.gs-map-coordinates {
+.gs-hero-coordinate {
     position: absolute;
-    bottom: 1.35rem;
+    bottom: 1.5rem;
     right: 1.5rem;
-    color: #56796f;
+    color: #b4d9cf;
     font-family: var(--gs-font-mono);
-    font-size: 0.7rem;
+    font-size: 0.72rem;
 }
 
-.gs-map-coordinates span {
-    padding-inline: 0.4rem;
+.gs-landing-features {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+
+    article {
+        min-width: 0;
+        padding: clamp(1.25rem, 2.5vw, 2rem);
+        background: var(--mud-palette-surface);
+        border: 1px solid var(--gs-border);
+        border-radius: 14px;
+    }
+
+    .mud-icon-root {
+        color: var(--gs-green);
+    }
+
+    h2 {
+        margin: 1rem 0 0.5rem;
+        font-size: 1.25rem;
+    }
+
+    p {
+        margin: 0;
+        color: var(--gs-muted);
+        font-size: 0.9rem;
+        line-height: 1.6;
+    }
 }
 
-@media (max-width: 900px) {
-    .gs-explore-grid {
+@media (max-width: bp.$landing-compact-hero-max) {
+    .gs-landing-hero {
+        grid-template-columns: minmax(0, 1fr) minmax(11rem, 0.6fr);
+    }
+
+    .gs-hero-content {
+        padding: clamp(2rem, 4vw, 3rem);
+    }
+}
+
+@media (max-width: bp.$landing-stacked-max) {
+    .gs-landing-hero {
         grid-template-columns: 1fr;
     }
 
-    .gs-map-surface {
-        min-height: 420px;
+    .gs-hero-cartography {
+        display: none;
+    }
+
+    .gs-hero-technologies {
+        margin-top: 2rem;
+    }
+
+    .gs-landing-features {
+        grid-template-columns: 1fr;
     }
 }
 
-@media (max-width: 540px) {
-    .gs-search-panel {
-        padding: 1.25rem;
-    }
+@media (max-width: bp.$compact-brand-max) {
+    .gs-hero-content {
+        padding: 1.5rem;
 
-    .gs-map-surface {
-        min-height: 390px;
-    }
-
-    .gs-map-coordinates {
-        display: none;
+        h1 {
+            font-size: clamp(2.1rem, 11vw, 2.75rem);
+        }
     }
 }

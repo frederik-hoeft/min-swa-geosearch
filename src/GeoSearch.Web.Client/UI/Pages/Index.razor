@@ -1,38 +1,46 @@
 @page "/"
 
-<PageTitle>Explore | GeoSearch</PageTitle>
-<section class="gs-explore-page">
-    <header class="gs-page-heading gs-explore-heading">
-        <div class="gs-page-kicker">GEOSPATIAL WORKSPACE</div>
-        <h1>Explore the map</h1>
-        <p>One workspace for places, addresses, and nearby features.</p>
-    </header>
-    <div class="gs-explore-grid">
-        <aside class="gs-search-panel" aria-label="Search workspace">
-            <div class="gs-panel-heading">
-                <span class="gs-section-label">DISCOVERY</span>
-                <span class="gs-coming-soon">In development</span>
+<PageTitle>Home | GeoSearch</PageTitle>
+
+<section class="gs-landing-page">
+    <div class="gs-landing-hero">
+        <div class="gs-hero-content">
+            <div class="gs-hero-overline">GEOSPATIAL EXPLORATION / OPEN DATA</div>
+            <h1>Open data. <em>Real places.</em></h1>
+            <p>Explore Lower Saxony through OpenStreetMap. Navigate the region now, with address search and nearby discovery joining the workspace in the next phases.</p>
+            <MudButton Href="/map" Color="Color.Primary" Variant="Variant.Filled"
+                       StartIcon="@Icons.Material.Filled.Map" Size="Size.Large" Class="gs-hero-action">Explore the map</MudButton>
+            <div class="gs-hero-technologies" aria-label="Powered by open geospatial technologies">
+                <span>OpenStreetMap</span>
+                <span>PostGIS</span>
+                <span>MapLibre</span>
             </div>
-            <h2>Find a place</h2>
-            <p>Search by place, address, or category to explore spatial results.</p>
-            <MudTextField T="string" Label="Search Niedersachsen" Variant="Variant.Outlined"
-                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
-                          Disabled="true" Class="gs-search-input" />
-            <div class="gs-search-divider"></div>
-            <span class="gs-section-label">PLANNED TOOLS</span>
-            <div class="gs-feature-line"><MudIcon Icon="@Icons.Material.Filled.Place" Size="Size.Small" /> Place and address lookup</div>
-            <div class="gs-feature-line"><MudIcon Icon="@Icons.Material.Filled.NearMe" Size="Size.Small" /> Nearby features</div>
-            <div class="gs-feature-line"><MudIcon Icon="@Icons.Material.Filled.Layers" Size="Size.Small" /> Map layers and results</div>
-        </aside>
-        <div class="gs-map-surface" role="region" aria-label="Map placeholder">
-            <div class="gs-map-meta"><span class="gs-map-status-dot"></span> MAP VIEWER / PREVIEW</div>
-            <div class="gs-map-center">
-                <span class="gs-map-target" aria-hidden="true"><MudIcon Icon="@Icons.Material.Filled.TravelExplore" Size="Size.Large" /></span>
-                <h2>Map workspace</h2>
-                <p>Interactive MapLibre layers and GeoJSON results will appear here once the spatial API is connected.</p>
-                <span class="gs-map-stage">Map integration pending</span>
-            </div>
-            <div class="gs-map-coordinates">52.3759° N &nbsp; 9.7320° E <span>·</span> HANNOVER</div>
         </div>
+        <div class="gs-hero-cartography" aria-hidden="true">
+            <div class="gs-hero-contours"></div>
+            <div class="gs-hero-location">
+                <MudIcon Icon="@Icons.Material.Filled.Place" Size="Size.Large" />
+                <span>HANNOVER</span>
+            </div>
+            <div class="gs-hero-coordinate">52.3759° N / 9.7320° E</div>
+        </div>
+    </div>
+
+    <div class="gs-landing-features" aria-label="GeoSearch capabilities">
+        <article>
+            <MudIcon Icon="@Icons.Material.Filled.Map" Size="Size.Medium" />
+            <h2>Explore</h2>
+            <p>Navigate an interactive, OpenStreetMap-based map of the region.</p>
+        </article>
+        <article>
+            <MudIcon Icon="@Icons.Material.Filled.Search" Size="Size.Medium" />
+            <h2>Search</h2>
+            <p>Place and address lookup is coming to the map workspace.</p>
+        </article>
+        <article>
+            <MudIcon Icon="@Icons.Material.Filled.NearMe" Size="Size.Medium" />
+            <h2>Nearby</h2>
+            <p>Category and radius-based discovery is planned for a later phase.</p>
+        </article>
     </div>
 </section>

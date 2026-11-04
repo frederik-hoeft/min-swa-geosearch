@@ -2,7 +2,7 @@
 
 GeoSearch is a .NET 10 / Blazor WebAssembly application for [Software Architectures Lab 2](lab/lab-2.md). Its ASP.NET Core API searches the OpenStreetMap-derived Hannover dataset in PostGIS and exposes address search, reverse geocoding, nearby POIs, and category discovery as JSON/GeoJSON. The browser communicates with the API rather than accessing the database or an external geocoder.
 
-The GIS API and development/deployment infrastructure are implemented. The client currently has an application shell and map placeholder; interactive map search and browser geolocation remain to be completed. The four GIS endpoints are anonymous and read-only.
+The GIS API and development/deployment infrastructure are implemented. The client has a landing page (`/`) and a viewport-filling interactive OSM Standard map workspace (`/map`) with a collapsible search pane over the map. Search-result visualization and browser geolocation remain to be completed. The four GIS endpoints are anonymous and read-only.
 
 ## Run the application
 
@@ -15,7 +15,7 @@ cd deploy
 docker compose up -d --build
 ```
 
-Open `https://localhost:8443/` on the Docker host. First-time setup requires configuring `deploy/.env`, loading a TLS certificate, and importing the pinned GIS dataset; follow the deployment guide before using the commands above on a fresh installation. The initial download and import are not included in the short startup path.
+Open `https://localhost:8443/` on the Docker host and select **Open the map**, or navigate directly to `/map`. First-time setup requires configuring `deploy/.env`, loading a TLS certificate, and importing the pinned GIS dataset; follow the deployment guide before using the commands above on a fresh installation. The initial download and import are not included in the short startup path.
 
 ## Develop and test
 

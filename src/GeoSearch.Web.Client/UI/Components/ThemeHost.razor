@@ -1,0 +1,13 @@
+@using GeoSearch.Web.Client.Services.Theming
+
+<MudThemeProvider Theme="@GeoSearchMudTheme.Theme"
+                  IsDarkMode="@ThemePreferences.IsDarkMode" ObserveSystemDarkModeChange="false" />
+
+@if (ThemePreferences.IsInitialized)
+{
+    @ChildContent
+}
+else
+{
+    <div class="gs-theme-loading" role="status">Loading GeoSearch...</div>
+}

@@ -1,0 +1,241 @@
+@use "../Styles/core/breakpoints" as bp;
+
+.gs-map-workspace {
+    position: relative;
+    isolation: isolate;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.gs-map-surface {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: var(--mud-palette-background-gray);
+}
+
+// The map always fills the workspace. The search pane is an independent overlay:
+// toggling it does not resize MapLibre's canvas or alter its camera/zoom.
+.gs-search-panel {
+    position: absolute;
+    --gs-mobile-search-focus: 0;
+    z-index: 5;
+    top: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    width: clamp(17rem, 25vw, 22rem);
+    min-height: 0;
+    padding: 0.75rem 0.85rem 0.4rem;
+    overflow: hidden;
+    border-right: 1px solid var(--gs-border);
+    border-bottom: 1px solid var(--gs-border);
+    border-radius: 0 0 14px 0;
+    background: var(--mud-palette-surface);
+    box-shadow: 0 4px 18px rgba(20, 40, 36, 0.12);
+    transition: height 260ms cubic-bezier(0.2, 0.7, 0.2, 1);
+
+    &--expanded {
+        height: 100%;
+    }
+
+    &--collapsed {
+        height: 6.25rem;
+    }
+}
+
+.gs-search-bar {
+    flex: 0 0 auto;
+    min-width: 0;
+}
+
+// A subtle handle rather than a second prominent button alongside the search.
+// Its wide, shallow chevron points in the direction the pane will move.
+.gs-search-toggle {
+    display: flex;
+    flex: 0 0 1.5rem;
+    align-items: center;
+    justify-content: center;
+    align-self: center;
+    width: 5rem;
+    height: 1.5rem;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--gs-muted);
+    cursor: pointer;
+
+    &:hover {
+        background: var(--gs-nav-active);
+        color: var(--gs-green);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--gs-green);
+        outline-offset: 2px;
+    }
+
+    svg {
+        width: 2.75rem;
+        height: 0.75rem;
+    }
+}
+
+// Expanded desktop pane collapses upwards; collapsed pane expands downwards.
+.gs-search-panel--collapsed .gs-search-toggle svg {
+    transform: rotate(180deg);
+}
+
+.gs-search-panel-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    margin-top: 0.65rem;
+    padding: 0.25rem 0.5rem 0.75rem;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 160ms ease-out, visibility 0s;
+}
+
+// visibility:hidden also removes collapsed content from keyboard navigation and the
+// accessibility tree. Interaction expansion can reveal it without changing the
+// manually selected collapsed state.
+.gs-search-panel--collapsed .gs-search-panel-content {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 120ms ease-out, visibility 0s 120ms;
+}
+
+.gs-search-panel-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+
+    h1 {
+        margin: 0.35rem 0 0;
+        font-size: 1.5rem;
+        letter-spacing: -0.035em;
+    }
+}
+
+.gs-coming-soon {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    padding: 0.35rem 0.6rem;
+    border-radius: 100px;
+    background: color-mix(in srgb, var(--mud-palette-warning) 12%, var(--mud-palette-surface));
+    color: var(--mud-palette-warning);
+    font-size: 0.7rem;
+    font-weight: 650;
+}
+
+.gs-search-hint {
+    margin: 1rem 0 0;
+    color: var(--gs-muted);
+    font-size: 0.85rem;
+    line-height: 1.6;
+}
+
+// Small non-portrait screens have little space for a full-width left pane.
+@media (min-width: bp.$tablet-min) and (max-width: bp.$tablet-max) {
+    .gs-search-panel {
+        width: clamp(15rem, 32vw, 19rem);
+    }
+}
+
+// Portrait phones use a bottom sheet over the full-size map. The handle sits
+// above the search bar; the overlay must never resize the MapLibre canvas.
+@media (max-width: bp.$phone-max) and (orientation: portrait) {
+    .gs-search-panel {
+        top: auto;
+        bottom: 0;
+        width: 100%;
+        padding: 0.15rem 1.25rem 0.65rem;
+        border-right: 0;
+        border-bottom: 0;
+        border-top: 1px solid var(--gs-border);
+        border-radius: 14px 14px 0 0;
+        box-shadow: 0 -4px 18px rgba(20, 40, 36, 0.12);
+
+        &--expanded {
+            height: 68%;
+        }
+
+        &--collapsed {
+            height: 5.8rem;
+        }
+    }
+
+    .gs-search-toggle {
+        order: -1;
+    }
+
+    // Expanded mobile pane collapses downwards; collapsed pane expands upwards.
+    .gs-search-panel--expanded .gs-search-toggle svg {
+        transform: rotate(180deg);
+    }
+
+    .gs-search-panel--collapsed .gs-search-toggle svg {
+        transform: none;
+    }
+
+    .gs-search-panel-heading h1 {
+        font-size: 1.25rem;
+    }
+}
+
+@media (max-width: bp.$phone-max) and (orientation: landscape) {
+    .gs-search-panel {
+        width: clamp(11rem, 37vw, 14rem);
+        padding-inline: 0.6rem;
+    }
+}
+
+// Mobile focus/interaction state is reported by Map.razor.js and exposed through
+// the same class, aria-expanded, and button label. The browser reads the custom
+// property rather than duplicating Sass media-query values in JavaScript.
+@media (max-width: bp.$phone-max),
+       (max-width: bp.$tablet-max) and (max-height: bp.$short-touch-viewport-max) and (pointer: coarse) {
+    .gs-search-panel {
+        --gs-mobile-search-focus: 1;
+    }
+
+    .gs-search-panel--temporarily-expanded {
+        width: 100%;
+        height: 100%;
+        border-radius: 0;
+    }
+
+    .gs-search-panel--collapsed.gs-search-panel--temporarily-expanded .gs-search-panel-content {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        transition: opacity 160ms ease-out, visibility 0s;
+    }
+}
+
+@media (max-width: bp.$phone-max) and (orientation: portrait) {
+    .gs-search-panel--temporarily-expanded.gs-search-panel--collapsed .gs-search-toggle svg {
+        transform: rotate(180deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .gs-search-panel,
+    .gs-search-panel-content {
+        transition: none;
+    }
+}
