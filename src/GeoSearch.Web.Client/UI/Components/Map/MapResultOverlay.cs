@@ -68,7 +68,7 @@ internal sealed class MapResultOverlay(
                         ClassName = "gs-map-inspection-marker",
                         Extensions = new MarkerOptionsExtensions
                         {
-                            HtmlContent = "<span class=\"gs-map-inspection-crosshair\" aria-hidden=\"true\"></span>"
+                            HtmlContent = "<span class=\"gs-map-inspection-point\" aria-hidden=\"true\"></span>"
                         }
                     }, new LngLat(inspected.Longitude, inspected.Latitude));
                 }

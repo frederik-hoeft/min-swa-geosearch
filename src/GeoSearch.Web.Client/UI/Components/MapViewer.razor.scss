@@ -174,42 +174,34 @@
     }
 }
 
-// The clicked point is not an API result. Keep its crosshair distinct from
-// discovery pins and transparent to subsequent background-map clicks.
+// The clicked coordinate is not a search result. Use a minimal ring and dot
+// to distinguish it from place pins without intercepting background clicks.
 .gs-map-viewer ::deep .maplibregl-marker.gs-map-inspection-marker {
     pointer-events: none;
-    width: 2.25rem;
-    height: 2.25rem;
+    width: 1.5rem;
+    height: 1.5rem;
 
-    .gs-map-inspection-crosshair {
+    .gs-map-inspection-point {
+        position: relative;
         display: block;
         box-sizing: border-box;
         width: 100%;
         height: 100%;
-        border: 3px solid var(--mud-palette-info);
+        border: 2px solid var(--mud-palette-primary);
         border-radius: 50%;
-        background: color-mix(in srgb, var(--mud-palette-info) 14%, transparent);
-        box-shadow: 0 0 0 2px var(--mud-palette-surface), 0 2px 7px rgba(0, 0, 0, 0.3);
+        background: #fff;
+        box-shadow: 0 1px 5px rgba(0, 0, 0, 0.25);
 
-        &::before,
         &::after {
             content: "";
             position: absolute;
-            background: var(--mud-palette-info);
-        }
-
-        &::before {
-            width: 2px;
-            height: 1rem;
-            top: 0.625rem;
-            left: calc(50% - 1px);
-        }
-
-        &::after {
-            height: 2px;
-            width: 1rem;
-            left: 0.625rem;
-            top: calc(50% - 1px);
+            top: 50%;
+            left: 50%;
+            width: 0.4rem;
+            height: 0.4rem;
+            border-radius: 50%;
+            background: var(--mud-palette-primary);
+            transform: translate(-50%, -50%);
         }
     }
 }
