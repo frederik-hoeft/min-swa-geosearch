@@ -25,6 +25,12 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
     [Parameter]
     public bool IsEffectivelyExpanded { get; set; }
 
+    [Parameter]
+    public Func<Task<GeoCoordinate?>>? GetMapCenter { get; set; }
+
+    [Parameter]
+    public Func<CancellationToken, Task<DeviceLocationResult>>? LocateDevice { get; set; }
+
     [Inject]
     private SearchApiClient SearchApi { get; set; } = null!;
 
@@ -33,7 +39,9 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
         () => InvokeAsync(StateHasChanged),
         OnCommitted.InvokeAsync,
         state => OnMapStateChanged.InvokeAsync(state),
-        InvokeAsync);
+        InvokeAsync,
+        () => GetMapCenter?.Invoke() ?? Task.FromResult<GeoCoordinate?>(null),
+        token => LocateDevice?.Invoke(token) ?? Task.FromResult(new DeviceLocationResult(null, "Device location is unavailable.")));
 
     public void Dispose()
     {
@@ -67,6 +75,8 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
 
     private void OnSearchInput(ChangeEventArgs args) => _workflow.Edit(args.Value?.ToString() ?? "");
 
+    private void OnSearchFocus() => _workflow.OpenSuggestions();
+
     private async Task OnSearchKeyDownAsync(KeyboardEventArgs args)
     {
         switch (args.Key)
@@ -92,7 +102,11 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
                 {
                     _workflow.AbandonDraft();
                 }
-                else if (SearchState.Panel is PlaceSearchPanel or ReverseInspectionPanel)
+                else if (SearchState.Panel is NearbySearchPanel { Editing: true })
+                {
+                    await _workflow.CancelNearbyAsync();
+                }
+                else if (SearchState.Panel is PlaceSearchPanel or ReverseInspectionPanel or NearbySearchPanel)
                 {
                     await _workflow.BackAsync();
                 }
@@ -113,6 +127,33 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
     private Task ShowMoreAsync() => _workflow.ShowMoreAsync();
 
     private Task RetryReverseAsync() => _workflow.RetryReverseAsync();
+
+    private Task OpenNearbyHereAsync(GeoCoordinate point) => _workflow.OpenNearbyAsync(null, point);
+
+    private Task EditNearbyAsync(NearbyCriteria criteria) => _workflow.EditNearbyAsync(criteria);
+
+    private Task SubmitNearbyAsync() => _workflow.FindNearbyAsync();
+
+    private Task StartNearbyEditAsync() => _workflow.StartEditingNearbyAsync();
+
+    private Task CancelNearbyEditAsync() => _workflow.CancelNearbyAsync();
+
+    private Task RetryNearbyAsync() => _workflow.RetryNearbyAsync();
+
+    private Task RetryCategoriesAsync() => _workflow.RetryCategoriesAsync();
+
+    private Task LocateMeAsync() => _workflow.LocateMeAsync();
+
+    private Task SearchThisAreaAsync() => _workflow.SearchThisAreaAsync();
+
+    public Task OnMapCenterMovedAsync(GeoCoordinate center)
+    {
+        if (!_disposed)
+        {
+            _workflow.SetMapCenter(center);
+        }
+        return Task.CompletedTask;
+    }
 
     public async Task DismissDraftAsync()
     {
@@ -141,6 +182,33 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
 
     public Task InspectMapPointAsync(GeoCoordinate point) => _disposed
         ? Task.CompletedTask : InvokeAsync(() => _workflow.InspectMapPointAsync(point));
+
+    /// <summary>Escape from non-input controls follows the same layered Back semantics.</summary>
+    public async Task HandleWorkspaceEscapeAsync()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        if (SearchState.IsEditing)
+        {
+            _workflow.AbandonDraft();
+        }
+        else if (SearchState.Panel is NearbySearchPanel { Editing: true })
+        {
+            await _workflow.CancelNearbyAsync();
+        }
+        else if (SearchState.Panel is PlaceSearchPanel or ReverseInspectionPanel or NearbySearchPanel)
+        {
+            await _workflow.BackAsync();
+        }
+
+        if (!_disposed)
+        {
+            await InvokeAsync(StateHasChanged);
+        }
+    }
 
     public async Task DismissMapInspectionAsync()
     {

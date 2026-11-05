@@ -21,8 +21,10 @@ internal sealed class MapResultOverlay(
     private readonly Dictionary<string, (Guid MarkerId, GeoJsonFeature Feature, bool Selected)> _markers = new(StringComparer.Ordinal);
     private SearchMapState _current = SearchMapState.Empty;
     private Guid? _inspectedPointMarker;
+    private Guid? _nearbyRadiusMarker;
+    private Guid? _deviceAccuracyMarker;
 
-    public async Task ApplyAsync(SearchMapState state)
+    public async Task ApplyAsync(SearchMapState state, bool refreshRings = false)
     {
         await _sync.WaitAsync();
         try
@@ -74,6 +76,33 @@ internal sealed class MapResultOverlay(
                 }
             }
 
+            if (_current.Nearby != state.Nearby || refreshRings)
+            {
+                if (_nearbyRadiusMarker is { } oldRadius)
+                {
+                    await map.RemoveMarker(oldRadius);
+                    _nearbyRadiusMarker = null;
+                }
+                if (state.Nearby is { } nearby)
+                {
+                    _nearbyRadiusMarker = await CreateRadiusMarkerAsync(nearby.Origin,
+                        nearby.Criteria.RadiusMeters, "gs-map-nearby-radius", "Nearby search radius");
+                }
+            }
+            if (_current.Device != state.Device || refreshRings)
+            {
+                if (_deviceAccuracyMarker is { } oldAccuracy)
+                {
+                    await map.RemoveMarker(oldAccuracy);
+                    _deviceAccuracyMarker = null;
+                }
+                if (state.Device is { IsValid: true } device)
+                {
+                    _deviceAccuracyMarker = await CreateRadiusMarkerAsync(device.Point,
+                        device.AccuracyMeters, "gs-map-device-accuracy", "Device accuracy radius");
+                }
+            }
+
             bool selectionChanged = !SameFeature(_current.SelectedFeature, state.SelectedFeature);
             _current = state;
             if (selectionChanged && TryGetPosition(state.SelectedFeature, out LngLat? target) && target is not null)
@@ -97,6 +126,21 @@ internal sealed class MapResultOverlay(
         {
             _sync.Release();
         }
+    }
+
+    private async Task<Guid> CreateRadiusMarkerAsync(GeoCoordinate point, double radiusMeters,
+        string className, string label)
+    {
+        double zoom = await map.GetZoom();
+        double diameter = MapCircleScale.DiameterPixels(radiusMeters, point.Latitude, zoom);
+        string dimension = diameter.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+        string content = $"<span class=\"gs-map-radius-circle\" style=\"--gs-circle-size:{dimension}px\" aria-label=\"{label}\"></span>";
+        return await map.AddMarker(new MarkerOptions
+        {
+            Anchor = MarkerAnchor.Center,
+            ClassName = $"gs-map-circle-marker {className}",
+            Extensions = new MarkerOptionsExtensions { HtmlContent = content }
+        }, new LngLat(point.Longitude, point.Latitude));
     }
 
     private async Task OnMarkerClickedAsync(string id)

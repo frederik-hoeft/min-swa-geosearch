@@ -21,7 +21,7 @@
 5. Clicks that dismiss autocomplete do not also reverse-inspect; a double-click cancels pending inspection while preserving MapLibre zoom.
 6. An asynchronous completion may update the view only while its session generation remains current. Disposing the workspace invalidates outstanding work.
 
-For F5, extend the typed suggestion/panel states and add a **separate nearby request/session** with its own origin snapshot and cancellation semantics. Keep nearby requests out of `SearchWorkspace`'s event handlers rather than adding more request fields to the component. If the nearby API shares the same request shape with forward search, reuse generic request helpers without conflating their state generations.
+F5 adds `NearbyDiscoveryWorkflow`, `NearbySearchSession`, `CategoryCatalogSession`, and `DeviceLocationSession` as workspace-owned, individually disposable services. They preserve immutable applied nearby origins, guard stale requests and browser location completions, and keep all nearby HTTP out of `SearchWorkspace`'s event handlers. See [F5 integration notes](f5-nearby-integration.md) for the applied/draft behavior and browser acceptance.
 
 ## Validation
 

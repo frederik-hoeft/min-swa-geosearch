@@ -50,6 +50,9 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
     [Parameter]
     public EventCallback OnBackgroundDoubleClicked { get; set; }
 
+    [Parameter]
+    public EventCallback<GeoCoordinate> OnMapDragged { get; set; }
+
     [Inject]
     private IConfiguration Configuration { get; set; } = null!;
 
@@ -238,6 +241,8 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
             // Do not register the generic map error listener (circular payloads).
             await _map.AddAsyncListener<JsonElement>("dblclick", OnMapDoubleClickedAsync);
             await _map.AddAsyncListener<JsonElement>("click", OnMapClickedAsync);
+            await _map.AddAsyncListener<JsonElement>("dragend", OnMapDraggedAsync);
+            await _map.AddAsyncListener<JsonElement>("zoomend", OnMapZoomedAsync);
         }
         catch (JSException exception)
         {
@@ -256,6 +261,38 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
         return !_disposed && point is { } coordinate
             ? OnBackgroundClicked.InvokeAsync(coordinate)
             : Task.CompletedTask;
+    }
+
+    public async Task<GeoCoordinate?> GetCurrentCenterAsync()
+    {
+        if (_disposed || !_mapLoaded || _map is null)
+        {
+            return null;
+        }
+
+        LngLat center = await _map.GetCenter();
+        GeoCoordinate coordinate = new(center.Latitude, center.Longitude);
+        return coordinate.IsValid ? coordinate : null;
+    }
+
+    private async Task OnMapDraggedAsync(JsonElement _)
+    {
+        GeoCoordinate? center = await GetCurrentCenterAsync();
+        if (!_disposed && center is { } point)
+        {
+            await OnMapDragged.InvokeAsync(point);
+        }
+    }
+
+    private async Task OnMapZoomedAsync(JsonElement _)
+    {
+        if (!_disposed)
+        {
+            // Zoom-end also fires after a programmatic EaseTo selection.
+            // Refresh the radius/accuracy graphics without implying a manual
+            // map displacement or offering Search this area.
+            await UpdateOverlayAsync(refreshRings: true);
+        }
     }
 
     private Task OnMapDoubleClickedAsync(JsonElement _) => !_disposed
@@ -309,7 +346,7 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
         return size.Height > size.Width ? size.Height * 0.30 : 0;
     }
 
-    private async Task UpdateOverlayAsync()
+    private async Task UpdateOverlayAsync(bool refreshRings = false)
     {
         if (_resultOverlay is null || _disposed)
         {
@@ -318,7 +355,7 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
 
         try
         {
-            await _resultOverlay.ApplyAsync(SearchState);
+            await _resultOverlay.ApplyAsync(SearchState, refreshRings);
             _hasOverlayError = false;
         }
         catch (JSException exception) when (!_disposed)

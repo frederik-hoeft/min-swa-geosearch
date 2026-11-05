@@ -20,6 +20,28 @@ public sealed class SearchApiClient(HttpClient httpClient)
         return await ReadCollectionAsync(uri, "Search", cancellationToken);
     }
 
+    /// <summary>Query distance-ranked nearby POIs from a captured WGS84 origin.</summary>
+    internal Task<SearchFetchResult> NearbyAsync(AppliedNearbyQuery query, CancellationToken cancellationToken)
+    {
+        if (!query.IsValid)
+        {
+            throw new ArgumentOutOfRangeException(nameof(query));
+        }
+
+        SimpleUriBuilder uri = SimpleUriBuilder.Create("api")
+            .AppendPath("nearby")
+            .AppendQuery("lat", query.Origin.Latitude)
+            .AppendQuery("lon", query.Origin.Longitude)
+            .AppendQuery("radius", query.Criteria.RadiusMeters)
+            .AppendQuery("limit", 20);
+        if (query.Criteria.Category is { } category)
+        {
+            uri.AppendQuery("category", category);
+        }
+
+        return ReadCollectionAsync(uri.BuildUri(UriKind.Relative), "Nearby search", cancellationToken);
+    }
+
     /// <summary>Inspect the nearest feature to a user-clicked WGS84 coordinate.</summary>
     internal Task<SearchFetchResult> ReverseAsync(GeoCoordinate point, CancellationToken cancellationToken)
     {

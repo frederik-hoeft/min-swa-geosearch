@@ -1,0 +1,43 @@
+# F5: Explicit nearby discovery and device location
+
+**Status:** Implemented for review on F5 branch; live browser/WebGL/device acceptance outstanding.
+
+**Contract:** [F5 interaction model](f5-interaction-contract.md) · [Frontend backlog](backlog.md) · [Search workspace lifecycle](search-workspace-lifecycle.md) · [F4 reverse inspection](f4-reverse-inspection.md)
+
+## Ownership
+
+- `SearchWorkspace` handles the combobox and forwards typed UI commands. The same contextual `SearchContextPanel` renders forward results, the nearby editor/applied results, place details, and reverse inspection. There are no independent Nearby tabs or popups.
+- `SearchWorkspaceWorkflow` coordinates typed intents and existing preview/forward/reverse sessions. `NearbyDiscoveryWorkflow` owns nearby editor transitions, local category matching, criteria submission, applied-result replacement, and manual-map-movement eligibility. `NearbySearchSession` owns the cancellable nearby HTTP request and rejects stale completions. `CategoryCatalogSession` loads `/api/categories` lazily, with retry and local accent/case-insensitive matches. Failed category loading does not block all-categories discovery.
+- `DeviceLocationSession` owns **explicit** browser permission requests, the last acquired `DeviceLocationFix`, errors, cancellation, and navigation-intent gating. `Map.razor.js` only calls `navigator.geolocation.getCurrentPosition` from the user-selected **Locate me** action, with a 12-second timeout. No geolocation requests run on load, input focus, map movement, or category choice. Errors are shown without automatic fallback.
+- The existing `MapViewer` owns MapLibre's camera and map events. The page offers a map-center provider to the workspace; it is read at submission, not while editing. Map dragging/zooming can enable **Search this area** only after meaningful displacement, but never initiates nearby HTTP by itself. A newer user navigation/inspection prevents a late geolocation result from hijacking foreground inspection.
+- `MapResultOverlay` owns search-result HTML pins, the clicked-point inspection marker, and two **independent** fixed-coordinate circles: nearby query radius (theme primary) and browser-reported accuracy (theme info/dashed). Their projected pixel diameters are recalculated after zoom changes using Web Mercator. The radius is an approximation at high latitudes and pitch/rotation; the map is currently configured unrotated and unpitched. All overlays pass clicks through except known-place pins.
+
+## Draft and applied semantics
+
+1. Focus a blank field for **Explore nearby / All categories**, or type to receive locally matched `CategorySuggestion` items alongside the existing literal query and place suggestions. Category selection opens the nearby editor and does not query `/api/nearby`.
+2. A nearby draft has optional backend category, discrete radius (250/500/1000/2000 m), and typed origin (`MapCenter`, `DeviceFix`, `SelectedPoint`). Selecting **Find nearby** captures an immutable `AppliedNearbyQuery` containing criteria and an explicit WGS84 coordinate. It sends one `/api/nearby?lat=...&lon=...&radius=...&limit=20` request, with the exact category parameter only when selected.
+3. Once applied, the panel shows the exact applied category, origin, radius and distance-ranked results; the map shows the fixed origin/radius and all valid result pins. Choosing **Edit** changes only the draft. The old applied result snapshot, distances, and overlays remain associated with the old criteria. **Cancel** discards edits; **Back** returns to the prior committed panel even after nearby results are applied. Find nearby replaces applied state and enters loading. Empty, failed, and successful submissions cannot display stale results under new criteria.
+4. From a reverse inspection, **Search nearby here** opens a draft with that clicked point captured as `SelectedPoint`. It does **not** search immediately. On submitting, the selected point remains fixed even if the map moves.
+5. A user drag or zoom never changes applied criteria. After a significant manual drag (not a camera animation or zoom-only overlay refresh), **Search this area** explicitly captures the current map center and submits again with the applied category and radius. Programmatic place navigation can affect map coordinates, but never initiates a request.
+6. Choosing a known nearby result uses the existing known-feature selection path and **Back** restores the nearby list without another query. Reverse inspection temporarily overlays nearby discovery; Back/Escape restore the underlying criteria and markers. Autocomplete drafts do not change them.
+7. **Locate me** is available independently of nearby criteria. Success stores an accuracy-bearing device fix and reverse-inspects it only if no newer navigation/inspection intent superseded the request. Denial/unavailability/timeout show user-facing feedback and leave Map center explicitly selectable. The last fix and its accuracy survive Clear of the discovery panel.
+
+## Privacy and known limitations
+
+No coordinates are persisted by the frontend or intentionally logged. Device coordinates only leave the browser for the user-requested reverse lookup or an explicitly submitted nearby query using My location. The backend remains responsible for its own location privacy policy.
+
+The Blazor.MapLibre wrapper has a known unsafe generic `error` event serializer; F5 does not re-register that listener. Each HTML marker is managed through the wrapper's normal marker APIs. Browser lifecycle tests should watch repeated zoom/marker replacement because the wrapper retains some per-marker JS references until map disposal. No extra direct JS map registry is introduced.
+
+The CSS radius/accuracy circles use Web Mercator's local metres-to-pixels scaling. They are visually faithful for the current north-up, zero-pitch map, but are not geodesic polygons under arbitrary tilt/projection. If that becomes a requirement, replace only the circle-rendering primitive, leaving applied coordinate state unchanged.
+
+## Browser acceptance checklist
+
+These are **required** before declaring F5 complete; the managed test suite does not prove WebGL or native device permission behavior.
+
+1. On desktop and phone, focus the blank input and choose Explore nearby; with a partial matching query choose a backend-provided category. The nearby editor opens without `/api/nearby`. A forward autocomplete may still request `/api/search` after debounce, but selection of Category must not commit it.
+2. Try each radius; submit from Map center and check the captured coordinate, optional category, returned distance labels, result pin positions, fixed radius circle, loading/no-results/API-error/Retry states. Pan and zoom: no nearby request, origin/radius remain fixed. Edit criteria: old applied results and markers stay linked to old criteria until the next Find.
+3. Pan far enough to see Search this area. Click it once and verify a **new**, fixed map-center origin, same applied category/radius, one nearby HTTP request. Small pans and camera moves must not silently search.
+4. Click empty map background (with no autocomplete open), choose Search nearby here, confirm that the editor uses that exact fixed clicked point, but requests nearby **only** after Find. Back/Escape restores genuine return state. Known-result pin clicks remain known-place selections, not reverse requests.
+5. On a physical phone over HTTPS/localhost, click Locate me and grant permission: device accuracy circle and point appear; a reverse lookup inspects that fix without clearing nearby results. Deny permission/retry/timeout and verify clear feedback, editable Map center fallback, no implicit nearby requests. During a slow permission request, navigate/click another point: the late fix must not steal the foreground panel.
+6. Check light and dark theme contrast of result pins, applied radius, inspection point, and device accuracy. At high zoom and after zooming out, radius scales with metres; device accuracy is visually independent. Verify map drag/zoom, Escape hierarchy, keyboard tab order, touch sheet behavior, and OSM attribution.
+7. Check stale operations: slow `/api/search`, `/api/categories`, `/api/nearby`, and `/api/reverse` responses cannot replace a newer selected intent; navigation away/back cannot update disposed components. Repeat marker selection and nearby submissions to check for stale overlays.

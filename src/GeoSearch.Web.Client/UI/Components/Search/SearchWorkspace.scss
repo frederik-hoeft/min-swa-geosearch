@@ -150,3 +150,23 @@
         outline: 2px solid var(--gs-green);
     }
 }
+
+.gs-search-location-action {
+    margin: 0.75rem 0;
+}
+
+.gs-locate-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.55rem;
+    border: 1px solid var(--gs-border);
+    border-radius: 6px;
+    background: var(--mud-palette-surface);
+    color: var(--gs-green);
+    cursor: pointer;
+    &:focus-visible { outline: 2px solid var(--gs-green); }
+    &:disabled { opacity: 0.5; cursor: default; }
+}
+
+.gs-location-error { color: var(--mud-palette-error); font-size: 0.8rem; }

@@ -7,7 +7,8 @@ namespace GeoSearch.Web.Client.Search.Model;
 /// suggestions never become map markers, and inspection never loses the
 /// committed result set beneath it.
 /// </summary>
-public sealed record SearchMapState(IReadOnlyList<GeoJsonFeature> Results, GeoJsonFeature? SelectedFeature, GeoCoordinate? InspectionPoint = null)
+public sealed record SearchMapState(IReadOnlyList<GeoJsonFeature> Results, GeoJsonFeature? SelectedFeature,
+    GeoCoordinate? InspectionPoint = null, AppliedNearbyQuery? Nearby = null, DeviceLocationFix? Device = null)
 {
     public static SearchMapState Empty { get; } = new([], null);
 
@@ -29,10 +30,15 @@ public sealed record SearchMapState(IReadOnlyList<GeoJsonFeature> Results, GeoJs
             panel = place.ReturnTo;
         }
 
-        IReadOnlyList<GeoJsonFeature> results = panel is ForwardSearchPanel { Results: ReadySearch ready }
-            ? ready.Collection.Features
-            : [];
+        IReadOnlyList<GeoJsonFeature> results = panel switch
+        {
+            ForwardSearchPanel { Results: ReadySearch ready } => ready.Collection.Features,
+            NearbySearchPanel { Results: ReadySearch ready } => ready.Collection.Features,
+            _ => []
+        };
 
-        return new SearchMapState(results, selected);
+        return new SearchMapState(results, selected,
+            InspectionPoint: panel is NearbySearchPanel { Applied: null, Draft: { OriginKind: NearbyOriginKind.SelectedPoint, SelectedPoint: { } point } } ? point : null,
+            Nearby: panel is NearbySearchPanel nearby ? nearby.Applied : null);
     }
 }

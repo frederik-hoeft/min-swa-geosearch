@@ -1,4 +1,5 @@
 ﻿using GeoSearch.Web.Client.Search.Model;
+using GeoSearch.Web.Client.UI.Components;
 using GeoSearch.Web.Client.UI.Components.Search;
 using GeoSearch.Web.Shared.GeoJson;
 using Microsoft.AspNetCore.Components;
@@ -12,6 +13,7 @@ public partial class Map : ComponentBase, IAsyncDisposable
     private ElementReference _searchPanel;
     private ElementReference _workspaceFocusTarget;
     private SearchWorkspace? _searchWorkspace;
+    private MapViewer? _mapViewer;
     private IJSObjectReference? _module;
     private IJSObjectReference? _observer;
     private DotNetObjectReference<Map>? _self;
@@ -90,6 +92,28 @@ public partial class Map : ComponentBase, IAsyncDisposable
         return Task.CompletedTask;
     }
 
+    private Task<GeoCoordinate?> GetMapCenterAsync() => _mapViewer?.GetCurrentCenterAsync() ?? Task.FromResult<GeoCoordinate?>(null);
+
+    private Task OnMapDraggedAsync(GeoCoordinate center) =>
+        _searchWorkspace?.OnMapCenterMovedAsync(center) ?? Task.CompletedTask;
+
+    private async Task<DeviceLocationResult> LocateDeviceAsync(CancellationToken token)
+    {
+        if (_module is null || _disposed)
+        {
+            return new DeviceLocationResult(null, "Location services are not ready. Please retry.");
+        }
+
+        try
+        {
+            return await _module.InvokeAsync<DeviceLocationResult>("requestDeviceLocation", token);
+        }
+        catch (JSException)
+        {
+            return new DeviceLocationResult(null, "Could not access browser location services.");
+        }
+    }
+
     private Task OnMapFeatureSelectedAsync(GeoJsonFeature feature) =>
         _searchWorkspace?.SelectMapFeatureAsync(feature) ?? Task.CompletedTask;
 
@@ -99,7 +123,7 @@ public partial class Map : ComponentBase, IAsyncDisposable
     private void OnMapBackgroundDoubleClicked() => _searchWorkspace?.CancelPendingMapClick();
 
     private Task OnWorkspaceKeyDownAsync(KeyboardEventArgs args) => args.Key == "Escape"
-        ? _searchWorkspace?.DismissMapInspectionAsync() ?? Task.CompletedTask
+        ? _searchWorkspace?.HandleWorkspaceEscapeAsync() ?? Task.CompletedTask
         : Task.CompletedTask;
 
     private async Task ExpandOnCommitAsync()

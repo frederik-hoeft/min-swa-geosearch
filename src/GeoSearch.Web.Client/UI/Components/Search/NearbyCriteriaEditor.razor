@@ -1,0 +1,84 @@
+@using GeoSearch.Web.Client.Search.Model
+
+<div class="gs-nearby-editor" aria-label="Nearby search criteria">
+    <label for="gs-nearby-category">Category</label>
+    <select id="gs-nearby-category" value="@(Draft.Category ?? "")" @onchange="CategoryChangedAsync">
+        <option value="">All categories</option>
+        @foreach (string category in Categories)
+        {
+            <option value="@category">@category</option>
+        }
+        @if (Draft.Category is { } selected && !Categories.Contains(selected, StringComparer.Ordinal))
+        {
+            <option value="@selected">@selected</option>
+        }
+    </select>
+    <label for="gs-nearby-radius">Radius</label>
+    <select id="gs-nearby-radius" value="@Draft.RadiusMeters" @onchange="RadiusChangedAsync">
+        @foreach (int radius in NearbyCriteria.Radii)
+        {
+            <option value="@radius">@radius m</option>
+        }
+    </select>
+    <label for="gs-nearby-origin">Origin</label>
+    <select id="gs-nearby-origin" value="@Draft.OriginKind.ToString()" @onchange="OriginChangedAsync">
+        <option value="MapCenter">Map center (at submission)</option>
+        <option value="DeviceFix">My location</option>
+        @if (Draft.SelectedPoint is not null)
+        {
+            <option value="SelectedPoint">Selected map point</option>
+        }
+    </select>
+    @if (Draft.OriginKind == NearbyOriginKind.DeviceFix && !DeviceAvailable)
+    {
+        <p class="gs-search-hint">No device position yet. Use Locate me below, or choose Map center.</p>
+    }
+    @if (CategoryError is not null)
+    {
+        <p role="alert" class="gs-search-hint">@CategoryError</p>
+        <button type="button" class="gs-nearby-link" @onclick="OnRetryCategories">Retry categories</button>
+    }
+    <div class="gs-nearby-actions">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OnFind">Find nearby</MudButton>
+        <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="OnCancel">Cancel</MudButton>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public NearbyCriteria Draft { get; set; } = new();
+
+    [Parameter]
+    public IReadOnlyList<string> Categories { get; set; } = [];
+
+    [Parameter]
+    public bool DeviceAvailable { get; set; }
+
+    [Parameter]
+    public string? CategoryError { get; set; }
+
+    [Parameter]
+    public EventCallback<NearbyCriteria> OnChanged { get; set; }
+
+    [Parameter]
+    public EventCallback OnFind { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    [Parameter]
+    public EventCallback OnRetryCategories { get; set; }
+
+    private Task CategoryChangedAsync(ChangeEventArgs args) => OnChanged.InvokeAsync(
+        Draft with { Category = string.IsNullOrEmpty(args.Value?.ToString()) ? null : args.Value.ToString() });
+
+    private Task RadiusChangedAsync(ChangeEventArgs args) =>
+        int.TryParse(args.Value?.ToString(), out int radius) && NearbyCriteria.Radii.Contains(radius)
+            ? OnChanged.InvokeAsync(Draft with { RadiusMeters = radius })
+            : Task.CompletedTask;
+
+    private Task OriginChangedAsync(ChangeEventArgs args) =>
+        Enum.TryParse(args.Value?.ToString(), out NearbyOriginKind kind)
+            ? OnChanged.InvokeAsync(Draft with { OriginKind = kind })
+            : Task.CompletedTask;
+}

@@ -15,6 +15,14 @@
                     <MudIcon Icon="@Icons.Material.Filled.Search" Size="Size.Small" />
                     <span><strong>Search for "@query.Query"</strong><small>Search all matching places</small></span>
                     break;
+                case ExploreNearbySuggestion:
+                    <MudIcon Icon="@Icons.Material.Filled.NearMe" Size="Size.Small" />
+                    <span><strong>Explore nearby</strong><small>All categories · choose origin and radius</small></span>
+                    break;
+                case CategorySuggestion category:
+                    <MudIcon Icon="@Icons.Material.Filled.Category" Size="Size.Small" />
+                    <span><strong>@category.Value</strong><small>Category · find nearby</small></span>
+                    break;
                 case PlaceSuggestion place:
                     <MudIcon Icon="@Icons.Material.Filled.Place" Size="Size.Small" />
                     <span><strong>@place.Feature.Properties.Label</strong><small>Place · @place.Feature.Properties.Type</small></span>

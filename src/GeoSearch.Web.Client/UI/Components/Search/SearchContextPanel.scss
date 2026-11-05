@@ -149,3 +149,43 @@
     font-weight: 650;
     overflow-wrap: anywhere;
 }
+
+// Nearby editor owns only its controls; committed summary and results retain
+// their original query while the user edits an unapplied draft.
+.gs-nearby-editor {
+    display: grid;
+    gap: 0.5rem;
+    margin: 1rem 0;
+
+    label { font-size: 0.8rem; color: var(--gs-muted); font-weight: 600; }
+
+    select {
+        width: 100%;
+        padding: 0.6rem;
+        border: 1px solid var(--gs-border);
+        border-radius: 6px;
+        background: var(--mud-palette-surface);
+        color: var(--gs-ink);
+        font: inherit;
+    }
+}
+
+.gs-nearby-applied {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--gs-border);
+
+    p { margin: 0.4rem 0; font-size: 0.85rem; }
+}
+
+.gs-nearby-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin: 0.5rem 0; }
+
+.gs-nearby-link {
+    width: fit-content;
+    padding: 0.45rem 0;
+    border: 0;
+    background: transparent;
+    color: var(--gs-green);
+    text-decoration: underline;
+    cursor: pointer;
+    &:focus-visible { outline: 2px solid var(--gs-green); }
+}

@@ -1,4 +1,4 @@
-@using GeoSearch.Web.Client.Search.Model
+﻿@using GeoSearch.Web.Client.Search.Model
 @using GeoSearch.Web.Shared.GeoJson
 
 @switch (Panel)
@@ -8,7 +8,7 @@
             <div><span class="gs-section-label">DISCOVERY</span><h1>Explore</h1></div>
         </div>
         <p class="gs-search-hint">Search for a place or address. Choose a suggestion or press Enter to see full results.</p>
-        <p class="gs-search-hint">Nearby discovery will be added in a later phase.</p>
+        <p class="gs-search-hint">Focus the search field and choose Explore nearby to find places around the map center.</p>
         break;
     case ForwardSearchPanel forward:
         <div class="gs-search-panel-heading">
@@ -50,6 +50,79 @@
                 break;
         }
         break;
+    case NearbySearchPanel nearby:
+        <header class="gs-place-details-header">
+            <button type="button" class="gs-results-back" @onclick="OnBack">
+                <MudIcon Icon="@Icons.Material.Filled.ArrowBack" Size="Size.Small" /> Back
+            </button>
+            <span class="gs-section-label">NEARBY DISCOVERY</span>
+        </header>
+        <h1 class="gs-detail-title">Find nearby</h1>
+        @if (nearby.Editing)
+        {
+            <NearbyCriteriaEditor Draft="nearby.Draft" Categories="Categories" DeviceAvailable="DeviceAvailable"
+                                  CategoryError="CategoryError" OnChanged="OnNearbyDraftChanged"
+                                  OnFind="OnFindNearby" OnCancel="OnCancelNearby"
+                                  OnRetryCategories="OnRetryCategories" />
+        }
+        @if (NearbyError is { } criteriaError)
+        {
+            <p role="alert" class="gs-search-feedback">@criteriaError</p>
+        }
+        @if (nearby.Applied is { } applied)
+        {
+            <div class="gs-nearby-applied">
+                <span class="gs-section-label">APPLIED CRITERIA</span>
+                <p><strong>@(applied.Criteria.Category ?? "All categories")</strong> · @applied.Criteria.RadiusMeters m · @OriginLabel(applied.Criteria.OriginKind)</p>
+                <p class="gs-search-hint">Origin @applied.Origin.Latitude.ToString("F5", System.Globalization.CultureInfo.InvariantCulture)°, @applied.Origin.Longitude.ToString("F5", System.Globalization.CultureInfo.InvariantCulture)°</p>
+                @if (!nearby.Editing)
+                {
+                    <div class="gs-nearby-actions">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="OnEditNearby">Edit</MudButton>
+                        @if (CanSearchThisArea)
+                        {
+                            <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="OnSearchThisArea">Search this area</MudButton>
+                        }
+                    </div>
+                }
+            </div>
+            @switch (nearby.Results)
+            {
+                case LoadingSearch:
+                    <p class="gs-search-hint" role="status">Finding nearby places...</p>
+                    break;
+                case FailedSearch failure:
+                    <div role="alert" class="gs-search-feedback">
+                        <p>@failure.Message</p>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="OnRetryNearby">Retry</MudButton>
+                    </div>
+                    break;
+                case ReadySearch ready:
+                    <p class="gs-results-count">@ready.Collection.Features.Count nearby place(s), ordered by distance</p>
+                    @if (ready.Collection.Features.Count == 0)
+                    {
+                        <p role="status" class="gs-search-hint">No places match these criteria.</p>
+                    }
+                    <div class="gs-results-list">
+                        @foreach (GeoJsonFeature feature in ready.Collection.Features)
+                        {
+                            <button type="button" class="gs-result" @onclick="() => OnPlaceSelected.InvokeAsync(feature)">
+                                <MudIcon Icon="@Icons.Material.Filled.Place" Size="Size.Small" />
+                                <span><strong>@feature.Properties.Label</strong>
+                                    <small>@feature.Properties.Type
+                                        @if (feature.Properties.DistanceM is { } distance)
+                                        {
+                                            <text> · @distance.ToString("F0", System.Globalization.CultureInfo.InvariantCulture) m</text>
+                                        }
+                                    </small>
+                                </span>
+                            </button>
+                        }
+                    </div>
+                    break;
+            }
+        }
+        break;
     case ReverseInspectionPanel inspection:
         <header class="gs-place-details-header">
             <button type="button" class="gs-results-back" @onclick="OnBack">
@@ -58,6 +131,7 @@
             <span class="gs-section-label">MAP INSPECTION</span>
         </header>
         <h1 class="gs-detail-title">Nearby this point</h1>
+        <button type="button" class="gs-nearby-link" @onclick="() => OnOpenNearbyHere.InvokeAsync(inspection.Point)">Search nearby here</button>
         <p class="gs-search-hint">Clicked latitude @inspection.Point.Latitude.ToString("F5", System.Globalization.CultureInfo.InvariantCulture)°, longitude @inspection.Point.Longitude.ToString("F5", System.Globalization.CultureInfo.InvariantCulture)°</p>
         @switch (inspection.Result)
         {
@@ -130,4 +204,51 @@
 
     [Parameter]
     public EventCallback OnShowMore { get; set; }
+
+    [Parameter]
+    public EventCallback<GeoCoordinate> OnOpenNearbyHere { get; set; }
+
+    [Parameter]
+    public EventCallback<NearbyCriteria> OnNearbyDraftChanged { get; set; }
+
+    [Parameter]
+    public EventCallback OnFindNearby { get; set; }
+
+    [Parameter]
+    public EventCallback OnEditNearby { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancelNearby { get; set; }
+
+    [Parameter]
+    public EventCallback OnRetryNearby { get; set; }
+
+    [Parameter]
+    public EventCallback OnRetryCategories { get; set; }
+
+    [Parameter]
+    public EventCallback OnSearchThisArea { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<string> Categories { get; set; } = [];
+
+    [Parameter]
+    public bool DeviceAvailable { get; set; }
+
+    [Parameter]
+    public bool CanSearchThisArea { get; set; }
+
+    [Parameter]
+    public string? CategoryError { get; set; }
+
+    [Parameter]
+    public string? NearbyError { get; set; }
+
+    private static string OriginLabel(NearbyOriginKind kind) => kind switch
+    {
+        NearbyOriginKind.MapCenter => "Map center",
+        NearbyOriginKind.DeviceFix => "My location",
+        NearbyOriginKind.SelectedPoint => "Selected map point",
+        _ => "Unknown origin"
+    };
 }
