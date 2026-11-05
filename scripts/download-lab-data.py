@@ -12,7 +12,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-SNAPSHOT = "261028"
+SNAPSHOT = "261101"
 BASE_URL = "https://download.geofabrik.de/europe/germany"
 PBF_NAME = f"niedersachsen-{SNAPSHOT}.osm.pbf"
 GPKG_ARCHIVE_NAME = f"niedersachsen-{SNAPSHOT}-free.gpkg.zip"
