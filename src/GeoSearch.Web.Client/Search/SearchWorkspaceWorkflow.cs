@@ -15,6 +15,12 @@ internal sealed class SearchWorkspaceWorkflow : IDisposable
     private readonly SearchPreviewSession _preview;
     private readonly CommittedSearchSession _forward;
     private readonly ReverseLookupSession _reverse;
+    private readonly NearbyDiscoveryWorkflow _nearbyFlow;
+    private readonly DeviceLocationSession _deviceLocation;
+    public DeviceLocationFix? Device => _deviceLocation.Device;
+    public string? LocationError => _deviceLocation.LocationError;
+    public bool Locating => _deviceLocation.Locating;
+    private long _navigationRevision;
     private readonly BackgroundMapClickCoordinator _backgroundClicks;
     private readonly Func<Task> _render;
     private readonly Func<Task> _committed;
@@ -22,7 +28,10 @@ internal sealed class SearchWorkspaceWorkflow : IDisposable
     private bool _disposed;
 
     public SearchWorkspaceWorkflow(SearchApiClient api, Func<Task> render, Func<Task> committed,
-        Func<SearchMapState, Task> mapChanged, Func<Func<Task>, Task> dispatch)
+        Func<SearchMapState, Task> mapChanged, Func<Func<Task>, Task> dispatch,
+        Func<Task<GeoCoordinate?>>? mapCenter = null,
+        Func<CancellationToken, Task<DeviceLocationResult>>? locate = null,
+        Func<CancellationToken, Task>? backgroundClickDelay = null)
     {
         _render = render;
         _committed = committed;
@@ -31,23 +40,69 @@ internal sealed class SearchWorkspaceWorkflow : IDisposable
         _preview = new SearchPreviewSession(_queries);
         _forward = new CommittedSearchSession(_queries);
         _reverse = new ReverseLookupSession(api);
+        _nearbyFlow = new NearbyDiscoveryWorkflow(api,
+            () => State, value => State = value, render, committed, NotifyMapAsync,
+            mapCenter ?? (() => Task.FromResult<GeoCoordinate?>(null)), () => Device,
+            BeforeNearbySubmit);
+        _deviceLocation = new DeviceLocationSession(
+            locate ?? (_ => Task.FromResult(new DeviceLocationResult(null, "Device location is unavailable."))),
+            render, NotifyMapAsync, InspectMapPointAsync, () => _navigationRevision);
         // Delayed confirmations must re-enter the Blazor renderer's sync context.
-        _backgroundClicks = new BackgroundMapClickCoordinator(point => dispatch(() => InspectMapPointAsync(point)));
+        _backgroundClicks = new BackgroundMapClickCoordinator(point => dispatch(() => InspectMapPointAsync(point)), backgroundClickDelay);
     }
 
     public ExploreSearchState State { get; internal set; } = ExploreSearchState.Initial;
 
-    public bool ShowSuggestions => State.IsEditing && !string.IsNullOrWhiteSpace(State.DisplayText);
+    public bool ShowSuggestions => State.IsEditing;
 
-    public IReadOnlyList<SearchSuggestion> Suggestions => _preview.GetSuggestions(State.DisplayText);
+    public IReadOnlyList<SearchSuggestion> Suggestions
+    {
+        get
+        {
+            string query = State.DisplayText.Trim();
+            if (query.Length == 0)
+            {
+                return [new ExploreNearbySuggestion()];
+            }
 
-    public string? InputHint => _preview.GetInputHint(State.DisplayText);
+            List<SearchSuggestion> suggestions = [];
+            if (SearchQueryPolicy.IsValid(query))
+            {
+                suggestions.Add(new LiteralQuerySuggestion(query));
+            }
+            suggestions.AddRange(_nearbyFlow.MatchCategories(query).Select(category => new CategorySuggestion(category)));
+            suggestions.AddRange(_preview.GetSuggestions(query).OfType<PlaceSuggestion>());
+            return suggestions;
+        }
+    }
+
+    public string? InputHint =>
+        (State.DisplayText.Length > 0 ? _preview.GetInputHint(State.DisplayText) : null) ?? _nearbyFlow.CategoryError;
+
+    public IReadOnlyList<string> Categories => _nearbyFlow.Categories;
+    public string? CategoryError => _nearbyFlow.CategoryError;
+    public string? NearbyError => _nearbyFlow.NearbyError;
+    public bool CanSearchThisArea => _nearbyFlow.CanSearchThisArea;
+
+    public void OpenSuggestions()
+    {
+        AdvanceNavigation();
+        if (!State.IsEditing)
+        {
+            State = State.Edit(State.DisplayText);
+        }
+        _ = _nearbyFlow.EnsureCategoriesAsync();
+    }
+
+    public Task RetryCategoriesAsync() => _nearbyFlow.RetryCategoriesAsync();
 
     public void Edit(string text)
     {
+        AdvanceNavigation();
         _backgroundClicks.CancelPending();
         State = State.Edit(text);
         _preview.Edit(text, _render);
+        _ = _nearbyFlow.EnsureCategoriesAsync();
     }
 
     public void Highlight(int index) => State = State.Highlight(index);
@@ -62,6 +117,8 @@ internal sealed class SearchWorkspaceWorkflow : IDisposable
         _backgroundClicks.CancelPending();
         _preview.CancelPending();
         _reverse.Invalidate();
+        _nearbyFlow.Invalidate();
+        AdvanceNavigation();
         long revision = _forward.Begin();
         State = State.CommitQuery(query);
         await _committed();
@@ -80,7 +137,9 @@ internal sealed class SearchWorkspaceWorkflow : IDisposable
     {
         LiteralQuerySuggestion query => CommitLiteralAsync(query.Query),
         PlaceSuggestion place => SelectPlaceAsync(place.Feature, showReturnResults: false),
-        _ => Task.CompletedTask // F5 will add category/nearby actions.
+        CategorySuggestion category => OpenNearbyAsync(category.Value),
+        ExploreNearbySuggestion => OpenNearbyAsync(null),
+        _ => Task.CompletedTask
     };
 
     public async Task SelectPlaceAsync(GeoJsonFeature feature, bool showReturnResults = true)
@@ -93,7 +152,9 @@ internal sealed class SearchWorkspaceWorkflow : IDisposable
         _backgroundClicks.CancelPending();
         _preview.CancelPending();
         _forward.Invalidate();
+        _nearbyFlow.Invalidate();
         _reverse.Invalidate();
+        AdvanceNavigation();
         State = State.CommitPlace(feature, showReturnResults);
         await _committed();
         await NotifyMapAsync();
@@ -106,6 +167,7 @@ internal sealed class SearchWorkspaceWorkflow : IDisposable
             return;
         }
 
+        AdvanceNavigation();
         _backgroundClicks.CancelPending();
         _preview.CancelPending();
         State = State.AbandonDraft();
@@ -121,8 +183,10 @@ internal sealed class SearchWorkspaceWorkflow : IDisposable
         else
         {
             _forward.Invalidate();
+            _nearbyFlow.Invalidate();
         }
 
+        AdvanceNavigation();
         State = State.Back();
         await NotifyMapAsync();
     }
@@ -132,7 +196,9 @@ internal sealed class SearchWorkspaceWorkflow : IDisposable
         _backgroundClicks.CancelPending();
         _preview.Clear();
         _forward.Invalidate();
+        _nearbyFlow.Invalidate();
         _reverse.Invalidate();
+        AdvanceNavigation();
         State = State.Clear();
         await NotifyMapAsync();
     }
@@ -201,6 +267,7 @@ internal sealed class SearchWorkspaceWorkflow : IDisposable
         }
 
         _preview.CancelPending();
+        AdvanceNavigation();
         long revision = _reverse.Begin();
         State = State.InspectMapPoint(point);
         await _committed();
@@ -273,7 +340,112 @@ internal sealed class SearchWorkspaceWorkflow : IDisposable
         await SelectPlaceAsync(feature, showReturnResults);
     }
 
-    private Task NotifyMapAsync() => _mapChanged(SearchMapState.FromPanel(State.Panel));
+    public void SetMapCenter(GeoCoordinate center)
+    {
+        if (!_disposed && center.IsValid)
+        {
+            AdvanceNavigation();
+            _nearbyFlow.SetMapCenter(center);
+        }
+    }
+
+    public async Task OpenNearbyAsync(string? category, GeoCoordinate? selectedPoint = null)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _preview.CancelPending();
+        _backgroundClicks.CancelPending();
+        _forward.Invalidate();
+        _reverse.Invalidate();
+        AdvanceNavigation();
+        await _nearbyFlow.OpenNearbyAsync(category, selectedPoint);
+    }
+
+    public Task EditNearbyAsync(NearbyCriteria draft)
+    {
+        AdvanceNavigation();
+        return _nearbyFlow.EditNearbyAsync(draft);
+    }
+    public Task StartEditingNearbyAsync()
+    {
+        AdvanceNavigation();
+        return _nearbyFlow.StartEditingNearbyAsync();
+    }
+    public Task CancelNearbyAsync()
+    {
+        AdvanceNavigation();
+        return _nearbyFlow.CancelNearbyAsync();
+    }
+    public Task FindNearbyAsync()
+    {
+        AdvanceNavigation();
+        return _nearbyFlow.FindNearbyAsync();
+    }
+    public Task RetryNearbyAsync()
+    {
+        AdvanceNavigation();
+        return _nearbyFlow.RetryNearbyAsync();
+    }
+    public Task SearchThisAreaAsync()
+    {
+        AdvanceNavigation();
+        return _nearbyFlow.SearchThisAreaAsync();
+    }
+
+    private void BeforeNearbySubmit()
+    {
+        _reverse.Invalidate();
+        _forward.Invalidate();
+        AdvanceNavigation();
+    }
+
+    public Task LocateMeAsync()
+    {
+        if (_disposed || Locating)
+        {
+            return Task.CompletedTask;
+        }
+
+        AdvanceNavigation();
+        return _deviceLocation.LocateAsync();
+    }
+
+    /// <summary>Apply the device-location fallback without changing applied nearby results.</summary>
+    public async Task UseMapCenterAsync()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        AdvanceNavigation();
+        if (State.Panel is NearbySearchPanel nearby)
+        {
+            if (!nearby.Editing)
+            {
+                await _nearbyFlow.StartEditingNearbyAsync();
+            }
+
+            NearbySearchPanel editor = (NearbySearchPanel)State.Panel;
+            await _nearbyFlow.EditNearbyAsync(editor.Draft with { OriginKind = NearbyOriginKind.MapCenter });
+        }
+        else
+        {
+            await OpenNearbyAsync(null);
+        }
+    }
+
+    private void AdvanceNavigation()
+    {
+        _backgroundClicks.CancelPending();
+        ++_navigationRevision;
+        _deviceLocation.ClearError();
+    }
+
+    private Task NotifyMapAsync() => _mapChanged(SearchMapState.FromPanel(State.Panel) with { Device = Device });
 
     public void Dispose()
     {
@@ -286,6 +458,8 @@ internal sealed class SearchWorkspaceWorkflow : IDisposable
         _backgroundClicks.Dispose();
         _preview.Dispose();
         _reverse.Dispose();
+        _nearbyFlow.Dispose();
+        _deviceLocation.Dispose();
         _queries.Dispose();
     }
 }

@@ -92,3 +92,34 @@ export function observeSearchPanel(panel, dotNetReference) {
         }
     };
 }
+
+
+// Only called from the explicit Locate me action. No permission request or
+// position collection occurs during page initialization or map movement.
+export function requestDeviceLocation() {
+    if (!window.isSecureContext) {
+        return Promise.resolve({ fix: null, error: 'Location requires HTTPS or localhost.' });
+    }
+    if (!navigator.geolocation) {
+        return Promise.resolve({ fix: null, error: 'This browser does not support device location.' });
+    }
+
+    return new Promise(resolve => {
+        navigator.geolocation.getCurrentPosition(
+            position => resolve({
+                fix: {
+                    point: { latitude: position.coords.latitude, longitude: position.coords.longitude },
+                    accuracyMeters: position.coords.accuracy
+                },
+                error: null
+            }),
+            error => {
+                const message = error.code === 1 ? 'Location permission was denied.'
+                    : error.code === 2 ? 'Your location is currently unavailable.'
+                    : 'Location request timed out. Try again.';
+                resolve({ fix: null, error: message });
+            },
+            { enableHighAccuracy: false, timeout: 12000, maximumAge: 15000 }
+        );
+    });
+}

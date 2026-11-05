@@ -2,6 +2,7 @@
 using Community.Blazor.MapLibre.Models;
 using Community.Blazor.MapLibre.Models.Control;
 using GeoSearch.Web.Client.Search.Model;
+using GeoSearch.Web.Client.Services.Theming;
 using GeoSearch.Web.Client.UI.Components.Map;
 using GeoSearch.Web.Shared.GeoJson;
 using Microsoft.AspNetCore.Components;
@@ -50,6 +51,9 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
     [Parameter]
     public EventCallback OnBackgroundDoubleClicked { get; set; }
 
+    [Parameter]
+    public EventCallback<GeoCoordinate> OnMapDragged { get; set; }
+
     [Inject]
     private IConfiguration Configuration { get; set; } = null!;
 
@@ -63,6 +67,9 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
     private NavigationManager Navigation { get; set; } = null!;
 
     [Inject]
+    private ThemePreferenceService ThemePreferences { get; set; } = null!;
+
+    [Inject]
     private ILogger<MapViewer> Logger { get; set; } = null!;
 
     [Inject]
@@ -70,6 +77,7 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
 
     protected async override Task OnInitializedAsync()
     {
+        ThemePreferences.Changed += OnThemeChanged;
         string styleUrl = Configuration["Map:StyleUrl"] ?? DEFAULT_STYLE_URL;
         _options = new MapOptions
         {
@@ -238,6 +246,7 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
             // Do not register the generic map error listener (circular payloads).
             await _map.AddAsyncListener<JsonElement>("dblclick", OnMapDoubleClickedAsync);
             await _map.AddAsyncListener<JsonElement>("click", OnMapClickedAsync);
+            await _map.AddAsyncListener<JsonElement>("dragend", OnMapDraggedAsync);
         }
         catch (JSException exception)
         {
@@ -256,6 +265,27 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
         return !_disposed && point is { } coordinate
             ? OnBackgroundClicked.InvokeAsync(coordinate)
             : Task.CompletedTask;
+    }
+
+    public async Task<GeoCoordinate?> GetCurrentCenterAsync()
+    {
+        if (_disposed || !_mapLoaded || _map is null)
+        {
+            return null;
+        }
+
+        LngLat center = await _map.GetCenter();
+        GeoCoordinate coordinate = new(center.Latitude, center.Longitude);
+        return coordinate.IsValid ? coordinate : null;
+    }
+
+    private async Task OnMapDraggedAsync(JsonElement _)
+    {
+        GeoCoordinate? center = await GetCurrentCenterAsync();
+        if (!_disposed && center is { } point)
+        {
+            await OnMapDragged.InvokeAsync(point);
+        }
     }
 
     private Task OnMapDoubleClickedAsync(JsonElement _) => !_disposed
@@ -318,7 +348,7 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
 
         try
         {
-            await _resultOverlay.ApplyAsync(SearchState);
+            await _resultOverlay.ApplyAsync(SearchState, ThemePreferences.IsDarkMode);
             _hasOverlayError = false;
         }
         catch (JSException exception) when (!_disposed)
@@ -340,6 +370,8 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
         Message = "Could not synchronize map result markers")]
     private static partial void LogMapOverlayFailure(ILogger logger, Exception exception);
 
+    private void OnThemeChanged(object? sender, EventArgs args) => _ = InvokeAsync(UpdateOverlayAsync);
+
     private void Reload() => Navigation.NavigateTo(Navigation.Uri, forceLoad: true);
 
     public async ValueTask DisposeAsync()
@@ -350,6 +382,10 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
         }
 
         _disposed = true;
+        if (ThemePreferences is { } preferences)
+        {
+            preferences.Changed -= OnThemeChanged;
+        }
         await _lifetime.CancelAsync();
         _lifetime.Dispose();
         if (_browserModule is not null)

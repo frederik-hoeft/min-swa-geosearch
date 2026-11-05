@@ -21,8 +21,9 @@ internal sealed class MapResultOverlay(
     private readonly Dictionary<string, (Guid MarkerId, GeoJsonFeature Feature, bool Selected)> _markers = new(StringComparer.Ordinal);
     private SearchMapState _current = SearchMapState.Empty;
     private Guid? _inspectedPointMarker;
+    private readonly MapRangeOverlay _ranges = new(map);
 
-    public async Task ApplyAsync(SearchMapState state)
+    public async Task ApplyAsync(SearchMapState state, bool darkMode)
     {
         await _sync.WaitAsync();
         try
@@ -73,6 +74,8 @@ internal sealed class MapResultOverlay(
                     }, new LngLat(inspected.Longitude, inspected.Latitude));
                 }
             }
+
+            await _ranges.ApplyAsync(state.Nearby, state.Device, darkMode);
 
             bool selectionChanged = !SameFeature(_current.SelectedFeature, state.SelectedFeature);
             _current = state;

@@ -1,4 +1,4 @@
-@using GeoSearch.Web.Client.Search.Model
+﻿@using GeoSearch.Web.Client.Search.Model
 
 <div class="gs-search-bar">
     <div class="gs-search-input-wrap">
@@ -7,7 +7,7 @@
                aria-label="Search places and addresses" role="combobox" aria-autocomplete="list"
                aria-expanded="@(ShowSuggestions ? "true" : "false")" aria-controls="@(ShowSuggestions ? "map-search-suggestions" : null)"
                aria-activedescendant="@ActiveSuggestionId" placeholder="Search places and addresses"
-               value="@SearchState.DisplayText" @oninput="OnSearchInput" @onkeydown="OnSearchKeyDownAsync" @onkeydown:stopPropagation="true" />
+               value="@SearchState.DisplayText" @onfocus="OnSearchFocus" @oninput="OnSearchInput" @onkeydown="OnSearchKeyDownAsync" @onkeydown:stopPropagation="true" />
         @if (!string.IsNullOrEmpty(SearchState.DisplayText) || SearchState.Panel is not IdleSearchPanel)
         {
             <button type="button" class="gs-search-clear" @onclick="ClearSearchAsync" aria-label="Clear search and selection"
@@ -33,5 +33,22 @@
 </button>
 <div id="map-search-content" class="gs-search-panel-content" aria-live="polite" aria-atomic="false">
     <SearchContextPanel Panel="SearchState.Panel" OnPlaceSelected="SelectPlaceAsync"
-                        OnBack="BackToPreviousAsync" OnRetry="RetrySearchAsync" OnRetryReverse="RetryReverseAsync" OnShowMore="ShowMoreAsync" />
+                        OnBack="BackToPreviousAsync" OnRetry="RetrySearchAsync" OnRetryReverse="RetryReverseAsync" OnShowMore="ShowMoreAsync"
+                        OnOpenNearbyHere="OpenNearbyHereAsync" OnNearbyDraftChanged="EditNearbyAsync"
+                        OnFindNearby="SubmitNearbyAsync" OnEditNearby="StartNearbyEditAsync" OnCancelNearby="CancelNearbyEditAsync"
+                        OnRetryNearby="RetryNearbyAsync" OnRetryCategories="RetryCategoriesAsync" Categories="_workflow.Categories"
+                        CategoryError="@_workflow.CategoryError" NearbyError="@_workflow.NearbyError"
+                        DeviceAvailable="@(_workflow.Device is not null)" CanSearchThisArea="_workflow.CanSearchThisArea"
+                        OnSearchThisArea="SearchThisAreaAsync" />
+    <div class="gs-search-location-action">
+        <button type="button" class="gs-locate-button" @onclick="LocateMeAsync" disabled="@_workflow.Locating">
+            <MudIcon Icon="@Icons.Material.Filled.MyLocation" Size="Size.Small" />
+            @(_workflow.Locating ? "Locating..." : "Locate me")
+        </button>
+        @if (_workflow.LocationError is { } locationError)
+        {
+            <p role="alert" class="gs-location-error">@locationError</p>
+            <button type="button" class="gs-nearby-link" @onclick="UseMapCenterAsync">Use map center</button>
+        }
+    </div>
 </div>

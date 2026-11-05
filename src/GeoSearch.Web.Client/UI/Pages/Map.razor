@@ -6,13 +6,14 @@
 
 <section @ref="_workspaceFocusTarget" class="gs-map-workspace" tabindex="-1" aria-label="Map exploration workspace" @onkeydown="OnWorkspaceKeyDownAsync">
     <div class="gs-map-surface">
-        <MapViewer SearchState="_searchMapState" SearchPanelExpanded="IsEffectivelyExpanded" OnFeatureSelected="OnMapFeatureSelectedAsync"
-                   OnBackgroundClicked="OnMapBackgroundClickedAsync" OnBackgroundDoubleClicked="OnMapBackgroundDoubleClicked" />
+        <MapViewer @ref="_mapViewer" SearchState="_searchMapState" SearchPanelExpanded="IsEffectivelyExpanded" OnFeatureSelected="OnMapFeatureSelectedAsync"
+                   OnBackgroundClicked="OnMapBackgroundClickedAsync" OnBackgroundDoubleClicked="OnMapBackgroundDoubleClicked"
+                   OnMapDragged="OnMapDraggedAsync" />
     </div>
     <aside @ref="_searchPanel" class="gs-search-panel @(_isSearchPanelExpanded ? "gs-search-panel--expanded" : "gs-search-panel--collapsed") @(_temporaryInteractionExpanded ? "gs-search-panel--temporarily-expanded" : "")"
            aria-label="Search workspace">
         <SearchWorkspace @ref="_searchWorkspace" IsEffectivelyExpanded="IsEffectivelyExpanded"
                          OnToggle="ToggleSearchPanelAsync" OnCommitted="ExpandOnCommitAsync"
-                         OnMapStateChanged="UpdateSearchMapState" />
+                         OnMapStateChanged="UpdateSearchMapState" GetMapCenter="GetMapCenterAsync" LocateDevice="LocateDeviceAsync" />
     </aside>
 </section>

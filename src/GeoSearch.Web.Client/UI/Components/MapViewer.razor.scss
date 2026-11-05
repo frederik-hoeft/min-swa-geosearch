@@ -205,3 +205,30 @@
         }
     }
 }
+
+// The fill and outlines are geographic MapLibre layers. Only their small,
+// non-interactive origin dots are HTML, so CSS can use the live theme tokens.
+.gs-map-viewer ::deep .maplibregl-marker.gs-map-range-origin {
+    width: 0.65rem;
+    height: 0.65rem;
+    z-index: 0;
+    pointer-events: none;
+
+    .gs-map-range-center {
+        display: block;
+        box-sizing: border-box;
+        width: 100%;
+        height: 100%;
+        border: 2px solid var(--mud-palette-surface);
+        border-radius: 50%;
+        background: var(--mud-palette-primary);
+    }
+}
+
+.gs-map-viewer ::deep .maplibregl-marker.gs-map-device-origin .gs-map-range-center {
+    background: var(--mud-palette-info);
+}
+
+.gs-map-viewer ::deep .maplibregl-marker.gs-search-marker {
+    z-index: 1;
+}
