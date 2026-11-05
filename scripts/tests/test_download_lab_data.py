@@ -17,8 +17,8 @@ from unittest.mock import patch
 
 REPOSITORY = Path(__file__).resolve().parents[2]
 SCRIPT = REPOSITORY / "scripts/download-lab-data.py"
-PBF = "niedersachsen-261028.osm.pbf"
-ZIP = "niedersachsen-261028-free.gpkg.zip"
+PBF = "niedersachsen-261101.osm.pbf"
+ZIP = "niedersachsen-261101-free.gpkg.zip"
 
 
 class DatasetServer(ThreadingHTTPServer):
@@ -65,7 +65,7 @@ def package_gpkg(path: Path) -> bytes:
         db.execute("INSERT INTO gpkg_contents VALUES ('roads')")
     output = io.BytesIO()
     with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
-        archive.write(path, arcname="niedersachsen-261028-free/niedersachsen.gpkg")
+        archive.write(path, arcname="niedersachsen-261101-free/niedersachsen.gpkg")
     return output.getvalue()
 
 
@@ -106,7 +106,7 @@ class LabDatasetDownloadTests(unittest.TestCase):
         self.assertIn(f"{ZIP}: 100.0%", first.stdout)
         self.assertIn("Extracting niedersachsen.gpkg: 100.0%", first.stdout)
         self.assertEqual(self.pbf_bytes, (self.destination / PBF).read_bytes())
-        gpkg = self.destination / "niedersachsen-261028-free/niedersachsen.gpkg"
+        gpkg = self.destination / "niedersachsen-261101-free/niedersachsen.gpkg"
         with sqlite3.connect(gpkg) as db:
             self.assertEqual(("roads",), db.execute("SELECT table_name FROM gpkg_contents").fetchone())
         self.assertFalse((self.destination / ".downloads" / ZIP).exists())
@@ -154,7 +154,7 @@ class LabDatasetDownloadTests(unittest.TestCase):
     def test_invalid_zip_is_rejected_and_does_not_poison_next_rerun(self):
         self.files[ZIP] = b"Not a zip file"
         self.run_downloader(success=False)
-        self.assertFalse((self.destination / "niedersachsen-261028-free/niedersachsen.gpkg").exists())
+        self.assertFalse((self.destination / "niedersachsen-261101-free/niedersachsen.gpkg").exists())
         self.assertFalse((self.destination / ".downloads" / ZIP).exists())
         self.files[ZIP] = package_gpkg(self.root / "retry.gpkg")
         self.run_downloader()

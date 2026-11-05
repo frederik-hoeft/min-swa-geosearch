@@ -57,7 +57,7 @@ Connection: `localhost:5432`, database and user `lab1` (see `compose.yaml`).
 
 <!--
 Presenter notes
-Run the recipes in this folder: it holds the justfile, compose.yaml, sql/ and osmconf-addresses.ini; `just` lists all recipes. Put the two Geofabrik downloads into data/: niedersachsen-261028-free/niedersachsen.gpkg and niedersachsen-261028.osm.pbf. The imports default to the Hannover extent and finish in under a minute; the full Lower Saxony import is optional (just bbox="" s03-import-gpkg). The index contains document types address, poi, street, place and admin. Data: Geofabrik GeoPackage and PBF of 2026-10-28, © OpenStreetMap contributors, ODbL.
+Run the recipes in this folder: it holds the justfile, compose.yaml, sql/ and osmconf-addresses.ini; `just` lists all recipes. Put the two Geofabrik downloads into data/: niedersachsen-261101-free/niedersachsen.gpkg and niedersachsen-261101.osm.pbf. The imports default to the Hannover extent and finish in under a minute; the full Lower Saxony import is optional (just bbox="" s03-import-gpkg). The index contains document types address, poi, street, place and admin. Data: Geofabrik GeoPackage and PBF of 2026-10-28, © OpenStreetMap contributors, ODbL.
 -->
 
 ---

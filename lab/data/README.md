@@ -6,13 +6,13 @@ Lab 2 uses the **October 28, 2026** Niedersachsen snapshot from [Geofabrik](http
 just s00-download-data
 ```
 
-This retrieves the dated `niedersachsen-261028.osm.pbf` and `niedersachsen-261028-free.gpkg.zip` files, extracts the single GeoPackage member, and installs them at the locations expected by the import recipes:
+This retrieves the dated `niedersachsen-261101.osm.pbf` and `niedersachsen-261101-free.gpkg.zip` files, extracts the single GeoPackage member, and installs them at the locations expected by the import recipes:
 
 ```text
 data/
-├── niedersachsen-261028-free/
+├── niedersachsen-261101-free/
 │   └── niedersachsen.gpkg
-└── niedersachsen-261028.osm.pbf
+└── niedersachsen-261101.osm.pbf
 ```
 
 The PBF supplies address tags; the GeoPackage supplies places, POIs, roads, and administrative boundaries. The downloads total approximately **1.3 GB**; the GeoPackage additionally requires space for extraction. The input files and temporary downloads are excluded from Git. CI does not download either dataset.

@@ -7,8 +7,8 @@
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
 compose  := "compose.yaml"
-gpkg     := "data/niedersachsen-261028-free/niedersachsen.gpkg"
-pbf      := "data/niedersachsen-261028.osm.pbf"
+gpkg     := "data/niedersachsen-261101-free/niedersachsen.gpkg"
+pbf      := "data/niedersachsen-261101.osm.pbf"
 snapshot := "2026-10-28"
 # Hannover (lon_min lat_min lon_max lat_max); empty = whole dataset
 bbox     := "9.60 52.30 9.92 52.45"
