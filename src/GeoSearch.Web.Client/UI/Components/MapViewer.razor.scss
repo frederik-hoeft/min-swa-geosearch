@@ -187,9 +187,9 @@
         box-sizing: border-box;
         width: 100%;
         height: 100%;
-        border: 2px solid var(--mud-palette-primary);
+        border: 2px solid var(--mud-palette-surface);
         border-radius: 50%;
-        background: #fff;
+        background: var(--mud-palette-primary);
         box-shadow: 0 1px 5px rgba(0, 0, 0, 0.25);
 
         &::after {
@@ -200,7 +200,7 @@
             width: 0.4rem;
             height: 0.4rem;
             border-radius: 50%;
-            background: var(--mud-palette-primary);
+            background: var(--mud-palette-surface);
             transform: translate(-50%, -50%);
         }
     }
