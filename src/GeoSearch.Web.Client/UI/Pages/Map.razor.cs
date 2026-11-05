@@ -84,8 +84,6 @@ public partial class Map : ComponentBase, IAsyncDisposable
         return InvokeAsync(StateHasChanged);
     }
 
-    private Task DismissSearchDraftAsync() => _searchWorkspace?.DismissDraftAsync() ?? Task.CompletedTask;
-
     private Task UpdateSearchMapState(SearchMapState state)
     {
         _searchMapState = state;
@@ -96,7 +94,9 @@ public partial class Map : ComponentBase, IAsyncDisposable
         _searchWorkspace?.SelectMapFeatureAsync(feature) ?? Task.CompletedTask;
 
     private Task OnMapBackgroundClickedAsync(GeoCoordinate point) =>
-        _searchWorkspace?.InspectMapPointAsync(point) ?? Task.CompletedTask;
+        _searchWorkspace?.HandleMapBackgroundClickAsync(point) ?? Task.CompletedTask;
+
+    private void OnMapBackgroundDoubleClicked() => _searchWorkspace?.CancelPendingMapClick();
 
     private Task OnWorkspaceKeyDownAsync(KeyboardEventArgs args) => args.Key == "Escape"
         ? _searchWorkspace?.DismissMapInspectionAsync() ?? Task.CompletedTask

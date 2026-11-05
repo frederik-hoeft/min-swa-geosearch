@@ -10,6 +10,9 @@ namespace GeoSearch.Web.Client.UI.Components.Search;
 public sealed partial class SearchWorkspace : ComponentBase, IDisposable
 {
     private bool _disposed;
+    private readonly BackgroundMapClickCoordinator _backgroundClicks;
+
+    public SearchWorkspace() => _backgroundClicks = new BackgroundMapClickCoordinator(InspectMapPointAsync);
 
     [Parameter]
     public EventCallback OnCommitted { get; set; }
@@ -30,6 +33,7 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
         _disposed = true;
         StopDebounce();
         StopReverseRequest();
+        _backgroundClicks.Dispose();
         _searchSession?.Dispose();
         GC.SuppressFinalize(this);
     }
@@ -107,6 +111,7 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
 
     private void OnSearchInput(ChangeEventArgs args)
     {
+        _backgroundClicks.CancelPending();
         string text = args.Value?.ToString() ?? "";
         _searchState = _searchState.Edit(text);
         long revision = ++_draftRevision;
@@ -201,6 +206,7 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
             return;
         }
 
+        _backgroundClicks.CancelPending();
         ++_draftRevision;
         StopDebounce();
         StopReverseRequest();
@@ -254,6 +260,7 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
 
     private async Task SelectPlaceCoreAsync(GeoJsonFeature feature, bool showReturnResults)
     {
+        _backgroundClicks.CancelPending();
         ++_draftRevision;
         ++_committedRevision;
         StopDebounce();
@@ -282,6 +289,7 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
             return;
         }
 
+        _backgroundClicks.CancelPending();
         ++_draftRevision;
         StopDebounce();
         _previewLoading = false;
@@ -290,6 +298,7 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
 
     private async Task BackToPreviousAsync()
     {
+        _backgroundClicks.CancelPending();
         if (_searchState.Panel is ReverseInspectionPanel)
         {
             StopReverseRequest();
@@ -304,6 +313,7 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
 
     private async Task ClearSearchAsync()
     {
+        _backgroundClicks.CancelPending();
         ++_draftRevision;
         ++_committedRevision;
         StopDebounce();
@@ -325,11 +335,35 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
 
     private async Task RestartCommittedAsync(string query, int limit)
     {
+        _backgroundClicks.CancelPending();
         long revision = ++_committedRevision;
         _searchState = _searchState.RequestMore(query, limit);
         await NotifyMapStateChangedAsync();
         await LoadCommittedAsync(query, limit, revision, refresh: true);
     }
+
+    /// <summary>
+    /// A map click first dismisses an open draft. Otherwise it becomes a
+    /// reverse inspection only after the double-click window has elapsed.
+    /// </summary>
+    public Task HandleMapBackgroundClickAsync(GeoCoordinate point)
+    {
+        if (_disposed || !point.IsValid)
+        {
+            return Task.CompletedTask;
+        }
+
+        if (_searchState.IsEditing)
+        {
+            _backgroundClicks.CancelPending();
+            return DismissDraftAsync();
+        }
+
+        return _backgroundClicks.ScheduleAsync(point);
+    }
+
+    /// <summary>Preserve native MapLibre double-click zoom without inspecting either click.</summary>
+    public void CancelPendingMapClick() => _backgroundClicks.CancelPending();
 
     /// <summary>Inspect a background-map point in the contextual panel without clearing discovery.</summary>
     public async Task InspectMapPointAsync(GeoCoordinate point)
@@ -358,6 +392,7 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
 
     public async Task DismissMapInspectionAsync()
     {
+        _backgroundClicks.CancelPending();
         if (!_disposed && _searchState.Panel is ReverseInspectionPanel)
         {
             await BackToPreviousAsync();

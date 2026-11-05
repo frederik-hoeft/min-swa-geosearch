@@ -47,6 +47,9 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
     [Parameter]
     public EventCallback<GeoCoordinate> OnBackgroundClicked { get; set; }
 
+    [Parameter]
+    public EventCallback OnBackgroundDoubleClicked { get; set; }
+
     [Inject]
     private IConfiguration Configuration { get; set; } = null!;
 
@@ -230,8 +233,10 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
                 _map, SelectKnownMapFeatureAsync, GetSelectionOffsetPixelsAsync);
             _resultOverlayReady = true;
             await UpdateOverlayAsync();
-            // Built-in map click callback: marker buttons stop propagation in the wrapper.
-            // Do not register the generic map error listener (circular event payloads).
+            // Marker buttons stop propagation in the wrapper. Background double
+            // clicks must cancel inspection candidates without disabling zoom.
+            // Do not register the generic map error listener (circular payloads).
+            await _map.AddAsyncListener<JsonElement>("dblclick", OnMapDoubleClickedAsync);
             await _map.AddAsyncListener<JsonElement>("click", OnMapClickedAsync);
         }
         catch (JSException exception)
@@ -252,6 +257,10 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
             ? OnBackgroundClicked.InvokeAsync(coordinate)
             : Task.CompletedTask;
     }
+
+    private Task OnMapDoubleClickedAsync(JsonElement _) => !_disposed
+        ? OnBackgroundDoubleClicked.InvokeAsync()
+        : Task.CompletedTask;
 
     /// <summary>Read only the map coordinate, not MapLibre's full event object.</summary>
     internal static GeoCoordinate? ReadMapClickCoordinate(JsonElement click)

@@ -117,6 +117,60 @@ public sealed class ReverseInspectionRenderingTests
         Assert.AreSame(queryA.Panel, after.Back().Panel);
     }
 
+    [TestMethod]
+    public async Task FirstBackgroundClickDismissesAutocompleteAndSecondInspectsAsync()
+    {
+        using DeferredReverseHandler handler = new();
+        using HttpClient client = new(handler) { BaseAddress = new Uri("https://example.test/") };
+        SelectionProbe probe = new();
+        ServiceCollection services = new();
+        services.AddLogging();
+        services.AddMudServices();
+        services.AddSingleton(probe);
+        services.AddSingleton(new SearchApiClient(client));
+        using ServiceProvider provider = services.BuildServiceProvider();
+        await using HtmlRenderer renderer = new(provider, provider.GetRequiredService<ILoggerFactory>());
+        HtmlRootComponent root = await renderer.Dispatcher.InvokeAsync(renderer.RenderComponentAsync<SearchWorkspaceHarness>);
+
+        ExploreSearchState committed = ExploreSearchState.Initial.CommitQuery("query A")
+            .WithForwardResult("query A", new ReadySearch(ExploreSearchStateTests.Collection("place A")));
+        ExploreSearchState draft = committed.Edit("query B");
+        typeof(SearchWorkspace).GetField("_searchState", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(probe.Workspace, draft);
+
+        GeoCoordinate point = new(52.38, 9.74);
+        await renderer.Dispatcher.InvokeAsync(() => probe.Workspace.HandleMapBackgroundClickAsync(point));
+        ExploreSearchState dismissed = GetState(probe.Workspace);
+        Assert.AreSame(committed.Panel, dismissed.Panel);
+        Assert.IsFalse(dismissed.IsEditing);
+        Assert.AreEqual("query A", dismissed.DisplayText);
+        Assert.AreEqual(1, SearchMapState.FromPanel(dismissed.Panel).Results.Count);
+        Assert.AreEqual(0, handler.RequestCount);
+        string dismissedHtml = await renderer.Dispatcher.InvokeAsync(root.ToHtmlString);
+        StringAssert.Contains(dismissedHtml, "place A", StringComparison.Ordinal);
+        Assert.IsFalse(dismissedHtml.Contains("map-search-suggestions", StringComparison.Ordinal));
+
+        Task second = Task.CompletedTask;
+        await renderer.Dispatcher.InvokeAsync(() => { second = probe.Workspace.HandleMapBackgroundClickAsync(point); });
+        Assert.AreEqual(0, handler.RequestCount); // No reverse lookup until single-click confirmation.
+        using CancellationTokenSource timeout = new(TimeSpan.FromSeconds(3));
+        while (handler.RequestCount == 0)
+        {
+            await Task.Delay(20, timeout.Token);
+        }
+
+        Assert.AreEqual(1, handler.RequestCount);
+        handler.Complete(0, EmptyCollection());
+        await second;
+        ExploreSearchState inspection = GetState(probe.Workspace);
+        Assert.IsInstanceOfType<ReverseInspectionPanel>(inspection.Panel);
+        Assert.AreSame(committed.Panel, ((ReverseInspectionPanel)inspection.Panel).ReturnTo);
+        Assert.AreEqual(1, SearchMapState.FromPanel(inspection.Panel).Results.Count);
+
+        await renderer.Dispatcher.InvokeAsync(probe.Workspace.DismissMapInspectionAsync);
+        Assert.AreSame(committed.Panel, GetState(probe.Workspace).Panel);
+    }
+
     private static ExploreSearchState GetState(SearchWorkspace workspace) =>
         (ExploreSearchState)typeof(SearchWorkspace).GetField("_searchState", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(workspace)!;
 
