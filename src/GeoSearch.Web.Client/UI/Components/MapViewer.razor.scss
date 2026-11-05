@@ -206,62 +206,29 @@
     }
 }
 
-// Radius and accuracy are distinct fixed-coordinate overlays. Their CSS size is
-// recalculated on zoom from the captured WGS84 origin and metre radius.
-.gs-map-viewer ::deep .maplibregl-marker.gs-map-circle-marker {
-    width: 0;
-    height: 0;
+// The fill and outlines are geographic MapLibre layers. Only their small,
+// non-interactive origin dots are HTML, so CSS can use the live theme tokens.
+.gs-map-viewer ::deep .maplibregl-marker.gs-map-range-origin {
+    width: 0.65rem;
+    height: 0.65rem;
     z-index: 0;
     pointer-events: none;
 
-    .gs-map-radius-circle {
-        position: absolute;
+    .gs-map-range-center {
         display: block;
         box-sizing: border-box;
-        width: var(--gs-circle-size);
-        height: var(--gs-circle-size);
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        border: 2px solid var(--mud-palette-primary);
+        width: 100%;
+        height: 100%;
+        border: 2px solid var(--mud-palette-surface);
         border-radius: 50%;
-        background: color-mix(in srgb, var(--mud-palette-primary) 10%, transparent);
+        background: var(--mud-palette-primary);
     }
+}
+
+.gs-map-viewer ::deep .maplibregl-marker.gs-map-device-origin .gs-map-range-center {
+    background: var(--mud-palette-info);
 }
 
 .gs-map-viewer ::deep .maplibregl-marker.gs-search-marker {
     z-index: 1;
-}
-
-.gs-map-viewer ::deep .maplibregl-marker.gs-map-device-accuracy {
-    .gs-map-radius-circle {
-        border: 2px dashed var(--mud-palette-info);
-        background: color-mix(in srgb, var(--mud-palette-info) 9%, transparent);
-
-        &::after {
-            content: "";
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0.6rem;
-            height: 0.6rem;
-            border: 2px solid var(--mud-palette-surface);
-            border-radius: 50%;
-            background: var(--mud-palette-info);
-            transform: translate(-50%, -50%);
-        }
-    }
-}
-
-.gs-map-viewer ::deep .maplibregl-marker.gs-map-nearby-radius .gs-map-radius-circle::after {
-    content: "";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0.5rem;
-    height: 0.5rem;
-    border: 2px solid var(--mud-palette-surface);
-    border-radius: 50%;
-    background: var(--mud-palette-primary);
-    transform: translate(-50%, -50%);
 }

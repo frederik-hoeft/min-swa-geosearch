@@ -47,6 +47,84 @@ public sealed class NearbyWorkspaceWorkflowTests
     }
 
     [TestMethod]
+    public async Task DeniedLocationFallbackOpensMapCenterEditorAndClearsFeedbackAsync()
+    {
+        using NearbyHandler handler = new();
+        using HttpClient http = new(handler) { BaseAddress = new Uri("https://example.test/") };
+        using SearchWorkspaceWorkflow workspace = new(new SearchApiClient(http),
+            () => Task.CompletedTask, () => Task.CompletedTask, _ => Task.CompletedTask,
+            operation => operation(), () => Task.FromResult<GeoCoordinate?>(new GeoCoordinate(52.37, 9.73)),
+            _ => Task.FromResult(new DeviceLocationResult(null, "Permission denied")));
+
+        await workspace.LocateMeAsync();
+        Assert.IsNotNull(workspace.LocationError);
+        Assert.IsInstanceOfType<IdleSearchPanel>(workspace.State.Panel);
+
+        await workspace.UseMapCenterAsync();
+        Assert.IsNull(workspace.LocationError);
+        NearbySearchPanel editor = (NearbySearchPanel)workspace.State.Panel;
+        Assert.IsTrue(editor.Editing);
+        Assert.AreEqual(NearbyOriginKind.MapCenter, editor.Draft.OriginKind);
+        Assert.IsNull(editor.Applied);
+        Assert.AreEqual(0, handler.NearbyCount);
+
+        Task search = workspace.FindNearbyAsync();
+        Assert.AreEqual(1, handler.NearbyCount);
+        handler.Complete(0, Empty());
+        await search;
+        Assert.AreEqual(new GeoCoordinate(52.37, 9.73), ((NearbySearchPanel)workspace.State.Panel).Applied!.Origin);
+    }
+
+    [TestMethod]
+    public async Task MapCenterFallbackKeepsExistingAppliedResultsUntilResubmissionAsync()
+    {
+        using NearbyHandler handler = new();
+        using HttpClient http = new(handler) { BaseAddress = new Uri("https://example.test/") };
+        using SearchWorkspaceWorkflow workspace = new(new SearchApiClient(http),
+            () => Task.CompletedTask, () => Task.CompletedTask, _ => Task.CompletedTask,
+            operation => operation(), () => Task.FromResult<GeoCoordinate?>(new GeoCoordinate(52.37, 9.73)),
+            _ => Task.FromResult(new DeviceLocationResult(null, "Permission denied")));
+
+        await workspace.OpenNearbyAsync("Apotheke");
+        Task firstSearch = workspace.FindNearbyAsync();
+        handler.Complete(0, Empty());
+        await firstSearch;
+        NearbySearchPanel applied = (NearbySearchPanel)workspace.State.Panel;
+        Assert.IsNotNull(applied.Applied);
+
+        await workspace.LocateMeAsync();
+        Assert.IsNotNull(workspace.LocationError);
+        await workspace.UseMapCenterAsync();
+        NearbySearchPanel editing = (NearbySearchPanel)workspace.State.Panel;
+        Assert.IsTrue(editing.Editing);
+        Assert.AreSame(applied.Applied, editing.Applied);
+        Assert.AreSame(applied.Results, editing.Results);
+        Assert.AreEqual(NearbyOriginKind.MapCenter, editing.Draft.OriginKind);
+        Assert.IsNull(workspace.LocationError);
+        Assert.AreEqual(1, handler.NearbyCount);
+    }
+
+    [TestMethod]
+    public async Task LatePermissionDenialAfterChangingNearbyCriteriaIsIgnoredAsync()
+    {
+        using NearbyHandler handler = new();
+        using HttpClient http = new(handler) { BaseAddress = new Uri("https://example.test/") };
+        TaskCompletionSource<DeviceLocationResult> pendingLocation = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        using SearchWorkspaceWorkflow workspace = new(new SearchApiClient(http),
+            () => Task.CompletedTask, () => Task.CompletedTask, _ => Task.CompletedTask,
+            operation => operation(), () => Task.FromResult<GeoCoordinate?>(new GeoCoordinate(52.37, 9.73)),
+            _ => pendingLocation.Task);
+
+        await workspace.OpenNearbyAsync(null);
+        Task locating = workspace.LocateMeAsync();
+        await workspace.EditNearbyAsync(new NearbyCriteria(RadiusMeters: 1000));
+        pendingLocation.SetResult(new DeviceLocationResult(null, "Permission denied"));
+        await locating;
+        Assert.IsNull(workspace.LocationError);
+        Assert.AreEqual(1000, ((NearbySearchPanel)workspace.State.Panel).Draft.RadiusMeters);
+    }
+
+    [TestMethod]
     public async Task MissingDeviceFixDoesNotSubmitOrRequestPermissionAsync()
     {
         using NearbyHandler handler = new();

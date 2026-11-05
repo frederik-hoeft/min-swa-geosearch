@@ -37,7 +37,7 @@
                         OnOpenNearbyHere="OpenNearbyHereAsync" OnNearbyDraftChanged="EditNearbyAsync"
                         OnFindNearby="SubmitNearbyAsync" OnEditNearby="StartNearbyEditAsync" OnCancelNearby="CancelNearbyEditAsync"
                         OnRetryNearby="RetryNearbyAsync" OnRetryCategories="RetryCategoriesAsync" Categories="_workflow.Categories"
-                        CategoryError="_workflow.CategoryError" NearbyError="_workflow.NearbyError"
+                        CategoryError="@_workflow.CategoryError" NearbyError="@_workflow.NearbyError"
                         DeviceAvailable="@(_workflow.Device is not null)" CanSearchThisArea="_workflow.CanSearchThisArea"
                         OnSearchThisArea="SearchThisAreaAsync" />
     <div class="gs-search-location-action">
@@ -48,6 +48,7 @@
         @if (_workflow.LocationError is { } locationError)
         {
             <p role="alert" class="gs-location-error">@locationError</p>
+            <button type="button" class="gs-nearby-link" @onclick="UseMapCenterAsync">Use map center</button>
         }
     </div>
 </div>

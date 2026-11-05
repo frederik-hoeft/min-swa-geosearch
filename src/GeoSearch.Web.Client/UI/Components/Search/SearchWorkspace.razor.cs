@@ -144,6 +144,8 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
 
     private Task LocateMeAsync() => _workflow.LocateMeAsync();
 
+    private Task UseMapCenterAsync() => _workflow.UseMapCenterAsync();
+
     private Task SearchThisAreaAsync() => _workflow.SearchThisAreaAsync();
 
     public Task OnMapCenterMovedAsync(GeoCoordinate center)

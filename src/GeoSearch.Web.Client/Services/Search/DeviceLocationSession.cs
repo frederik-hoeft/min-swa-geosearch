@@ -14,6 +14,8 @@ internal sealed class DeviceLocationSession(Func<CancellationToken, Task<DeviceL
     public string? LocationError { get; private set; }
     public bool Locating { get; private set; }
 
+    public void ClearError() => LocationError = null;
+
     public async Task LocateAsync()
     {
         if (_disposed || Locating)
@@ -43,7 +45,7 @@ internal sealed class DeviceLocationSession(Func<CancellationToken, Task<DeviceL
                     await inspectPoint(fix.Point);
                 }
             }
-            else
+            else if (intent == navigationRevision())
             {
                 LocationError = result.Error ?? "Device location is unavailable.";
             }

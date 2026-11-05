@@ -61,7 +61,7 @@
         @if (nearby.Editing)
         {
             <NearbyCriteriaEditor Draft="nearby.Draft" Categories="Categories" DeviceAvailable="DeviceAvailable"
-                                  CategoryError="CategoryError" OnChanged="OnNearbyDraftChanged"
+                                  CategoryError="@CategoryError" OnChanged="OnNearbyDraftChanged"
                                   OnFind="OnFindNearby" OnCancel="OnCancelNearby"
                                   OnRetryCategories="OnRetryCategories" />
         }

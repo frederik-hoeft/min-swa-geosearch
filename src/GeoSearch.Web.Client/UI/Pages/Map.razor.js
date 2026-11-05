@@ -114,9 +114,9 @@ export function requestDeviceLocation() {
                 error: null
             }),
             error => {
-                const message = error.code === 1 ? 'Location permission was denied. Choose Map center instead.'
-                    : error.code === 2 ? 'Your location is currently unavailable. Choose Map center instead.'
-                    : 'Location request timed out. Try again or choose Map center.';
+                const message = error.code === 1 ? 'Location permission was denied.'
+                    : error.code === 2 ? 'Your location is currently unavailable.'
+                    : 'Location request timed out. Try again.';
                 resolve({ fix: null, error: message });
             },
             { enableHighAccuracy: false, timeout: 12000, maximumAge: 15000 }

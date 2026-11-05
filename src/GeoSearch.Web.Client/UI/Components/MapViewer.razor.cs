@@ -2,6 +2,7 @@
 using Community.Blazor.MapLibre.Models;
 using Community.Blazor.MapLibre.Models.Control;
 using GeoSearch.Web.Client.Search.Model;
+using GeoSearch.Web.Client.Services.Theming;
 using GeoSearch.Web.Client.UI.Components.Map;
 using GeoSearch.Web.Shared.GeoJson;
 using Microsoft.AspNetCore.Components;
@@ -66,6 +67,9 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
     private NavigationManager Navigation { get; set; } = null!;
 
     [Inject]
+    private ThemePreferenceService ThemePreferences { get; set; } = null!;
+
+    [Inject]
     private ILogger<MapViewer> Logger { get; set; } = null!;
 
     [Inject]
@@ -73,6 +77,7 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
 
     protected async override Task OnInitializedAsync()
     {
+        ThemePreferences.Changed += OnThemeChanged;
         string styleUrl = Configuration["Map:StyleUrl"] ?? DEFAULT_STYLE_URL;
         _options = new MapOptions
         {
@@ -242,7 +247,6 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
             await _map.AddAsyncListener<JsonElement>("dblclick", OnMapDoubleClickedAsync);
             await _map.AddAsyncListener<JsonElement>("click", OnMapClickedAsync);
             await _map.AddAsyncListener<JsonElement>("dragend", OnMapDraggedAsync);
-            await _map.AddAsyncListener<JsonElement>("zoomend", OnMapZoomedAsync);
         }
         catch (JSException exception)
         {
@@ -281,17 +285,6 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
         if (!_disposed && center is { } point)
         {
             await OnMapDragged.InvokeAsync(point);
-        }
-    }
-
-    private async Task OnMapZoomedAsync(JsonElement _)
-    {
-        if (!_disposed)
-        {
-            // Zoom-end also fires after a programmatic EaseTo selection.
-            // Refresh the radius/accuracy graphics without implying a manual
-            // map displacement or offering Search this area.
-            await UpdateOverlayAsync(refreshRings: true);
         }
     }
 
@@ -346,7 +339,7 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
         return size.Height > size.Width ? size.Height * 0.30 : 0;
     }
 
-    private async Task UpdateOverlayAsync(bool refreshRings = false)
+    private async Task UpdateOverlayAsync()
     {
         if (_resultOverlay is null || _disposed)
         {
@@ -355,7 +348,7 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
 
         try
         {
-            await _resultOverlay.ApplyAsync(SearchState, refreshRings);
+            await _resultOverlay.ApplyAsync(SearchState, ThemePreferences.IsDarkMode);
             _hasOverlayError = false;
         }
         catch (JSException exception) when (!_disposed)
@@ -377,6 +370,8 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
         Message = "Could not synchronize map result markers")]
     private static partial void LogMapOverlayFailure(ILogger logger, Exception exception);
 
+    private void OnThemeChanged(object? sender, EventArgs args) => _ = InvokeAsync(UpdateOverlayAsync);
+
     private void Reload() => Navigation.NavigateTo(Navigation.Uri, forceLoad: true);
 
     public async ValueTask DisposeAsync()
@@ -387,6 +382,10 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
         }
 
         _disposed = true;
+        if (ThemePreferences is { } preferences)
+        {
+            preferences.Changed -= OnThemeChanged;
+        }
         await _lifetime.CancelAsync();
         _lifetime.Dispose();
         if (_browserModule is not null)

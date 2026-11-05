@@ -28,6 +28,38 @@ public sealed class DeviceLocationSessionTests
     }
 
     [TestMethod]
+    public async Task DismissedErrorDoesNotRemainAfterNavigationOrLatePermissionDenialAsync()
+    {
+        int revision = 0;
+        TaskCompletionSource<DeviceLocationResult> pendingFix = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        using DeviceLocationSession location = new(
+            _ => pendingFix.Task,
+            () => Task.CompletedTask, () => Task.CompletedTask,
+            _ => Task.CompletedTask, () => revision);
+
+        Task pending = location.LocateAsync();
+        ++revision; // User chose a different navigation action during the prompt.
+        pendingFix.SetResult(new DeviceLocationResult(null, "Permission denied"));
+        await pending;
+        Assert.IsNull(location.LocationError);
+        Assert.IsFalse(location.Locating);
+    }
+
+    [TestMethod]
+    public async Task ExplicitClearDismissesPreviousPermissionFailureAsync()
+    {
+        using DeviceLocationSession location = new(
+            _ => Task.FromResult(new DeviceLocationResult(null, "Permission denied")),
+            () => Task.CompletedTask, () => Task.CompletedTask,
+            _ => Task.CompletedTask, () => 0);
+
+        await location.LocateAsync();
+        Assert.IsNotNull(location.LocationError);
+        location.ClearError();
+        Assert.IsNull(location.LocationError);
+    }
+
+    [TestMethod]
     public async Task PermissionDeniedDoesNotInventAFixOrStartInspectionAsync()
     {
         int inspected = 0;
