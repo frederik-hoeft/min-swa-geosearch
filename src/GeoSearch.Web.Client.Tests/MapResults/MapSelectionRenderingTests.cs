@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Components.Web.HtmlRendering;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MudBlazor.Services;
-using System.Reflection;
 
 namespace GeoSearch.Web.Client.Tests.MapResults;
 
@@ -35,8 +34,7 @@ public sealed class MapSelectionRenderingTests
         GeoJsonFeatureCollection results = new("test", [first, second]);
         ExploreSearchState committed = ExploreSearchState.Initial.CommitQuery("places")
             .WithForwardResult("places", new ReadySearch(results));
-        typeof(SearchWorkspace).GetField("_searchState", BindingFlags.Instance | BindingFlags.NonPublic)!
-            .SetValue(probe.Workspace, committed);
+        probe.Workspace.SearchState = committed;
 
         // No parent EventCallback is assigned: this reproduces the @ref callback
         // path that previously updated state but did not schedule a child render.
@@ -75,13 +73,12 @@ public sealed class MapSelectionRenderingTests
             .WithForwardResult("query A", new ReadySearch(resultsA));
         ExploreSearchState directB = queryA.Edit("query B")
             .CommitPlace(placeB, showReturnResults: false);
-        FieldInfo searchStateField = typeof(SearchWorkspace).GetField("_searchState", BindingFlags.Instance | BindingFlags.NonPublic)!;
-        searchStateField.SetValue(probe.Workspace, directB);
+        probe.Workspace.SearchState = directB;
 
         // The same pin's event takes the normal map-selection path. It must not
         // make the unrelated prior query A markers reappear.
         await renderer.Dispatcher.InvokeAsync(() => probe.Workspace.SelectMapFeatureAsync(placeB));
-        ExploreSearchState afterClick = (ExploreSearchState)searchStateField.GetValue(probe.Workspace)!;
+        ExploreSearchState afterClick = probe.Workspace.SearchState;
         SearchMapState map = SearchMapState.FromPanel(afterClick.Panel);
         Assert.AreSame(directB.Panel, afterClick.Panel);
         Assert.HasCount(0, map.Results);
@@ -91,12 +88,34 @@ public sealed class MapSelectionRenderingTests
 
         // Even if a draft was open, reselecting the pin dismisses the draft
         // while retaining the same place inspection and return target.
-        searchStateField.SetValue(probe.Workspace, directB.Edit("unfinished"));
+        probe.Workspace.SearchState = directB.Edit("unfinished");
         await renderer.Dispatcher.InvokeAsync(() => probe.Workspace.SelectMapFeatureAsync(placeB));
-        ExploreSearchState afterDraft = (ExploreSearchState)searchStateField.GetValue(probe.Workspace)!;
+        ExploreSearchState afterDraft = probe.Workspace.SearchState;
         Assert.IsFalse(afterDraft.IsEditing);
         Assert.AreEqual(placeB.Properties.Label, afterDraft.DisplayText);
         Assert.AreSame(directB.Panel, afterDraft.Panel);
+    }
+
+    [TestMethod]
+    public async Task ExternalMapCallbacksAfterDisposalDoNotRenderOrStartRequestsAsync()
+    {
+        SelectionProbe probe = new();
+        ServiceCollection services = new();
+        services.AddLogging();
+        services.AddMudServices();
+        services.AddSingleton(probe);
+        using HttpClient client = new() { BaseAddress = new Uri("https://example.test/") };
+        services.AddSingleton(new SearchApiClient(client));
+        using ServiceProvider provider = services.BuildServiceProvider();
+        await using HtmlRenderer renderer = new(provider, provider.GetRequiredService<ILoggerFactory>());
+        await renderer.Dispatcher.InvokeAsync(renderer.RenderComponentAsync<SearchWorkspaceHarness>);
+
+        await renderer.Dispatcher.InvokeAsync(probe.Workspace.Dispose);
+        await probe.Workspace.DismissDraftAsync();
+        await probe.Workspace.SelectMapFeatureAsync(Feature("osm:1", "Place"));
+        await probe.Workspace.InspectMapPointAsync(new GeoCoordinate(52.37, 9.73));
+        await probe.Workspace.DismissMapInspectionAsync();
+        Assert.AreSame(ExploreSearchState.Initial, probe.Workspace.SearchState);
     }
 
     private static GeoJsonFeature Feature(string id, string label) =>

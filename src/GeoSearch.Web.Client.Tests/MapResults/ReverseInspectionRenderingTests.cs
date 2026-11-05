@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.Components.Web.HtmlRendering;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MudBlazor.Services;
-using System.Reflection;
 
 namespace GeoSearch.Web.Client.Tests.MapResults;
 
@@ -68,8 +67,7 @@ public sealed class ReverseInspectionRenderingTests
         HtmlRootComponent root = await renderer.Dispatcher.InvokeAsync(renderer.RenderComponentAsync<SearchWorkspaceHarness>);
         ExploreSearchState committed = ExploreSearchState.Initial.CommitQuery("Hannover")
             .WithForwardResult("Hannover", new ReadySearch(ExploreSearchStateTests.Collection("existing place")));
-        typeof(SearchWorkspace).GetField("_searchState", BindingFlags.Instance | BindingFlags.NonPublic)!
-            .SetValue(probe.Workspace, committed);
+        probe.Workspace.SearchState = committed;
 
         Task reverse = Task.CompletedTask;
         await renderer.Dispatcher.InvokeAsync(() => { reverse = probe.Workspace.InspectMapPointAsync(new GeoCoordinate(52.37, 9.73)); });
@@ -106,8 +104,7 @@ public sealed class ReverseInspectionRenderingTests
             .WithForwardResult("query A", new ReadySearch(priorResults));
         ExploreSearchState inspected = queryA.CommitPlace(otherPlace, showReturnResults: false)
             .InspectMapPoint(new GeoCoordinate(52.38, 9.74));
-        typeof(SearchWorkspace).GetField("_searchState", BindingFlags.Instance | BindingFlags.NonPublic)!
-            .SetValue(probe.Workspace, inspected);
+        probe.Workspace.SearchState = inspected;
 
         await renderer.Dispatcher.InvokeAsync(() => probe.Workspace.SelectMapFeatureAsync(otherPlace));
         ExploreSearchState after = GetState(probe.Workspace);
@@ -135,8 +132,7 @@ public sealed class ReverseInspectionRenderingTests
         ExploreSearchState committed = ExploreSearchState.Initial.CommitQuery("query A")
             .WithForwardResult("query A", new ReadySearch(ExploreSearchStateTests.Collection("place A")));
         ExploreSearchState draft = committed.Edit("query B");
-        typeof(SearchWorkspace).GetField("_searchState", BindingFlags.Instance | BindingFlags.NonPublic)!
-            .SetValue(probe.Workspace, draft);
+        probe.Workspace.SearchState = draft;
 
         GeoCoordinate point = new(52.38, 9.74);
         await renderer.Dispatcher.InvokeAsync(() => probe.Workspace.HandleMapBackgroundClickAsync(point));
@@ -172,7 +168,7 @@ public sealed class ReverseInspectionRenderingTests
     }
 
     private static ExploreSearchState GetState(SearchWorkspace workspace) =>
-        (ExploreSearchState)typeof(SearchWorkspace).GetField("_searchState", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(workspace)!;
+        workspace.SearchState;
 
     private static string EmptyCollection() => """{"type":"FeatureCollection","snapshot":"test","features":[]}""";
 

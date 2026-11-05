@@ -7,12 +7,11 @@ using Microsoft.AspNetCore.Components.Web;
 
 namespace GeoSearch.Web.Client.UI.Components.Search;
 
+/// <summary>Translates UI events into workspace commands and renders their state.</summary>
 public sealed partial class SearchWorkspace : ComponentBase, IDisposable
 {
+    private SearchWorkspaceWorkflow _workflow = null!;
     private bool _disposed;
-    private readonly BackgroundMapClickCoordinator _backgroundClicks;
-
-    public SearchWorkspace() => _backgroundClicks = new BackgroundMapClickCoordinator(InspectMapPointAsync);
 
     [Parameter]
     public EventCallback OnCommitted { get; set; }
@@ -26,442 +25,137 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
     [Parameter]
     public bool IsEffectivelyExpanded { get; set; }
 
-    protected override void OnInitialized() => _searchSession = new SearchQuerySession(SearchApi);
-
-    public void Dispose()
-    {
-        _disposed = true;
-        StopDebounce();
-        StopReverseRequest();
-        _backgroundClicks.Dispose();
-        _searchSession?.Dispose();
-        GC.SuppressFinalize(this);
-    }
-
-    private ExploreSearchState _searchState = ExploreSearchState.Initial;
-    private SearchFetchResult? _preview;
-    private string? _previewQuery;
-    private bool _previewLoading;
-    private long _draftRevision;
-    private long _committedRevision;
-    private CancellationTokenSource? _debounce;
-    private SearchQuerySession? _searchSession;
-    private CancellationTokenSource? _reverseRequest;
-    private long _reverseRevision;
-
     [Inject]
     private SearchApiClient SearchApi { get; set; } = null!;
 
-    private bool ShowSuggestions => _searchState.IsEditing && !string.IsNullOrWhiteSpace(_searchState.DisplayText);
+    protected override void OnInitialized() => _workflow = new SearchWorkspaceWorkflow(
+        SearchApi,
+        () => InvokeAsync(StateHasChanged),
+        OnCommitted.InvokeAsync,
+        state => OnMapStateChanged.InvokeAsync(state),
+        InvokeAsync);
 
-    private IReadOnlyList<SearchSuggestion> Suggestions
+    public void Dispose()
     {
-        get
+        if (_disposed)
         {
-            string query = _searchState.DisplayText.Trim();
-            if (!ValidQuery(query))
-            {
-                return [];
-            }
-
-            List<SearchSuggestion> suggestions = [new LiteralQuerySuggestion(query)];
-            if (_previewQuery == query && _preview is SearchSuccess success)
-            {
-                suggestions.AddRange(success.Collection.Features.Take(3).Select(feature => new PlaceSuggestion(feature)));
-            }
-
-            return suggestions;
+            return;
         }
+
+        _disposed = true;
+        _workflow?.Dispose();
+        GC.SuppressFinalize(this);
     }
 
-    private string? ActiveSuggestionId => _searchState.HighlightedIndex is >= 0 && _searchState.HighlightedIndex < Suggestions.Count
-        ? SuggestionId(_searchState.HighlightedIndex)
+    // Kept internal for renderer integration tests that need to start from an
+    // already-committed search without issuing an unrelated HTTP request.
+    internal ExploreSearchState SearchState
+    {
+        get => _workflow.State;
+        set => _workflow.State = value;
+    }
+
+    private bool ShowSuggestions => _workflow.ShowSuggestions;
+
+    private IReadOnlyList<SearchSuggestion> Suggestions => _workflow.Suggestions;
+
+    private string? SearchInputHint => _workflow.InputHint;
+
+    private string? ActiveSuggestionId => SearchState.HighlightedIndex is >= 0 && SearchState.HighlightedIndex < Suggestions.Count
+        ? $"map-search-suggestion-{SearchState.HighlightedIndex}"
         : null;
 
-    private string? SearchInputHint
-    {
-        get
-        {
-            string query = _searchState.DisplayText.Trim();
-            if (query.Length < SearchQueryPolicy.MINIMUM_LENGTH)
-            {
-                return $"Enter at least {SearchQueryPolicy.MINIMUM_LENGTH} characters to search.";
-            }
-            if (query.Length > SearchQueryPolicy.MAXIMUM_LENGTH)
-            {
-                return $"Search text must be at most {SearchQueryPolicy.MAXIMUM_LENGTH} characters.";
-            }
-            if (_previewQuery == query)
-            {
-                return _preview switch
-                {
-                    SearchFailure error => error.Message,
-                    SearchSuccess { Collection.Features.Count: 0 } => "No matching places. You can still search the literal text.",
-                    _ => null
-                };
-            }
-
-            return _previewLoading ? "Finding suggestions..." : null;
-        }
-    }
-
-    private static string SuggestionId(int index) => $"map-search-suggestion-{index}";
-
-    private static bool ValidQuery(string query) => SearchQueryPolicy.IsValid(query);
-
-    private void OnSearchInput(ChangeEventArgs args)
-    {
-        _backgroundClicks.CancelPending();
-        string text = args.Value?.ToString() ?? "";
-        _searchState = _searchState.Edit(text);
-        long revision = ++_draftRevision;
-        StopDebounce();
-        _preview = null;
-        _previewQuery = null;
-        string query = text.Trim();
-        _previewLoading = ValidQuery(query);
-        if (_previewLoading)
-        {
-            CancellationTokenSource debounce = new();
-            _debounce = debounce;
-            _ = SearchPreviewAfterDebounceAsync(query, revision, debounce.Token);
-        }
-    }
-
-    private async Task SearchPreviewAfterDebounceAsync(string query, long revision, CancellationToken cancellationToken)
-    {
-        try
-        {
-            await Task.Delay(SearchQueryPolicy.DEBOUNCE_MILLISECONDS, cancellationToken);
-            if (_disposed || cancellationToken.IsCancellationRequested)
-            {
-                return;
-            }
-
-            SearchFetchResult result = await _searchSession!.FetchAsync(query);
-            if (_disposed || _draftRevision != revision || !_searchState.IsEditing || _searchState.DisplayText.Trim() != query)
-            {
-                return;
-            }
-
-            _previewQuery = query;
-            _preview = result;
-            _previewLoading = false;
-            await InvokeAsync(StateHasChanged);
-        }
-        catch (OperationCanceledException) when (_disposed || cancellationToken.IsCancellationRequested)
-        {
-            // A newer edit or page disposal superseded this preview.
-        }
-        catch (ObjectDisposedException) when (_disposed)
-        {
-            // Initialization was superseded by teardown.
-        }
-    }
+    private void OnSearchInput(ChangeEventArgs args) => _workflow.Edit(args.Value?.ToString() ?? "");
 
     private async Task OnSearchKeyDownAsync(KeyboardEventArgs args)
     {
         switch (args.Key)
         {
             case "ArrowDown" when ShowSuggestions:
-                _searchState = _searchState.Highlight(Math.Min(_searchState.HighlightedIndex + 1, Suggestions.Count - 1));
+                _workflow.Highlight(Math.Min(SearchState.HighlightedIndex + 1, Suggestions.Count - 1));
                 break;
             case "ArrowUp" when ShowSuggestions:
-                _searchState = _searchState.Highlight(Math.Max(-1, _searchState.HighlightedIndex - 1));
+                _workflow.Highlight(Math.Max(-1, SearchState.HighlightedIndex - 1));
                 break;
-            case "Enter":
-                if (ShowSuggestions && _searchState.HighlightedIndex is >= 0 && _searchState.HighlightedIndex < Suggestions.Count)
+            case "Enter" when ShowSuggestions:
+                if (SearchState.HighlightedIndex is >= 0 && SearchState.HighlightedIndex < Suggestions.Count)
                 {
-                    await ChooseSuggestionAsync(Suggestions[_searchState.HighlightedIndex]);
+                    await _workflow.ChooseSuggestionAsync(Suggestions[SearchState.HighlightedIndex]);
                 }
-                else if (ShowSuggestions)
+                else
                 {
-                    await CommitLiteralAsync(_searchState.DisplayText.Trim());
+                    await _workflow.CommitLiteralAsync(SearchState.DisplayText.Trim());
                 }
                 break;
             case "Escape":
-                if (_searchState.IsEditing)
+                if (SearchState.IsEditing)
                 {
-                    AbandonDraft();
+                    _workflow.AbandonDraft();
                 }
-                else if (_searchState.Panel is PlaceSearchPanel or ReverseInspectionPanel)
+                else if (SearchState.Panel is PlaceSearchPanel or ReverseInspectionPanel)
                 {
-                    await BackToPreviousAsync();
+                    await _workflow.BackAsync();
                 }
                 break;
         }
     }
 
-    private Task ChooseSuggestionAsync(SearchSuggestion suggestion) => suggestion switch
-    {
-        LiteralQuerySuggestion query => CommitLiteralAsync(query.Query),
-        PlaceSuggestion place => SelectAutocompletePlaceAsync(place.Feature),
-        _ => Task.CompletedTask // Nearby actions are not surfaced until F5 has an editor.
-    };
+    private Task ChooseSuggestionAsync(SearchSuggestion suggestion) => _workflow.ChooseSuggestionAsync(suggestion);
 
-    private async Task CommitLiteralAsync(string query)
+    private Task SelectPlaceAsync(GeoJsonFeature feature) => _workflow.SelectPlaceAsync(feature);
+
+    private Task BackToPreviousAsync() => _workflow.BackAsync();
+
+    private Task ClearSearchAsync() => _workflow.ClearAsync();
+
+    private Task RetrySearchAsync() => _workflow.RetryForwardAsync();
+
+    private Task ShowMoreAsync() => _workflow.ShowMoreAsync();
+
+    private Task RetryReverseAsync() => _workflow.RetryReverseAsync();
+
+    public async Task DismissDraftAsync()
     {
-        if (!ValidQuery(query))
+        if (_disposed || !SearchState.IsEditing)
         {
             return;
         }
 
-        _backgroundClicks.CancelPending();
-        ++_draftRevision;
-        StopDebounce();
-        StopReverseRequest();
-        _previewLoading = false;
-        long revision = ++_committedRevision;
-        _searchState = _searchState.CommitQuery(query);
-        await OnCommitted.InvokeAsync();
-        await NotifyMapStateChangedAsync();
-        if (_previewQuery == query && _preview is SearchSuccess cached)
+        _workflow.AbandonDraft();
+        if (!_disposed)
         {
-            _searchState = _searchState.WithForwardResult(query, new ReadySearch(cached.Collection));
-            await NotifyMapStateChangedAsync();
-            return;
-        }
-
-        await LoadCommittedAsync(query, 10, revision, refresh: false);
-    }
-
-    private async Task LoadCommittedAsync(string query, int limit, long revision, bool refresh)
-    {
-        try
-        {
-            Task<SearchFetchResult> request = refresh
-                ? _searchSession!.RefreshAsync(query, limit)
-                : _searchSession!.FetchAsync(query, limit);
-            SearchFetchResult result = await request;
-            if (_disposed || _committedRevision != revision)
-            {
-                return;
-            }
-
-            SearchLoadState status = result switch
-            {
-                SearchSuccess success => new ReadySearch(success.Collection),
-                SearchFailure failure => new FailedSearch(failure.Message),
-                _ => throw new InvalidOperationException("Unexpected search outcome.")
-            };
-            _searchState = _searchState.WithForwardResult(query, status);
-            await NotifyMapStateChangedAsync();
             await InvokeAsync(StateHasChanged);
         }
-        catch (OperationCanceledException) when (_disposed)
-        {
-            // The page is gone; no result can update it.
-        }
     }
 
-    private Task SelectAutocompletePlaceAsync(GeoJsonFeature feature) => SelectPlaceCoreAsync(feature, showReturnResults: false);
+    public Task HandleMapBackgroundClickAsync(GeoCoordinate point) => _disposed
+        ? Task.CompletedTask : _workflow.HandleMapBackgroundClickAsync(point);
 
-    private Task SelectPlaceAsync(GeoJsonFeature feature) => SelectPlaceCoreAsync(feature, showReturnResults: true);
-
-    private async Task SelectPlaceCoreAsync(GeoJsonFeature feature, bool showReturnResults)
+    public void CancelPendingMapClick()
     {
-        _backgroundClicks.CancelPending();
-        ++_draftRevision;
-        ++_committedRevision;
-        StopDebounce();
-        StopReverseRequest();
-        _previewLoading = false;
-        _searchState = _searchState.CommitPlace(feature, showReturnResults);
-        await OnCommitted.InvokeAsync();
-        await NotifyMapStateChangedAsync();
+        if (!_disposed)
+        {
+            _workflow.CancelPendingMapClick();
+        }
     }
 
-    public Task DismissDraftAsync()
-    {
-        if (_disposed || !_searchState.IsEditing)
-        {
-            return Task.CompletedTask;
-        }
-
-        AbandonDraft();
-        return InvokeAsync(StateHasChanged);
-    }
-
-    private void AbandonDraft()
-    {
-        if (!_searchState.IsEditing)
-        {
-            return;
-        }
-
-        _backgroundClicks.CancelPending();
-        ++_draftRevision;
-        StopDebounce();
-        _previewLoading = false;
-        _searchState = _searchState.AbandonDraft();
-    }
-
-    private async Task BackToPreviousAsync()
-    {
-        _backgroundClicks.CancelPending();
-        if (_searchState.Panel is ReverseInspectionPanel)
-        {
-            StopReverseRequest();
-        }
-        else
-        {
-            ++_committedRevision;
-        }
-        _searchState = _searchState.Back();
-        await NotifyMapStateChangedAsync();
-    }
-
-    private async Task ClearSearchAsync()
-    {
-        _backgroundClicks.CancelPending();
-        ++_draftRevision;
-        ++_committedRevision;
-        StopDebounce();
-        StopReverseRequest();
-        _preview = null;
-        _previewQuery = null;
-        _previewLoading = false;
-        _searchState = _searchState.Clear();
-        await NotifyMapStateChangedAsync();
-    }
-
-    private Task RetrySearchAsync() => _searchState.Panel is ForwardSearchPanel forward
-        ? RestartCommittedAsync(forward.Query, 10)
-        : Task.CompletedTask;
-
-    private Task ShowMoreAsync() => _searchState.Panel is ForwardSearchPanel forward
-        ? RestartCommittedAsync(forward.Query, 20)
-        : Task.CompletedTask;
-
-    private async Task RestartCommittedAsync(string query, int limit)
-    {
-        _backgroundClicks.CancelPending();
-        long revision = ++_committedRevision;
-        _searchState = _searchState.RequestMore(query, limit);
-        await NotifyMapStateChangedAsync();
-        await LoadCommittedAsync(query, limit, revision, refresh: true);
-    }
-
-    /// <summary>
-    /// A map click first dismisses an open draft. Otherwise it becomes a
-    /// reverse inspection only after the double-click window has elapsed.
-    /// </summary>
-    public Task HandleMapBackgroundClickAsync(GeoCoordinate point)
-    {
-        if (_disposed || !point.IsValid)
-        {
-            return Task.CompletedTask;
-        }
-
-        if (_searchState.IsEditing)
-        {
-            _backgroundClicks.CancelPending();
-            return DismissDraftAsync();
-        }
-
-        return _backgroundClicks.ScheduleAsync(point);
-    }
-
-    /// <summary>Preserve native MapLibre double-click zoom without inspecting either click.</summary>
-    public void CancelPendingMapClick() => _backgroundClicks.CancelPending();
-
-    /// <summary>Inspect a background-map point in the contextual panel without clearing discovery.</summary>
-    public async Task InspectMapPointAsync(GeoCoordinate point)
-    {
-        if (_disposed || !point.IsValid)
-        {
-            return;
-        }
-
-        ++_draftRevision;
-        StopDebounce();
-        _previewLoading = false;
-        StopReverseRequest();
-        long revision = _reverseRevision;
-        _searchState = _searchState.InspectMapPoint(point);
-        await OnCommitted.InvokeAsync();
-        await NotifyMapStateChangedAsync();
-        if (_disposed || _reverseRevision != revision)
-        {
-            return;
-        }
-
-        await InvokeAsync(StateHasChanged);
-        await LoadReverseAsync(point, revision);
-    }
+    public Task InspectMapPointAsync(GeoCoordinate point) => _disposed
+        ? Task.CompletedTask : InvokeAsync(() => _workflow.InspectMapPointAsync(point));
 
     public async Task DismissMapInspectionAsync()
     {
-        _backgroundClicks.CancelPending();
-        if (!_disposed && _searchState.Panel is ReverseInspectionPanel)
-        {
-            await BackToPreviousAsync();
-            // Invoked through @ref by the page's workspace Escape handler.
-            await InvokeAsync(StateHasChanged);
-        }
-    }
-
-    private async Task RetryReverseAsync()
-    {
-        if (_disposed || _searchState.Panel is not ReverseInspectionPanel current)
+        if (_disposed)
         {
             return;
         }
 
-        StopReverseRequest();
-        long revision = _reverseRevision;
-        _searchState = _searchState.RetryReverse();
-        await InvokeAsync(StateHasChanged);
-        if (!_disposed && _reverseRevision == revision)
+        await _workflow.DismissMapInspectionAsync();
+        if (!_disposed)
         {
-            await LoadReverseAsync(current.Point, revision);
-        }
-    }
-
-    private async Task LoadReverseAsync(GeoCoordinate point, long revision)
-    {
-        using CancellationTokenSource request = new();
-        _reverseRequest = request;
-        try
-        {
-            SearchFetchResult result = await SearchApi.ReverseAsync(point, request.Token);
-            if (_disposed || _reverseRevision != revision || request.IsCancellationRequested)
-            {
-                return;
-            }
-
-            SearchLoadState status = result switch
-            {
-                SearchSuccess success => new ReadySearch(success.Collection),
-                SearchFailure failure => new FailedSearch(failure.Message),
-                _ => throw new InvalidOperationException("Unexpected reverse lookup outcome.")
-            };
-            _searchState = _searchState.WithReverseResult(point, status);
             await InvokeAsync(StateHasChanged);
         }
-        catch (OperationCanceledException) when (_disposed || request.IsCancellationRequested)
-        {
-            // A newer inspected point or leaving the page superseded this lookup.
-        }
-        finally
-        {
-            if (ReferenceEquals(_reverseRequest, request))
-            {
-                _reverseRequest = null;
-            }
-        }
     }
 
-    private void StopReverseRequest()
-    {
-        ++_reverseRevision;
-        CancellationTokenSource? request = _reverseRequest;
-        _reverseRequest = null;
-        request?.Cancel();
-        request?.Dispose();
-    }
-
-    // Map marker selection reuses the known feature; no new HTTP or reverse request.
     public async Task SelectMapFeatureAsync(GeoJsonFeature feature)
     {
         if (_disposed)
@@ -469,40 +163,11 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
             return;
         }
 
-        SearchMapState map = SearchMapState.FromPanel(_searchState.Panel);
-        string id = feature.Properties.Id;
-        if (!map.Results.Any(result => result.Properties.Id == id) && map.SelectedFeature?.Properties.Id != id)
-        {
-            return;
-        }
-
-        // Re-selecting the current map pin is not a new list selection. In
-        // particular, a place chosen directly from autocomplete must keep its
-        // previous query's markers hidden until Back is requested.
-        SearchPanelState underlying = _searchState.Panel is ReverseInspectionPanel inspection
-            ? inspection.ReturnTo : _searchState.Panel;
-        bool showReturnResults = underlying is not PlaceSearchPanel current ||
-            current.Feature.Properties.Id != id || current.ShowReturnResults;
-        await SelectPlaceCoreAsync(feature, showReturnResults);
-        // This method is invoked through @ref by Map, not by a SearchWorkspace UI
-        // event. Parent callbacks update the map, but do not guarantee that Blazor
-        // renders this child's updated details state when its parameters are unchanged.
+        await _workflow.SelectMapFeatureAsync(feature);
+        // Called through @ref, not via this component's event dispatch.
         if (!_disposed)
         {
             await InvokeAsync(StateHasChanged);
-        }
-    }
-
-    private Task NotifyMapStateChangedAsync() => OnMapStateChanged.InvokeAsync(SearchMapState.FromPanel(_searchState.Panel));
-
-    private void StopDebounce()
-    {
-        CancellationTokenSource? debounce = _debounce;
-        _debounce = null;
-        if (debounce is not null)
-        {
-            debounce.Cancel();
-            debounce.Dispose();
         }
     }
 }
