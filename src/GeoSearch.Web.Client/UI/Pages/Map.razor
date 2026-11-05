@@ -4,9 +4,9 @@
 
 <PageTitle>Explore | GeoSearch</PageTitle>
 
-<section @ref="_workspaceFocusTarget" class="gs-map-workspace" tabindex="-1" aria-label="Map exploration workspace">
+<section @ref="_workspaceFocusTarget" class="gs-map-workspace" tabindex="-1" aria-label="Map exploration workspace" @onkeydown="OnWorkspaceKeyDownAsync">
     <div class="gs-map-surface" @onclick="DismissSearchDraftAsync">
-        <MapViewer SearchState="_searchMapState" SearchPanelExpanded="IsEffectivelyExpanded" OnFeatureSelected="OnMapFeatureSelectedAsync" />
+        <MapViewer SearchState="_searchMapState" SearchPanelExpanded="IsEffectivelyExpanded" OnFeatureSelected="OnMapFeatureSelectedAsync" OnBackgroundClicked="OnMapBackgroundClickedAsync" />
     </div>
     <aside @ref="_searchPanel" class="gs-search-panel @(_isSearchPanelExpanded ? "gs-search-panel--expanded" : "gs-search-panel--collapsed") @(_temporaryInteractionExpanded ? "gs-search-panel--temporarily-expanded" : "")"
            aria-label="Search workspace">

@@ -29,6 +29,7 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
     {
         _disposed = true;
         StopDebounce();
+        StopReverseRequest();
         _searchSession?.Dispose();
         GC.SuppressFinalize(this);
     }
@@ -41,6 +42,8 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
     private long _committedRevision;
     private CancellationTokenSource? _debounce;
     private SearchQuerySession? _searchSession;
+    private CancellationTokenSource? _reverseRequest;
+    private long _reverseRevision;
 
     [Inject]
     private SearchApiClient SearchApi { get; set; } = null!;
@@ -176,7 +179,7 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
                 {
                     AbandonDraft();
                 }
-                else if (_searchState.Panel is PlaceSearchPanel)
+                else if (_searchState.Panel is PlaceSearchPanel or ReverseInspectionPanel)
                 {
                     await BackToPreviousAsync();
                 }
@@ -200,6 +203,7 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
 
         ++_draftRevision;
         StopDebounce();
+        StopReverseRequest();
         _previewLoading = false;
         long revision = ++_committedRevision;
         _searchState = _searchState.CommitQuery(query);
@@ -253,6 +257,7 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
         ++_draftRevision;
         ++_committedRevision;
         StopDebounce();
+        StopReverseRequest();
         _previewLoading = false;
         _searchState = _searchState.CommitPlace(feature, showReturnResults);
         await OnCommitted.InvokeAsync();
@@ -285,7 +290,14 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
 
     private async Task BackToPreviousAsync()
     {
-        ++_committedRevision;
+        if (_searchState.Panel is ReverseInspectionPanel)
+        {
+            StopReverseRequest();
+        }
+        else
+        {
+            ++_committedRevision;
+        }
         _searchState = _searchState.Back();
         await NotifyMapStateChangedAsync();
     }
@@ -295,6 +307,7 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
         ++_draftRevision;
         ++_committedRevision;
         StopDebounce();
+        StopReverseRequest();
         _preview = null;
         _previewQuery = null;
         _previewLoading = false;
@@ -318,6 +331,101 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
         await LoadCommittedAsync(query, limit, revision, refresh: true);
     }
 
+    /// <summary>Inspect a background-map point in the contextual panel without clearing discovery.</summary>
+    public async Task InspectMapPointAsync(GeoCoordinate point)
+    {
+        if (_disposed || !point.IsValid)
+        {
+            return;
+        }
+
+        ++_draftRevision;
+        StopDebounce();
+        _previewLoading = false;
+        StopReverseRequest();
+        long revision = _reverseRevision;
+        _searchState = _searchState.InspectMapPoint(point);
+        await OnCommitted.InvokeAsync();
+        await NotifyMapStateChangedAsync();
+        if (_disposed || _reverseRevision != revision)
+        {
+            return;
+        }
+
+        await InvokeAsync(StateHasChanged);
+        await LoadReverseAsync(point, revision);
+    }
+
+    public async Task DismissMapInspectionAsync()
+    {
+        if (!_disposed && _searchState.Panel is ReverseInspectionPanel)
+        {
+            await BackToPreviousAsync();
+            // Invoked through @ref by the page's workspace Escape handler.
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task RetryReverseAsync()
+    {
+        if (_disposed || _searchState.Panel is not ReverseInspectionPanel current)
+        {
+            return;
+        }
+
+        StopReverseRequest();
+        long revision = _reverseRevision;
+        _searchState = _searchState.RetryReverse();
+        await InvokeAsync(StateHasChanged);
+        if (!_disposed && _reverseRevision == revision)
+        {
+            await LoadReverseAsync(current.Point, revision);
+        }
+    }
+
+    private async Task LoadReverseAsync(GeoCoordinate point, long revision)
+    {
+        using CancellationTokenSource request = new();
+        _reverseRequest = request;
+        try
+        {
+            SearchFetchResult result = await SearchApi.ReverseAsync(point, request.Token);
+            if (_disposed || _reverseRevision != revision || request.IsCancellationRequested)
+            {
+                return;
+            }
+
+            SearchLoadState status = result switch
+            {
+                SearchSuccess success => new ReadySearch(success.Collection),
+                SearchFailure failure => new FailedSearch(failure.Message),
+                _ => throw new InvalidOperationException("Unexpected reverse lookup outcome.")
+            };
+            _searchState = _searchState.WithReverseResult(point, status);
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (OperationCanceledException) when (_disposed || request.IsCancellationRequested)
+        {
+            // A newer inspected point or leaving the page superseded this lookup.
+        }
+        finally
+        {
+            if (ReferenceEquals(_reverseRequest, request))
+            {
+                _reverseRequest = null;
+            }
+        }
+    }
+
+    private void StopReverseRequest()
+    {
+        ++_reverseRevision;
+        CancellationTokenSource? request = _reverseRequest;
+        _reverseRequest = null;
+        request?.Cancel();
+        request?.Dispose();
+    }
+
     // Map marker selection reuses the known feature; no new HTTP or reverse request.
     public async Task SelectMapFeatureAsync(GeoJsonFeature feature)
     {
@@ -336,7 +444,9 @@ public sealed partial class SearchWorkspace : ComponentBase, IDisposable
         // Re-selecting the current map pin is not a new list selection. In
         // particular, a place chosen directly from autocomplete must keep its
         // previous query's markers hidden until Back is requested.
-        bool showReturnResults = _searchState.Panel is not PlaceSearchPanel current ||
+        SearchPanelState underlying = _searchState.Panel is ReverseInspectionPanel inspection
+            ? inspection.ReturnTo : _searchState.Panel;
+        bool showReturnResults = underlying is not PlaceSearchPanel current ||
             current.Feature.Properties.Id != id || current.ShowReturnResults;
         await SelectPlaceCoreAsync(feature, showReturnResults);
         // This method is invoked through @ref by Map, not by a SearchWorkspace UI

@@ -1,4 +1,5 @@
-﻿using GeoSearch.Web.Shared.Api;
+﻿using GeoSearch.Web.Client.Search.Model;
+using GeoSearch.Web.Shared.Api;
 using GeoSearch.Web.Shared.GeoJson;
 using GeoSearch.Web.Shared.Web;
 using System.Net.Http.Json;
@@ -11,13 +12,34 @@ public sealed class SearchApiClient(HttpClient httpClient)
 {
     internal async Task<SearchFetchResult> SearchAsync(string query, int limit, CancellationToken cancellationToken)
     {
+        Uri uri = SimpleUriBuilder.Create("api")
+            .AppendPath("search")
+            .AppendQuery("q", query)
+            .AppendQuery("limit", limit)
+            .BuildUri(UriKind.Relative);
+        return await ReadCollectionAsync(uri, "Search", cancellationToken);
+    }
+
+    /// <summary>Inspect the nearest feature to a user-clicked WGS84 coordinate.</summary>
+    internal Task<SearchFetchResult> ReverseAsync(GeoCoordinate point, CancellationToken cancellationToken)
+    {
+        if (!point.IsValid)
+        {
+            throw new ArgumentOutOfRangeException(nameof(point));
+        }
+        Uri uri = SimpleUriBuilder.Create("api")
+            .AppendPath("reverse")
+            .AppendQuery("lat", point.Latitude)
+            .AppendQuery("lon", point.Longitude)
+            .AppendQuery("radius", 250)
+            .BuildUri(UriKind.Relative);
+        return ReadCollectionAsync(uri, "Reverse lookup", cancellationToken);
+    }
+
+    private async Task<SearchFetchResult> ReadCollectionAsync(Uri uri, string operation, CancellationToken cancellationToken)
+    {
         try
         {
-            Uri uri = SimpleUriBuilder.Create("api")
-                .AppendPath("search")
-                .AppendQuery("q", query)
-                .AppendQuery("limit", limit)
-                .BuildUri(UriKind.Relative);
             using HttpResponseMessage response = await httpClient.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             if (!response.IsSuccessStatusCode)
             {
@@ -27,12 +49,12 @@ public sealed class SearchApiClient(HttpClient httpClient)
                     error = await response.Content.ReadFromJsonAsync<ApiError>(cancellationToken);
                 }
 
-                return new SearchFailure(error?.Error ?? $"Search failed (HTTP {(int)response.StatusCode}).");
+                return new SearchFailure(error?.Error ?? $"{operation} failed (HTTP {(int)response.StatusCode}).");
             }
 
             GeoJsonFeatureCollection? collection = await response.Content.ReadFromJsonAsync<GeoJsonFeatureCollection>(cancellationToken);
             return collection is null
-                ? new SearchFailure("Search returned an empty response.")
+                ? new SearchFailure($"{operation} returned an empty response.")
                 : new SearchSuccess(collection);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -41,19 +63,19 @@ public sealed class SearchApiClient(HttpClient httpClient)
         }
         catch (OperationCanceledException)
         {
-            return new SearchFailure("Search timed out. Please retry.");
+            return new SearchFailure($"{operation} timed out. Please retry.");
         }
         catch (HttpRequestException)
         {
-            return new SearchFailure("Could not reach the search service. Check your connection and retry.");
+            return new SearchFailure($"Could not reach the {operation} endpoint. Check your connection and retry.");
         }
         catch (JsonException)
         {
-            return new SearchFailure("Search returned an invalid response.");
+            return new SearchFailure($"{operation} returned an invalid response.");
         }
         catch (NotSupportedException)
         {
-            return new SearchFailure("Search returned an unsupported response.");
+            return new SearchFailure($"{operation} returned an unsupported response.");
         }
     }
 

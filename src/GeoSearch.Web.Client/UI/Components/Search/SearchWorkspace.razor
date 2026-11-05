@@ -7,7 +7,7 @@
                aria-label="Search places and addresses" role="combobox" aria-autocomplete="list"
                aria-expanded="@(ShowSuggestions ? "true" : "false")" aria-controls="@(ShowSuggestions ? "map-search-suggestions" : null)"
                aria-activedescendant="@ActiveSuggestionId" placeholder="Search places and addresses"
-               value="@_searchState.DisplayText" @oninput="OnSearchInput" @onkeydown="OnSearchKeyDownAsync" />
+               value="@_searchState.DisplayText" @oninput="OnSearchInput" @onkeydown="OnSearchKeyDownAsync" @onkeydown:stopPropagation="true" />
         @if (!string.IsNullOrEmpty(_searchState.DisplayText) || _searchState.Panel is not IdleSearchPanel)
         {
             <button type="button" class="gs-search-clear" @onclick="ClearSearchAsync" aria-label="Clear search and selection"
@@ -33,5 +33,5 @@
 </button>
 <div id="map-search-content" class="gs-search-panel-content" aria-live="polite" aria-atomic="false">
     <SearchContextPanel Panel="_searchState.Panel" OnPlaceSelected="SelectPlaceAsync"
-                        OnBack="BackToPreviousAsync" OnRetry="RetrySearchAsync" OnShowMore="ShowMoreAsync" />
+                        OnBack="BackToPreviousAsync" OnRetry="RetrySearchAsync" OnRetryReverse="RetryReverseAsync" OnShowMore="ShowMoreAsync" />
 </div>
