@@ -44,6 +44,12 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
     [Parameter]
     public EventCallback<GeoJsonFeature> OnFeatureSelected { get; set; }
 
+    [Parameter]
+    public EventCallback<GeoCoordinate> OnBackgroundClicked { get; set; }
+
+    [Parameter]
+    public EventCallback OnBackgroundDoubleClicked { get; set; }
+
     [Inject]
     private IConfiguration Configuration { get; set; } = null!;
 
@@ -227,6 +233,11 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
                 _map, SelectKnownMapFeatureAsync, GetSelectionOffsetPixelsAsync);
             _resultOverlayReady = true;
             await UpdateOverlayAsync();
+            // Marker buttons stop propagation in the wrapper. Background double
+            // clicks must cancel inspection candidates without disabling zoom.
+            // Do not register the generic map error listener (circular payloads).
+            await _map.AddAsyncListener<JsonElement>("dblclick", OnMapDoubleClickedAsync);
+            await _map.AddAsyncListener<JsonElement>("click", OnMapClickedAsync);
         }
         catch (JSException exception)
         {
@@ -237,6 +248,35 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
         _mapLoaded = true;
         _mapLoadTimedOut = false;
         await InvokeAsync(StateHasChanged);
+    }
+
+    private Task OnMapClickedAsync(JsonElement click)
+    {
+        GeoCoordinate? point = ReadMapClickCoordinate(click);
+        return !_disposed && point is { } coordinate
+            ? OnBackgroundClicked.InvokeAsync(coordinate)
+            : Task.CompletedTask;
+    }
+
+    private Task OnMapDoubleClickedAsync(JsonElement _) => !_disposed
+        ? OnBackgroundDoubleClicked.InvokeAsync()
+        : Task.CompletedTask;
+
+    /// <summary>Read only the map coordinate, not MapLibre's full event object.</summary>
+    internal static GeoCoordinate? ReadMapClickCoordinate(JsonElement click)
+    {
+        if (click.ValueKind != JsonValueKind.Object ||
+            !click.TryGetProperty("lngLat", out JsonElement point) || point.ValueKind != JsonValueKind.Object ||
+            !point.TryGetProperty("lat", out JsonElement latitude) || latitude.ValueKind != JsonValueKind.Number ||
+            !latitude.TryGetDouble(out double lat) ||
+            !point.TryGetProperty("lng", out JsonElement longitude) || longitude.ValueKind != JsonValueKind.Number ||
+            !longitude.TryGetDouble(out double lon))
+        {
+            return null;
+        }
+
+        GeoCoordinate coordinate = new(lat, lon);
+        return coordinate.IsValid ? coordinate : null;
     }
 
     private Task SelectKnownMapFeatureAsync(GeoJsonFeature feature)

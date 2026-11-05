@@ -2,6 +2,7 @@
 using GeoSearch.Web.Client.UI.Components.Search;
 using GeoSearch.Web.Shared.GeoJson;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.JSInterop;
 
 namespace GeoSearch.Web.Client.UI.Pages;
@@ -83,8 +84,6 @@ public partial class Map : ComponentBase, IAsyncDisposable
         return InvokeAsync(StateHasChanged);
     }
 
-    private Task DismissSearchDraftAsync() => _searchWorkspace?.DismissDraftAsync() ?? Task.CompletedTask;
-
     private Task UpdateSearchMapState(SearchMapState state)
     {
         _searchMapState = state;
@@ -93,6 +92,15 @@ public partial class Map : ComponentBase, IAsyncDisposable
 
     private Task OnMapFeatureSelectedAsync(GeoJsonFeature feature) =>
         _searchWorkspace?.SelectMapFeatureAsync(feature) ?? Task.CompletedTask;
+
+    private Task OnMapBackgroundClickedAsync(GeoCoordinate point) =>
+        _searchWorkspace?.HandleMapBackgroundClickAsync(point) ?? Task.CompletedTask;
+
+    private void OnMapBackgroundDoubleClicked() => _searchWorkspace?.CancelPendingMapClick();
+
+    private Task OnWorkspaceKeyDownAsync(KeyboardEventArgs args) => args.Key == "Escape"
+        ? _searchWorkspace?.DismissMapInspectionAsync() ?? Task.CompletedTask
+        : Task.CompletedTask;
 
     private async Task ExpandOnCommitAsync()
     {

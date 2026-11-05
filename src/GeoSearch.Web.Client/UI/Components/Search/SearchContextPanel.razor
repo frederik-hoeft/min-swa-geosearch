@@ -50,6 +50,49 @@
                 break;
         }
         break;
+    case ReverseInspectionPanel inspection:
+        <header class="gs-place-details-header">
+            <button type="button" class="gs-results-back" @onclick="OnBack">
+                <MudIcon Icon="@Icons.Material.Filled.ArrowBack" Size="Size.Small" /> Back
+            </button>
+            <span class="gs-section-label">MAP INSPECTION</span>
+        </header>
+        <h1 class="gs-detail-title">Nearby this point</h1>
+        <p class="gs-search-hint">Clicked latitude @inspection.Point.Latitude.ToString("F5", System.Globalization.CultureInfo.InvariantCulture)°, longitude @inspection.Point.Longitude.ToString("F5", System.Globalization.CultureInfo.InvariantCulture)°</p>
+        @switch (inspection.Result)
+        {
+            case LoadingSearch:
+                <p role="status" class="gs-search-hint">Looking for a nearby address or place...</p>
+                break;
+            case FailedSearch failure:
+                <div role="alert" class="gs-search-feedback">
+                    <p>@failure.Message</p>
+                    <MudButton OnClick="OnRetryReverse" Variant="Variant.Outlined" Color="Color.Primary">Retry</MudButton>
+                </div>
+                break;
+            case ReadySearch ready:
+                @if (ready.Collection.Features.FirstOrDefault() is { } nearby)
+                {
+                    <h2 class="gs-reverse-nearest">@nearby.Properties.Label</h2>
+                    <dl class="gs-place-details">
+                        <dt>Type</dt><dd>@nearby.Properties.Type</dd>
+                        @if (!string.IsNullOrWhiteSpace(nearby.Properties.Category))
+                        {
+                            <dt>Category</dt><dd>@nearby.Properties.Category</dd>
+                        }
+                        @if (nearby.Properties.DistanceM is double distance)
+                        {
+                            <dt>Distance</dt><dd>@distance.ToString("F0", System.Globalization.CultureInfo.InvariantCulture) m from clicked point</dd>
+                        }
+                    </dl>
+                }
+                else
+                {
+                    <p role="status" class="gs-search-hint">No known address or place within 250 m of this point.</p>
+                }
+                break;
+        }
+        break;
     case PlaceSearchPanel place:
         <header class="gs-place-details-header">
             <button type="button" class="gs-results-back" @onclick="OnBack">
@@ -81,6 +124,9 @@
 
     [Parameter]
     public EventCallback OnRetry { get; set; }
+
+    [Parameter]
+    public EventCallback OnRetryReverse { get; set; }
 
     [Parameter]
     public EventCallback OnShowMore { get; set; }

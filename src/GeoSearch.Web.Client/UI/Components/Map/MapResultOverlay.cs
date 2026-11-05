@@ -20,6 +20,7 @@ internal sealed class MapResultOverlay(
     private readonly SemaphoreSlim _sync = new(1, 1);
     private readonly Dictionary<string, (Guid MarkerId, GeoJsonFeature Feature, bool Selected)> _markers = new(StringComparer.Ordinal);
     private SearchMapState _current = SearchMapState.Empty;
+    private Guid? _inspectedPointMarker;
 
     public async Task ApplyAsync(SearchMapState state)
     {
@@ -50,6 +51,27 @@ internal sealed class MapResultOverlay(
                 MarkerOptions options = CreateMarkerOptions(item.Value.Feature, item.Value.Selected, () => OnMarkerClickedAsync(featureId));
                 Guid markerId = await map.AddMarker(options, point);
                 _markers.Add(featureId, (markerId, item.Value.Feature, item.Value.Selected));
+            }
+
+            if (_current.InspectionPoint != state.InspectionPoint)
+            {
+                if (_inspectedPointMarker is Guid previous)
+                {
+                    await map.RemoveMarker(previous);
+                    _inspectedPointMarker = null;
+                }
+                if (state.InspectionPoint is { } inspected && inspected.IsValid)
+                {
+                    _inspectedPointMarker = await map.AddMarker(new MarkerOptions
+                    {
+                        Anchor = MarkerAnchor.Center,
+                        ClassName = "gs-map-inspection-marker",
+                        Extensions = new MarkerOptionsExtensions
+                        {
+                            HtmlContent = "<span class=\"gs-map-inspection-point\" aria-hidden=\"true\"></span>"
+                        }
+                    }, new LngLat(inspected.Longitude, inspected.Latitude));
+                }
             }
 
             bool selectionChanged = !SameFeature(_current.SelectedFeature, state.SelectedFeature);

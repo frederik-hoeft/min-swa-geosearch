@@ -1,8 +1,8 @@
 # Frontend integration backlog
 
-**Status:** Backlog approved. F1 is implemented in PR #5 with real-browser acceptance still pending; F2 is merged via PR #8; F3 is implemented on a separate review branch with browser acceptance pending; F4–F6 are pending. Epics define outcomes and review gates rather than a fixed implementation plan.
+**Status:** Backlog approved. F1 is implemented in PR #5 with real-browser acceptance still pending; F2 is merged via PR #8; F3 is merged via PR #10; F4 is implemented on its review branch with browser acceptance pending; F5–F6 are pending. Epics define outcomes and review gates rather than a fixed implementation plan.
 
-GeoSearch has a Blazor WebAssembly frontend with an interactive MapLibre/OSM map, a separate landing page, and a responsive search overlay. The read-only ASP.NET Core API is implemented, F2 forward search is integrated, and F3 result visualization is in review; reverse and nearby integration remain pending. These epics track the remaining Lab 2 work without moving geospatial query logic into the client.
+GeoSearch has a Blazor WebAssembly frontend with an interactive MapLibre/OSM map, a separate landing page, and a responsive search overlay. The read-only ASP.NET Core API is implemented, F2 forward search is integrated, and F3 result visualization is integrated; F4 reverse inspection is under review, and nearby integration remains pending. These epics track the remaining Lab 2 work without moving geospatial query logic into the client.
 
 The [F5 interaction contract](f5-interaction-contract.md) is **authoritative for cross-epic behavior in F2–F6**, even where an older backlog description differs. It describes the unified search field, suggestion semantics, committed contextual panel, nearby drafts, inspection, map overlays, and state transitions. This backlog divides that behavior into reviewable deliveries; it does not redefine it. The contract's section 10 presentation/prototype questions remain open without weakening its behavioral invariants.
 
@@ -25,7 +25,7 @@ The [architecture](../../architecture.md) owns the backend/data-flow model, [UI 
 
 ### F1. Interactive map and OSM basemap
 
-**Implementation:** MapLibre map, configurable OSM Standard raster style, responsive search overlay, and landing-page separation implemented in PR #5. **Acceptance pending:** real-browser pan/zoom, attribution, initialization failures, and mobile keyboard behavior must still be verified. F2 has been merged via PR #8; F3 is implemented on a separate review branch (browser acceptance pending); F4–F6 are pending.
+**Implementation:** MapLibre map, configurable OSM Standard raster style, responsive search overlay, and landing-page separation implemented in PR #5. **Acceptance pending:** real-browser pan/zoom, attribution, initialization failures, and mobile keyboard behavior must still be verified. F2 has been merged via PR #8; F3 is merged via PR #10 (browser acceptance remains a runtime gate); F4 is in review and F5–F6 are pending.
 
 **Goal:** Replace the placeholder with a usable, independently testable MapLibre map before coupling it to search.
 
@@ -80,6 +80,8 @@ The [architecture](../../architecture.md) owns the backend/data-flow model, [UI 
 - Keep reverse request identity independent of the committed discovery request. Rapid clicks A then B display only B, even if A's response/error arrives last. Known marker/list selections use their existing feature, not background reverse. Clean up event subscriptions and point overlays across page teardown.
 - Expose a **Search nearby here** route into the nearby draft only when the F5 editor exists; it preselects the fixed clicked coordinate and does **not** execute nearby immediately. No popups or duplicated details surfaces.
 
+**Implementation:** Background-map clicks use the existing MapLibre click callback; a page-owned reverse request feeds a typed `ReverseInspectionPanel` in the single contextual panel. A distinct crosshair marks the clicked coordinate, and Back/Escape restore the underlying search and map markers. See the [F4 integration notes](f4-reverse-inspection.md) for architecture, limitations, and browser checks. The **Search nearby here** action is deferred until F5 can open the corresponding editor.
+
 **Gate F4:** Background clicks produce reverse-inspection content in the same panel, with correct coordinate/distance semantics and useful loading/empty/error states; previously committed discovery survives and Back restores it. Race tests reject stale reverse responses, known markers do not reverse-geocode, and panning/zooming alone sends no request. See contract tests T07–T08 and T14.
 
 ### F5. Explicit nearby drafts, location, and shared discovery UI
@@ -112,7 +114,7 @@ The [architecture](../../architecture.md) owns the backend/data-flow model, [UI 
 
 ## Delivery and review rules
 
-Each epic is a separate local feature branch/patch against the last **approved** baseline and ends at its review gate. F1 was implemented in PR #5; complete its remaining browser acceptance checks before closing that gate. F2 is merged via PR #8; F3 remains unmerged pending its review gate. Later epics receive their own implementation plans, informed by the preceding review gate and the current Blazor.MapLibre API.
+Each epic is a separate local feature branch/patch against the last **approved** baseline and ends at its review gate. F1 was implemented in PR #5; complete its remaining browser acceptance checks before closing that gate. F2 is merged via PR #8; F3 has been merged via PR #10; F4 is independently reviewable with its browser gate outstanding. Later epics receive their own implementation plans, informed by the preceding review gate and the current Blazor.MapLibre API.
 
 Implement each phase as an independently reviewable subset of the **same** interaction contract. Foundations introduced in F2/F3 may have effects or controls completed in F4/F5, but must not expose misleading or inert user actions. The F5 contract is the source of truth if scope descriptions conflict; amendments to its behavioral invariants require explicit review. Document prototype-level presentation decisions in the contract/UI conventions when settled. Backlog acceptance criteria describe intended behavior, not functionality that already exists.
 

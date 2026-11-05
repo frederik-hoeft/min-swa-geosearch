@@ -1,4 +1,4 @@
-﻿@use "../Styles/core/breakpoints" as bp;
+@use "../Styles/core/breakpoints" as bp;
 
 .gs-map-viewer {
     position: relative;
@@ -171,5 +171,37 @@
         bottom: auto;
         right: 0.6rem;
         max-width: calc(100% - 1.2rem);
+    }
+}
+
+// The clicked coordinate is not a search result. Use a minimal ring and dot
+// to distinguish it from place pins without intercepting background clicks.
+.gs-map-viewer ::deep .maplibregl-marker.gs-map-inspection-marker {
+    pointer-events: none;
+    width: 1.5rem;
+    height: 1.5rem;
+
+    .gs-map-inspection-point {
+        position: relative;
+        display: block;
+        box-sizing: border-box;
+        width: 100%;
+        height: 100%;
+        border: 2px solid var(--mud-palette-surface);
+        border-radius: 50%;
+        background: var(--mud-palette-primary);
+        box-shadow: 0 1px 5px rgba(0, 0, 0, 0.25);
+
+        &::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0.4rem;
+            height: 0.4rem;
+            border-radius: 50%;
+            background: var(--mud-palette-surface);
+            transform: translate(-50%, -50%);
+        }
     }
 }

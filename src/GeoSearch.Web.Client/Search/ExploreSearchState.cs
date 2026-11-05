@@ -42,23 +42,71 @@ internal sealed record ExploreSearchState(
             };
         }
 
-        SearchPanelState returnTo = Panel is PlaceSearchPanel previous ? previous.ReturnTo : Panel;
-        string returnText = Panel is PlaceSearchPanel place ? place.ReturnText : CommittedText;
+        SearchPanelState underlying = Panel is ReverseInspectionPanel reverse ? reverse.ReturnTo : Panel;
+        SearchPanelState returnTo = underlying is PlaceSearchPanel previous ? previous.ReturnTo : underlying;
+        string returnText = underlying is PlaceSearchPanel place ? place.ReturnText
+            : Panel is ReverseInspectionPanel inspection ? inspection.ReturnText : CommittedText;
         return new(feature.Properties.Label, feature.Properties.Label, false, -1,
             new PlaceSearchPanel(feature, returnTo, returnText, showReturnResults));
     }
+
+    /// <summary>Inspect a background-map coordinate without changing committed discovery.</summary>
+    public ExploreSearchState InspectMapPoint(GeoCoordinate point)
+    {
+        if (!point.IsValid)
+        {
+            throw new ArgumentOutOfRangeException(nameof(point));
+        }
+        SearchPanelState returnTo = Panel is ReverseInspectionPanel prior ? prior.ReturnTo : Panel;
+        string returnText = Panel is ReverseInspectionPanel previous ? previous.ReturnText : CommittedText;
+        return this with
+        {
+            DisplayText = returnText,
+            CommittedText = returnText,
+            IsEditing = false,
+            HighlightedIndex = -1,
+            Panel = new ReverseInspectionPanel(point, new LoadingSearch(), returnTo, returnText)
+        };
+    }
+
+    public ExploreSearchState WithReverseResult(GeoCoordinate point, SearchLoadState result) =>
+        Panel is ReverseInspectionPanel current && current.Point == point
+            ? this with { Panel = current with { Result = result } }
+            : this;
+
+    public ExploreSearchState RetryReverse() =>
+        Panel is ReverseInspectionPanel current
+            ? this with { Panel = current with { Result = new LoadingSearch() } }
+            : this;
 
     public ExploreSearchState RequestMore(string query, int limit) =>
         Panel is ForwardSearchPanel current && current.Query == query
             ? this with { Panel = current with { Limit = limit, Results = new LoadingSearch() } }
             : this;
 
-    public ExploreSearchState WithForwardResult(string query, SearchLoadState result) =>
-        Panel is ForwardSearchPanel current && current.Query == query
-            ? this with { Panel = current with { Results = result } }
-            : this;
+    public ExploreSearchState WithForwardResult(string query, SearchLoadState result) => Panel switch
+    {
+        ForwardSearchPanel current when current.Query == query => this with
+        {
+            Panel = current with { Results = result }
+        },
+        ReverseInspectionPanel { ReturnTo: ForwardSearchPanel previous } inspection when previous.Query == query => this with
+        {
+            Panel = inspection with { ReturnTo = previous with { Results = result } }
+        },
+        _ => this
+    };
 
-    public ExploreSearchState Back() => Panel is PlaceSearchPanel place
+    public ExploreSearchState Back() => Panel is ReverseInspectionPanel inspection
+        ? this with
+        {
+            DisplayText = inspection.ReturnText,
+            CommittedText = inspection.ReturnText,
+            Panel = inspection.ReturnTo,
+            IsEditing = false,
+            HighlightedIndex = -1
+        }
+        : Panel is PlaceSearchPanel place
         ? this with
         {
             DisplayText = place.ReturnText,

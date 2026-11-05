@@ -7,12 +7,17 @@ namespace GeoSearch.Web.Client.Search.Model;
 /// suggestions never become map markers, and inspection never loses the
 /// committed result set beneath it.
 /// </summary>
-public sealed record SearchMapState(IReadOnlyList<GeoJsonFeature> Results, GeoJsonFeature? SelectedFeature)
+public sealed record SearchMapState(IReadOnlyList<GeoJsonFeature> Results, GeoJsonFeature? SelectedFeature, GeoCoordinate? InspectionPoint = null)
 {
     public static SearchMapState Empty { get; } = new([], null);
 
     public static SearchMapState FromPanel(SearchPanelState panel)
     {
+        if (panel is ReverseInspectionPanel inspection)
+        {
+            return FromPanel(inspection.ReturnTo) with { InspectionPoint = inspection.Point };
+        }
+
         GeoJsonFeature? selected = null;
         while (panel is PlaceSearchPanel place)
         {
