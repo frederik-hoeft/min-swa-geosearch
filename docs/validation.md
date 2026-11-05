@@ -35,6 +35,17 @@ Verify all four GIS endpoints with the populated snapshot, including invalid and
 
 Separately, verify the `geosearch_reader` database login can call the three API read functions and query category/snapshot metadata, but cannot insert into `osm.snapshot` or change the search index. The API's read-only EF model is not a substitute for PostgreSQL privileges. Confirm that an index refresh updates the snapshot metadata observed by the API.
 
+### Read-only verification (geosearch_reader)
+
+Connected as `geosearch_reader`:
+
+- `SHOW transaction_read_only;` → `on`
+- `SELECT count(*) FROM search.search_index;` → succeeds (129,607 rows)
+- `INSERT INTO search.search_index (id) VALUES (999999999);` → fails with  
+  `ERROR: cannot execute INSERT in a read-only transaction`
+
+This confirms that the reader role cannot modify data, even if table privileges were misconfigured. Screenshot: ![Read-only proof](images/proof_readonly.png)
+
 ## Browser acceptance
 
 Test through the public HTTPS origin with a browser that trusts the local certificate. The landing page is at `/`; the interactive map workspace is at `/map`. At desktop/tablet widths and in landscape phone orientation, the search pane overlays the left of the full-size map; its subtle chevron tab below the input collapses/expands it vertically. In portrait phone viewports under 600px, the bottom sheet has its chevron tab **above** the input, expands upward to cover most of the map, and collapses to a compact bottom search bar. It is a button, not a draggable sheet.
