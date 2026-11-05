@@ -40,7 +40,15 @@ Three of the ten fixture queries currently return an unexpected top result:
 - Zoo Hannover --> district ranks above the POI because of higher importance
 - Markthalle Hannover --> only a street exists in the index, no POI
 
-Explanations and latency measurements are in the fixture table and the architecture note[block]
+Explanations and latency measurements are in the [fixture table](docs/Benchmark_lab_2.xlsx) and the architecture note below
+
+## Architecture Note
+
+The browser talks only to the ASP.NET Core API (`/api/search`, `/api/reverse`, `/api/nearby`, `/api/categories`) and never to the database or a third-party geocoder. In the Compose deployment, Nginx serves the Blazor WebAssembly client and forwards `/api/*` to the API. This keeps database credentials and query logic on the server and separates presentation, API and data layers. The API connects with a restricted, read-only database login (`geosearch_reader`).
+
+The search logic lives in PostgreSQL, not in the application code. Free-text search runs in `search.search()`, which combines full-text matching (all query words must match), a trigram fallback for typos, and a ranking by text similarity times a per-object importance. The API maps the database functions `search.api_search`, `search.api_reverse` and `search.api_nearby` through EF Core and only binds parameters and serialises the result as GeoJSON. We placed the logic in the database because the ranking and its indexes (GIN full-text, GIN trigram, GiST on the point geometry) sit next to the data, so the API stays thin.
+
+The quality attribute we measured is latency, via the API (curl, warm-up excluded) on an index of 129,607 documents. Ten of eleven queries had a p50 between 3 and 22 ms. “Hauptstrasse Laatzen” was the outlier (p50 196 ms, p95 213 ms). The index contains no matching street in Laatzen, so the full-text branch stays empty and the function falls back to the trigram branch (~60,000 index candidates that must be rechecked). This is below the 300 ms requirement, but with little margin.
 
 ## Repository layout
 
