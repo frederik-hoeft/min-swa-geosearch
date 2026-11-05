@@ -31,7 +31,7 @@ The [architecture](docs/architecture.md) explains the search pipeline, API contr
 
 ## Privacy and read-only access
 
-The API uses the restricted database Login 'geosearch_reader' with a session-level 'transaction_read_only = 0'. Coordinates are not written to application logs: request-start daignostics are suppressed, EF Core masks parameter values, and 'EnableSensitiveDataLogging' is not used. See validation[docs/validation.md] for the concrete verification steps and screenshot.
+The API uses the restricted database Login 'geosearch_reader' with a session-level 'transaction_read_only = 0'. Coordinates are not written to application logs: request-start daignostics are suppressed, EF Core masks parameter values, and 'EnableSensitiveDataLogging' is not used. See [Validation](docs/validation.md) for the concrete verification steps and screenshot.
 
 ## Known ranking behaviour
 
