@@ -13,19 +13,19 @@ namespace GeoSearch.Web.Server.Api.Search;
 
 public sealed class SearchController(IGeoSearchService search) : ControllerBase
 {
-/// <summary>
-/// Searches addresses, places and POIs using the PostgreSQL search function.
-/// </summary>
-/// <param name="q">
-/// Free-text query (1-200 characters). 
-/// Street, house number and town are entered as a single string.
-/// </param>
-/// <param name="limit">
-/// Maximum number of results (1-20). Default: 10.
-/// </param>
-/// <param name="cancellationToken">Request cancellation token.</param>
-/// <response code="200">Matching search results as a GeoJSON feature collection.</response>
-/// <response code="400">The query text or limit is outside the accepted range.</response>
+    /// <summary>
+    /// Searches addresses, places and POIs using the PostgreSQL search function.
+    /// </summary>
+    /// <param name="q">
+    /// Free-text query (1-200 characters). 
+    /// Street, house number and town are entered as a single string.
+    /// </param>
+    /// <param name="limit">
+    /// Maximum number of results (1-20). Default: 10.
+    /// </param>
+    /// <param name="cancellationToken">Request cancellation token.</param>
+    /// <response code="200">Matching search results as a GeoJSON feature collection.</response>
+    /// <response code="400">The query text or limit is outside the accepted range.</response>
 
     [HttpGet("api/search")]
     [ProducesResponseType<GeoJsonFeatureCollection>(StatusCodes.Status200OK)]
@@ -44,17 +44,17 @@ public sealed class SearchController(IGeoSearchService search) : ControllerBase
         return Ok(results);
     }
 
-/// <summary>
-/// Finds the nearest address, POI or street around a geographic position.
-/// </summary>
-/// <param name="lat">Latitude in WGS84 (-90 to 90).</param>
-/// <param name="lon">Longitude in WGS84 (-180 to 180).</param>
-/// <param name="radius">
-/// Search radius in metres (&gt; 0 and &lt;= 1000). Default: 250.
-/// </param>
-/// <param name="cancellationToken">Request cancellation token.</param>
-/// <response code="200">The nearest matching object as a GeoJSON feature collection.</response>
-/// <response code="400">Coordinates or radius are outside the accepted range.</response>
+    /// <summary>
+    /// Finds the nearest address, POI or street around a geographic position.
+    /// </summary>
+    /// <param name="lat">Latitude in WGS84 (-90 to 90).</param>
+    /// <param name="lon">Longitude in WGS84 (-180 to 180).</param>
+    /// <param name="radius">
+    /// Search radius in metres (&gt; 0 and &lt;= 1000). Default: 250.
+    /// </param>
+    /// <param name="cancellationToken">Request cancellation token.</param>
+    /// <response code="200">The nearest matching object as a GeoJSON feature collection.</response>
+    /// <response code="400">Coordinates or radius are outside the accepted range.</response>
 
     [HttpGet("api/reverse")]
     [ProducesResponseType<GeoJsonFeatureCollection>(StatusCodes.Status200OK)]
@@ -73,23 +73,23 @@ public sealed class SearchController(IGeoSearchService search) : ControllerBase
         return Ok(await search.ReverseAsync(lat!.Value, lon!.Value, radius ?? 250, cancellationToken));
     }
 
-/// <summary>
-/// Returns nearby POIs ordered by distance.
-/// </summary>
-/// <param name="lat">Latitude in WGS84 (-90 to 90).</param>
-/// <param name="lon">Longitude in WGS84 (-180 to 180).</param>
-/// <param name="radius">
-/// Search radius in metres (&gt; 0 and &lt;= 2000). Default: 500.
-/// </param>
-/// <param name="category">
-/// Optional POI category filter. Maximum length: 200 characters.
-/// </param>
-/// <param name="limit">
-/// Maximum number of results (1-20). Default: 20.
-/// </param>
-/// <param name="cancellationToken">Request cancellation token.</param>
-/// <response code="200">Matching nearby POIs as a GeoJSON feature collection.</response>
-/// <response code="400">Coordinates, radius, category or limit are outside the accepted range.</response>
+    /// <summary>
+    /// Returns nearby POIs ordered by distance.
+    /// </summary>
+    /// <param name="lat">Latitude in WGS84 (-90 to 90).</param>
+    /// <param name="lon">Longitude in WGS84 (-180 to 180).</param>
+    /// <param name="radius">
+    /// Search radius in metres (&gt; 0 and &lt;= 2000). Default: 500.
+    /// </param>
+    /// <param name="category">
+    /// Optional POI category filter. Maximum length: 200 characters.
+    /// </param>
+    /// <param name="limit">
+    /// Maximum number of results (1-20). Default: 20.
+    /// </param>
+    /// <param name="cancellationToken">Request cancellation token.</param>
+    /// <response code="200">Matching nearby POIs as a GeoJSON feature collection.</response>
+    /// <response code="400">Coordinates, radius, category or limit are outside the accepted range.</response>
     [HttpGet("api/nearby")]
     [ProducesResponseType<GeoJsonFeatureCollection>(StatusCodes.Status200OK)]
     [ProducesResponseType<ApiError>(StatusCodes.Status400BadRequest)]
@@ -117,11 +117,11 @@ public sealed class SearchController(IGeoSearchService search) : ControllerBase
         return Ok(await search.NearbyAsync(lat!.Value, lon!.Value, radius ?? 500,
             category?.Trim(), limit ?? 20, cancellationToken));
     }
-/// <summary>
-/// Returns the available POI categories for nearby searches.
-/// </summary>
-/// <param name="cancellationToken">Request cancellation token.</param>
-/// <response code="200">List of available category labels.</response>
+    /// <summary>
+    /// Returns the available POI categories for nearby searches.
+    /// </summary>
+    /// <param name="cancellationToken">Request cancellation token.</param>
+    /// <response code="200">List of available category labels.</response>
 
     [HttpGet("api/categories")]
     [ProducesResponseType<IReadOnlyList<string>>(StatusCodes.Status200OK)]
