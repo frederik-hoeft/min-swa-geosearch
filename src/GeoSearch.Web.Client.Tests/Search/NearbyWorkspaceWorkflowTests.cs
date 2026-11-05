@@ -162,6 +162,117 @@ public sealed class NearbyWorkspaceWorkflowTests
         Assert.AreEqual(0, handler.ReverseCount);
     }
 
+    [TestMethod]
+    public async Task InterruptedNearbySearchRestoresRetryableBackTargetAndIgnoresLateResultAsync()
+    {
+        using NearbyHandler handler = new();
+        using HttpClient http = new(handler) { BaseAddress = new Uri("https://example.test/") };
+        using SearchWorkspaceWorkflow workspace = CreateWorkflow(http,
+            () => Task.FromResult<GeoCoordinate?>(new GeoCoordinate(52.37, 9.73)),
+            _ => Task.CompletedTask);
+
+        await workspace.OpenNearbyAsync("Apotheke");
+        Task firstRequest = workspace.FindNearbyAsync();
+        Assert.AreEqual(1, handler.NearbyCount);
+        Assert.IsInstanceOfType<LoadingSearch>(((NearbySearchPanel)workspace.State.Panel).Results);
+
+        await workspace.OpenNearbyAsync("Café");
+        await workspace.BackAsync();
+        NearbySearchPanel restored = (NearbySearchPanel)workspace.State.Panel;
+        Assert.AreEqual("Apotheke", restored.Applied!.Criteria.Category);
+        Assert.IsInstanceOfType<FailedSearch>(restored.Results);
+        StringAssert.Contains(((FailedSearch)restored.Results).Message, "Retry", StringComparison.Ordinal);
+
+        // The mock deliberately returns data after cancellation. It must not
+        // overwrite the restored interrupted result or its original criteria.
+        handler.Complete(0, Empty());
+        await firstRequest;
+        Assert.IsInstanceOfType<FailedSearch>(((NearbySearchPanel)workspace.State.Panel).Results);
+
+        Task retry = workspace.RetryNearbyAsync();
+        Assert.AreEqual(2, handler.NearbyCount);
+        handler.Complete(1, Empty());
+        await retry;
+        Assert.IsInstanceOfType<ReadySearch>(((NearbySearchPanel)workspace.State.Panel).Results);
+    }
+
+    [TestMethod]
+    public async Task KnownPlaceSelectionPreservesRecoverableNearbyReturnTargetAsync()
+    {
+        using NearbyHandler handler = new();
+        using HttpClient http = new(handler) { BaseAddress = new Uri("https://example.test/") };
+        using SearchWorkspaceWorkflow workspace = CreateWorkflow(http,
+            () => Task.FromResult<GeoCoordinate?>(new GeoCoordinate(52.37, 9.73)),
+            _ => Task.CompletedTask);
+
+        await workspace.OpenNearbyAsync("Apotheke");
+        Task firstRequest = workspace.FindNearbyAsync();
+        await workspace.SelectPlaceAsync(ExploreSearchStateTests.Collection("known place").Features[0]);
+        await workspace.BackAsync();
+        Assert.IsInstanceOfType<FailedSearch>(((NearbySearchPanel)workspace.State.Panel).Results);
+
+        handler.Complete(0, Empty());
+        await firstRequest;
+        Assert.IsInstanceOfType<FailedSearch>(((NearbySearchPanel)workspace.State.Panel).Results);
+    }
+
+    [TestMethod]
+    public async Task NewNearbyEditorFromReverseInspectionRecoversCanceledNearbyReturnTargetAsync()
+    {
+        using NearbyHandler handler = new();
+        using HttpClient http = new(handler) { BaseAddress = new Uri("https://example.test/") };
+        using SearchWorkspaceWorkflow workspace = CreateWorkflow(http,
+            () => Task.FromResult<GeoCoordinate?>(new GeoCoordinate(52.37, 9.73)),
+            _ => Task.CompletedTask);
+
+        await workspace.OpenNearbyAsync("Apotheke");
+        Task firstRequest = workspace.FindNearbyAsync();
+        GeoCoordinate inspected = new(52.38, 9.74);
+        Task reverse = workspace.InspectMapPointAsync(inspected);
+        await workspace.OpenNearbyAsync("Café", inspected);
+        await workspace.BackAsync();
+        Assert.IsInstanceOfType<FailedSearch>(((NearbySearchPanel)workspace.State.Panel).Results);
+
+        handler.Complete(0, Empty());
+        handler.Complete(1, Empty());
+        await Task.WhenAll(firstRequest, reverse);
+        Assert.IsInstanceOfType<FailedSearch>(((NearbySearchPanel)workspace.State.Panel).Results);
+    }
+
+    [TestMethod]
+    public async Task LaterNearbyAndLocationIntentsCancelPendingReverseClicksAsync()
+    {
+        using NearbyHandler handler = new();
+        using HttpClient http = new(handler) { BaseAddress = new Uri("https://example.test/") };
+        TaskCompletionSource firstClickDelay = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource secondClickDelay = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        Queue<TaskCompletionSource> delays = new([firstClickDelay, secondClickDelay]);
+        TaskCompletionSource<DeviceLocationResult> location = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        using SearchWorkspaceWorkflow workspace = new(new SearchApiClient(http),
+            () => Task.CompletedTask, () => Task.CompletedTask, _ => Task.CompletedTask,
+            operation => operation(), () => Task.FromResult<GeoCoordinate?>(new GeoCoordinate(52.37, 9.73)),
+            _ => location.Task, token => delays.Dequeue().Task.WaitAsync(token));
+
+        await workspace.OpenNearbyAsync(null);
+        Task clickBeforeSearch = workspace.HandleMapBackgroundClickAsync(new GeoCoordinate(52.38, 9.74));
+        Task nearby = workspace.FindNearbyAsync();
+        firstClickDelay.SetResult();
+        await clickBeforeSearch;
+        Assert.AreEqual(0, handler.ReverseCount);
+        Assert.IsInstanceOfType<NearbySearchPanel>(workspace.State.Panel);
+        handler.Complete(0, Empty());
+        await nearby;
+
+        Task clickBeforeLocation = workspace.HandleMapBackgroundClickAsync(new GeoCoordinate(52.39, 9.75));
+        Task locating = workspace.LocateMeAsync();
+        secondClickDelay.SetResult();
+        await clickBeforeLocation;
+        Assert.AreEqual(0, handler.ReverseCount);
+        location.SetResult(new DeviceLocationResult(null, "Permission denied"));
+        await locating;
+        Assert.IsInstanceOfType<NearbySearchPanel>(workspace.State.Panel);
+    }
+
     private static SearchWorkspaceWorkflow CreateWorkflow(HttpClient http, Func<Task<GeoCoordinate?>> mapCenter,
         Func<SearchMapState, Task> mapChanged) => new(new SearchApiClient(http),
         () => Task.CompletedTask, () => Task.CompletedTask, mapChanged,

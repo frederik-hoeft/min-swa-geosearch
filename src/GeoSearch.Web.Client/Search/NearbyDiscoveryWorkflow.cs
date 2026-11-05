@@ -29,7 +29,11 @@ internal sealed class NearbyDiscoveryWorkflow(SearchApiClient api, Func<ExploreS
     public IReadOnlyList<string> MatchCategories(string text) => _categories.Match(text);
     public Task EnsureCategoriesAsync() => _categories.EnsureLoadedAsync(render);
     public Task RetryCategoriesAsync() => _categories.RetryAsync(render);
-    public void Invalidate() => _nearby.Invalidate();
+    public void Invalidate()
+    {
+        _nearby.Invalidate();
+        State = State.InterruptPendingNearby();
+    }
     public bool CanSearchThisArea => State.Panel is NearbySearchPanel { Applied: { } applied, Editing: false } &&
         _manualCenter is { } center && DistanceMeters(applied.Origin, center) > Math.Max(100, applied.Criteria.RadiusMeters * 0.35);
 
@@ -51,7 +55,7 @@ internal sealed class NearbyDiscoveryWorkflow(SearchApiClient api, Func<ExploreS
             return;
         }
 
-        _nearby.Invalidate();
+        Invalidate();
         NearbyError = null;
         NearbyCriteria criteria = new(category, OriginKind: selectedPoint is null ? NearbyOriginKind.MapCenter : NearbyOriginKind.SelectedPoint,
             SelectedPoint: selectedPoint);

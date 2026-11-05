@@ -103,6 +103,39 @@ internal sealed record ExploreSearchState(
         };
     }
 
+    /// <summary>
+    /// A canceled nearby request must not leave a reachable Back target in
+    /// LoadingSearch forever. Preserve the applied criteria and offer Retry.
+    /// </summary>
+    public ExploreSearchState InterruptPendingNearby()
+    {
+        SearchPanelState recovered = RecoverInterruptedNearby(Panel);
+        return ReferenceEquals(Panel, recovered) ? this : this with { Panel = recovered };
+    }
+
+    private static SearchPanelState RecoverInterruptedNearby(SearchPanelState panel)
+    {
+        switch (panel)
+        {
+            case NearbySearchPanel nearby:
+                SearchPanelState nearbyReturn = RecoverInterruptedNearby(nearby.ReturnTo);
+                SearchLoadState? results = nearby.Applied is not null && nearby.Results is LoadingSearch
+                    ? new FailedSearch("Nearby search was interrupted. Retry to load these results.")
+                    : nearby.Results;
+                return ReferenceEquals(nearbyReturn, nearby.ReturnTo) && ReferenceEquals(results, nearby.Results)
+                    ? panel : nearby with { ReturnTo = nearbyReturn, Results = results };
+            case PlaceSearchPanel place:
+                SearchPanelState placeReturn = RecoverInterruptedNearby(place.ReturnTo);
+                return ReferenceEquals(placeReturn, place.ReturnTo) ? panel : place with { ReturnTo = placeReturn };
+            case ReverseInspectionPanel inspection:
+                SearchPanelState inspectionReturn = RecoverInterruptedNearby(inspection.ReturnTo);
+                return ReferenceEquals(inspectionReturn, inspection.ReturnTo)
+                    ? panel : inspection with { ReturnTo = inspectionReturn };
+            default:
+                return panel;
+        }
+    }
+
     public ExploreSearchState WithNearbyResult(AppliedNearbyQuery applied, SearchLoadState result) => Panel switch
     {
         NearbySearchPanel { Applied: { } current } nearby when current == applied =>

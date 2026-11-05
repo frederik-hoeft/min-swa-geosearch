@@ -60,16 +60,16 @@ internal sealed class CategoryCatalogSession(SearchApiClient api) : IDisposable
                 HasLoaded = true;
             }
         }
-        catch (Exception exception) when (exception is HttpRequestException or System.Text.Json.JsonException or NotSupportedException)
+        catch (OperationCanceledException) when (_disposed)
+        {
+            return;
+        }
+        catch (Exception exception) when (exception is HttpRequestException or System.Text.Json.JsonException or NotSupportedException or OperationCanceledException)
         {
             if (!_disposed)
             {
                 Error = "Could not load nearby categories. You can still explore all categories.";
             }
-        }
-        catch (OperationCanceledException) when (_disposed)
-        {
-            return;
         }
 
         if (!_disposed)

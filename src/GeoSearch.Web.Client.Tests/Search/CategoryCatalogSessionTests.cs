@@ -40,14 +40,39 @@ public sealed class CategoryCatalogSessionTests
         Assert.AreEqual(2, handler.RequestCount);
     }
 
+    [TestMethod]
+    public async Task TimedOutRequestIsRecoverableAndNotifiesForRetryAsync()
+    {
+        using CategoryHandler handler = new() { TimeoutNext = true };
+        using HttpClient client = new(handler) { BaseAddress = new Uri("https://example.test/") };
+        using CategoryCatalogSession catalog = new(new SearchApiClient(client));
+        int renders = 0;
+        await catalog.EnsureLoadedAsync(() => { ++renders; return Task.CompletedTask; });
+
+        Assert.IsFalse(catalog.HasLoaded);
+        Assert.IsNotNull(catalog.Error);
+        Assert.AreEqual(1, renders);
+        await catalog.RetryAsync(() => { ++renders; return Task.CompletedTask; });
+        Assert.IsTrue(catalog.HasLoaded);
+        Assert.IsNull(catalog.Error);
+        Assert.AreEqual(2, handler.RequestCount);
+        Assert.AreEqual(2, renders);
+    }
+
     private sealed class CategoryHandler : HttpMessageHandler
     {
         public int RequestCount { get; private set; }
         public bool FailNext { get; set; }
+        public bool TimeoutNext { get; set; }
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             RequestCount++;
+            if (TimeoutNext)
+            {
+                TimeoutNext = false;
+                throw new TaskCanceledException("The request timed out.");
+            }
             bool failing = FailNext;
             FailNext = false;
 #pragma warning disable CA2000

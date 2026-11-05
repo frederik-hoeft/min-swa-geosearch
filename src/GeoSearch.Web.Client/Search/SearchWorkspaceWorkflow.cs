@@ -30,7 +30,8 @@ internal sealed class SearchWorkspaceWorkflow : IDisposable
     public SearchWorkspaceWorkflow(SearchApiClient api, Func<Task> render, Func<Task> committed,
         Func<SearchMapState, Task> mapChanged, Func<Func<Task>, Task> dispatch,
         Func<Task<GeoCoordinate?>>? mapCenter = null,
-        Func<CancellationToken, Task<DeviceLocationResult>>? locate = null)
+        Func<CancellationToken, Task<DeviceLocationResult>>? locate = null,
+        Func<CancellationToken, Task>? backgroundClickDelay = null)
     {
         _render = render;
         _committed = committed;
@@ -47,7 +48,7 @@ internal sealed class SearchWorkspaceWorkflow : IDisposable
             locate ?? (_ => Task.FromResult(new DeviceLocationResult(null, "Device location is unavailable."))),
             render, NotifyMapAsync, InspectMapPointAsync, () => _navigationRevision);
         // Delayed confirmations must re-enter the Blazor renderer's sync context.
-        _backgroundClicks = new BackgroundMapClickCoordinator(point => dispatch(() => InspectMapPointAsync(point)));
+        _backgroundClicks = new BackgroundMapClickCoordinator(point => dispatch(() => InspectMapPointAsync(point)), backgroundClickDelay);
     }
 
     public ExploreSearchState State { get; internal set; } = ExploreSearchState.Initial;
@@ -378,9 +379,21 @@ internal sealed class SearchWorkspaceWorkflow : IDisposable
         AdvanceNavigation();
         return _nearbyFlow.CancelNearbyAsync();
     }
-    public Task FindNearbyAsync() => _nearbyFlow.FindNearbyAsync();
-    public Task RetryNearbyAsync() => _nearbyFlow.RetryNearbyAsync();
-    public Task SearchThisAreaAsync() => _nearbyFlow.SearchThisAreaAsync();
+    public Task FindNearbyAsync()
+    {
+        AdvanceNavigation();
+        return _nearbyFlow.FindNearbyAsync();
+    }
+    public Task RetryNearbyAsync()
+    {
+        AdvanceNavigation();
+        return _nearbyFlow.RetryNearbyAsync();
+    }
+    public Task SearchThisAreaAsync()
+    {
+        AdvanceNavigation();
+        return _nearbyFlow.SearchThisAreaAsync();
+    }
 
     private void BeforeNearbySubmit()
     {
@@ -389,7 +402,16 @@ internal sealed class SearchWorkspaceWorkflow : IDisposable
         AdvanceNavigation();
     }
 
-    public Task LocateMeAsync() => _deviceLocation.LocateAsync();
+    public Task LocateMeAsync()
+    {
+        if (_disposed || Locating)
+        {
+            return Task.CompletedTask;
+        }
+
+        AdvanceNavigation();
+        return _deviceLocation.LocateAsync();
+    }
 
     /// <summary>Apply the device-location fallback without changing applied nearby results.</summary>
     public async Task UseMapCenterAsync()
@@ -418,6 +440,7 @@ internal sealed class SearchWorkspaceWorkflow : IDisposable
 
     private void AdvanceNavigation()
     {
+        _backgroundClicks.CancelPending();
         ++_navigationRevision;
         _deviceLocation.ClearError();
     }
