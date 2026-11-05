@@ -29,6 +29,19 @@ dotnet test src/GeoSearch.slnx --no-restore --no-build
 
 The [architecture](docs/architecture.md) explains the search pipeline, API contract, and database ownership. [Validation](docs/validation.md) describes automated checks and runtime acceptance. [Lab handoff](docs/lab-handoff.md) tracks the architecture note and evidence required for submission. For UI styling and source conventions, see [UI design](docs/ui-design.md) and [code style](code-style.md).
 
+## Privacy and read-only access
+
+The API uses the restricted database Login 'geosearch_reader' with a session-level 'transaction_read_only = 0'. Coordinates are not written to application logs: request-start daignostics are suppressed, EF Core masks parameter values, and 'EnableSensitiveDataLogging' is not used. See validation[docs/validation.md] for the concrete verification steps and screenshot.
+
+## Known ranking behaviour
+
+Three of the ten fixture queries currently return an unexpected top result:
+- Hauptstrasse Laatzen --> no matching street in the index; falls back to the slow trigram path
+- Zoo Hannover --> district ranks above the POI because of higher importance
+- Markthalle Hannover --> only a street exists in the index, no POI
+
+Explanations and latency measurements are in the fixture table and the architecture note[block]
+
 ## Repository layout
 
 | Path | Contents |
