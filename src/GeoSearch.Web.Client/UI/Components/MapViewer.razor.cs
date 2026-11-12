@@ -16,7 +16,7 @@ namespace GeoSearch.Web.Client.UI.Components;
 
 public partial class MapViewer : ComponentBase, IAsyncDisposable
 {
-    private const string DEFAULT_STYLE_URL = "map-styles/osm-standard.json";
+    private const string DEFAULT_STYLE_URL = "https://basisvisualisierung.niedersachsen.de/services/basiskarte/styles/vt-style-light.json";
     private static readonly TimeSpan s_styleCheckTimeout = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan s_mapLoadTimeout = TimeSpan.FromSeconds(30);
 
@@ -87,7 +87,8 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
             MaxZoom = 19,
             AttributionControl = false,
             TrackResize = true,
-            DragRotate = false
+            DragRotate = true,
+            DragPan = true,
         };
 
         // The wrapper exposes no error callback until style.load. Check the style
@@ -403,3 +404,4 @@ public partial class MapViewer : ComponentBase, IAsyncDisposable
         GC.SuppressFinalize(this);
     }
 }
+

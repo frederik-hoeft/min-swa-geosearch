@@ -40,9 +40,12 @@ builder.Services.AddSwaggerGen(options =>
 
 if (builder.Environment.IsDevelopment())
 {
-    string clientOrigin = builder.Configuration["Cors:ClientOrigin"] ?? "https://localhost:5200";
     builder.Services.AddCors(options => options.AddPolicy("DevClient", policy =>
-        policy.WithOrigins(clientOrigin).AllowAnyHeader().AllowAnyMethod()));
+        policy.SetIsOriginAllowed(origin =>
+                origin.StartsWith("http://localhost:", StringComparison.OrdinalIgnoreCase) ||
+                origin.StartsWith("http://127.0.0.1:", StringComparison.OrdinalIgnoreCase))
+              .AllowAnyHeader()
+              .AllowAnyMethod()));
 }
 
 WebApplication app = builder.Build();

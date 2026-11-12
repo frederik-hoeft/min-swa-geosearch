@@ -232,3 +232,11 @@
 .gs-map-viewer ::deep .maplibregl-marker.gs-search-marker {
     z-index: 1;
 }
+
+.gs-map-viewer ::deep .maplibregl-canvas-container {
+    touch-action: none;
+}
+
+.gs-map-viewer ::deep .maplibregl-canvas {
+    outline: none;
+}
